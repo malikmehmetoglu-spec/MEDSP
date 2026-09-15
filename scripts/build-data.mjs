@@ -279,6 +279,146 @@ const AMBULANCE = {
   ],
 };
 
+const SERVICES = {
+  operation: 'أعمال خدمية',
+  dims: [
+    { key: 'sector', title: 'قطاع الخدمة', column: 'اسم القطاع(خدمات)' },
+    { key: 'kind', title: 'نوع العمل المنفَّذ', column: 'نوع العملية' },
+    { key: 'unit', title: 'وحدة القياس', column: 'الواحدة' },
+    { key: 'status', title: 'حالة النشاط', column: 'حالة النشاط' },
+  ],
+  metrics: [
+    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'] },
+    { key: 'duration', title: 'الوقت المستغرق', columns: ['الوقت المستغرق'] },
+    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'] },
+  ],
+};
+
+const TRAFFIC = {
+  operation: 'حادث سير',
+  dims: [
+    { key: 'crashType', title: 'نوع حادث السير', column: 'نوع حادث السير' },
+    { key: 'cause', title: 'سبب الحادث', column: 'سبب الحادث' },
+    { key: 'vehicle', title: 'نوع المركبة', column: 'نوع السيارة' },
+    { key: 'road', title: 'حالة الطريق وقت الحادث', column: 'حالة الطريق وقت الحادث' },
+    { key: 'light', title: 'الإضاءة في موقع الحادث', column: 'الإضاءة في موقع الحادث' },
+    { key: 'signs', title: 'وجود إشارات مرورية', column: 'هل توجد إشارات مرورية وتنظيم مروري بالموقع' },
+    { key: 'destination', title: 'جهة نقل المصابين', column: 'نوع مكان الاسعاف الى', note: 'مسجّلة في جزء من الحوادث' },
+  ],
+  metrics: [
+    {
+      key: 'injured',
+      title: 'المصابون',
+      columns: ['عدد المصابين الأطفال', 'عدد المصابين الرجال', 'عدد المصابين النساء'],
+    },
+    {
+      key: 'dead',
+      title: 'الوفيات',
+      columns: ['عدد الشهداء الأطفال', 'عدد الشهداء الرجال', 'عدد الشهداء النساء'],
+    },
+    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'] },
+  ],
+};
+
+const DROWNING = {
+  operation: 'إنتشال غريق',
+  dims: [
+    { key: 'cause', title: 'سبب الغرق', column: 'سبب الغرق' },
+    { key: 'state', title: 'حالة الغريق', column: 'حالة الغريق' },
+    { key: 'mission', title: 'بحث أم انتشال', column: 'بحث/انتشال' },
+    { key: 'warnings', title: 'وجود لوحات تحذيرية', column: 'هل يوجود تحذيرات أو لوحات إرشادية في مكان الحادث' },
+    { key: 'firstAid', title: 'الإسعافات الأولية المقدمة', column: 'الإسعافات الأولية المقدمة' },
+  ],
+  metrics: [
+    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'] },
+    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'] },
+  ],
+};
+
+const COLD_RESCUE = {
+  operation: 'انقاذ بارد',
+  dims: [
+    { key: 'kind', title: 'نوع عملية الإنقاذ', column: 'نوع العملية' },
+    { key: 'inhabited', title: 'طبيعة الموقع', column: 'نوع المكان' },
+  ],
+  metrics: [
+    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'] },
+    { key: 'duration', title: 'الوقت المستغرق', columns: ['الوقت المستغرق'] },
+    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'] },
+  ],
+};
+
+const ANIMAL_RESCUE = {
+  operation: 'انقاذ حيوان',
+  dims: [{ key: 'inhabited', title: 'طبيعة الموقع', column: 'نوع المكان' }],
+  metrics: [
+    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'] },
+    { key: 'duration', title: 'الوقت المستغرق', columns: ['الوقت المستغرق'] },
+    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'] },
+  ],
+};
+
+const HAZARD = {
+  operation: 'وسم أماكن خطرة',
+  dims: [{ key: 'inhabited', title: 'طبيعة الموقع', column: 'نوع المكان' }],
+  metrics: [
+    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'] },
+    { key: 'duration', title: 'الوقت المستغرق', columns: ['الوقت المستغرق'] },
+    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'] },
+  ],
+};
+
+const ATTACKS = {
+  operation: 'هجمات',
+  dims: [
+    { key: 'kind', title: 'نوع الهجوم', column: 'نوع العملية' },
+    { key: 'actor', title: 'الجهة التي يُعتقد أنها نفّذت الهجوم', column: 'الجهه التي يعتقد أنها قامت بتنفيذ الهجوم' },
+    { key: 'inhabited', title: 'طبيعة الموقع', column: 'نوع المكان' },
+  ],
+  metrics: [
+    {
+      key: 'injured',
+      title: 'المصابون',
+      columns: ['عدد المصابين الأطفال', 'عدد المصابين الرجال', 'عدد المصابين النساء'],
+    },
+    {
+      key: 'dead',
+      title: 'الشهداء',
+      columns: ['عدد الشهداء الأطفال', 'عدد الشهداء الرجال', 'عدد الشهداء النساء'],
+    },
+    { key: 'affected', title: 'المتضررون', columns: ['عدد المتضررين'] },
+    { key: 'raids', title: 'عدد الغارات', columns: ['عدد الغارات'] },
+    { key: 'munitions', title: 'الذخائر المستخدمة', columns: ['عدد الذخائر المستخدمة أثناء الهجوم'] },
+    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'] },
+  ],
+};
+
+const EVACUATION = {
+  operation: 'إخلاء مدنيين',
+  dims: [
+    { key: 'kind', title: 'نوع العملية', column: 'نوع العملية' },
+    { key: 'inhabited', title: 'طبيعة الموقع', column: 'نوع المكان' },
+  ],
+  metrics: [
+    { key: 'evacuated', title: 'الذين تم إخلاؤهم', columns: ['عدد الذين تم اخلائهم'] },
+    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'] },
+    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'] },
+  ],
+};
+
+const REPORTS = {
+  fire: FIRE,
+  ambulance: AMBULANCE,
+  services: SERVICES,
+  traffic: TRAFFIC,
+  drowning: DROWNING,
+  'cold-rescue': COLD_RESCUE,
+  'animal-rescue': ANIMAL_RESCUE,
+  'hazard-marking': HAZARD,
+  attacks: ATTACKS,
+  evacuation: EVACUATION,
+};
+
 /* ---------- التنفيذ ---------- */
 
 function run() {
@@ -331,8 +471,9 @@ function run() {
   };
 
   write('overview.json', overview);
-  write('fire.json', buildReport(rows, places, FIRE));
-  write('ambulance.json', buildReport(rows, places, AMBULANCE));
+  for (const [id, config] of Object.entries(REPORTS)) {
+    write(`${id}.json`, buildReport(rows, places, config));
+  }
 
   console.log(`\nالفترة: ${period} — ${rows.length} سجلاً بعد إزالة التكرار`);
 }

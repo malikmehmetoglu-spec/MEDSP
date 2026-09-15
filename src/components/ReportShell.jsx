@@ -92,7 +92,7 @@ export function DimPanel({ dim, tone = 'teal', max, span, donutAt = 3 }) {
   هيكل التقرير المشترك: المرشّحات، الواجهة الرئيسية، والخريطة.
   يتلقى محتواه الخاص من كل تقرير عبر children.
 */
-export default function ReportShell({ report, basemap, hero, children }) {
+export default function ReportShell({ report, basemap, view }) {
   const [range, setRange] = useState({ from: report.from, to: report.to });
   const [directorate, setDirectorate] = useState(null);
   const [center, setCenter] = useState(null);
@@ -109,8 +109,6 @@ export default function ReportShell({ report, basemap, hero, children }) {
     setDirectorate(null);
     setCenter(null);
   };
-
-  const view = hero(data);
 
   return (
     <>
@@ -149,14 +147,28 @@ export default function ReportShell({ report, basemap, hero, children }) {
             </div>
 
             <div className="hero__side">
-              {view.stats.map((stat) => (
+              {view.stats(data).map((stat) => (
                 <Stat key={stat.label} {...stat} />
               ))}
             </div>
           </section>
 
           <div className="panels">
-            {children(data)}
+            {view.toll && (
+              <Panel title={view.toll.title} note={view.toll.note} span="full">
+                <Toll rows={view.toll.rows(data)} />
+              </Panel>
+            )}
+
+            {view.panels.map((panel) => (
+              <DimPanel
+                key={panel.dim}
+                dim={data.dims[panel.dim]}
+                tone={panel.tone}
+                max={panel.max}
+                span={panel.span}
+              />
+            ))}
 
             <Panel
               span="full"
