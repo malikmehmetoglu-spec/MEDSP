@@ -1,3 +1,20 @@
+/* ===== محاذاة الأرقام =====
+   كل رقم في المنصة: اتجاه لاتيني، محاذاة لليمين، وبلا أي قصّ.
+*/
+
+.num,
+.bars__value,
+.donut__num,
+.toll__value,
+.hero__figure {
+  direction: ltr;
+  text-align: right;
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
+  overflow: visible;
+  white-space: nowrap;
+}
+
 /* ===== الهيكل ===== */
 
 .shell {
@@ -222,9 +239,10 @@
 }
 
 .hero__figure {
-  font-size: clamp(3.4rem, 2rem + 5vw, 5.2rem);
+  font-size: clamp(3.2rem, 2rem + 4.6vw, 5rem);
   font-weight: 900;
-  line-height: 1;
+  line-height: 1.18;
+  padding-block: 2px;
   letter-spacing: -0.04em;
   position: relative;
   background: linear-gradient(170deg, #ffffff, var(--golden-wheat));
@@ -277,14 +295,18 @@
 .stat__value {
   display: flex;
   align-items: baseline;
-  gap: 7px;
+  gap: 8px;
+}
+
+.stat__number {
+  order: -1;
 }
 
 .stat__number {
   font-size: 2.05rem;
   font-weight: 900;
   color: var(--ivory-mist);
-  line-height: 1.1;
+  line-height: 1.24;
   letter-spacing: -0.03em;
 }
 
@@ -349,7 +371,7 @@
 .toll__value {
   font-size: 2.1rem;
   font-weight: 900;
-  line-height: 1.1;
+  line-height: 1.24;
   color: var(--ivory-mist);
   letter-spacing: -0.03em;
 }
@@ -504,7 +526,8 @@
   display: flex;
   align-items: baseline;
   gap: 7px;
-  min-width: 74px;
+  min-width: 78px;
+  justify-content: flex-end;
   font-size: 0.9rem;
   font-weight: 700;
   color: var(--ivory-mist);
