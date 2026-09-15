@@ -729,6 +729,8 @@
   cursor: grab;
   touch-action: none;
   display: block;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .map__svg--grabbing {
@@ -747,12 +749,14 @@
 
 .geo--gov {
   fill: rgba(66, 129, 119, 0.12);
-  stroke: rgba(185, 167, 121, 0.55);
+  stroke: rgba(212, 195, 152, 0.8);
+  stroke-width: 1.6;
 }
 
 .geo--sub {
   fill: none;
-  stroke: rgba(185, 167, 121, 0.3);
+  stroke: rgba(185, 167, 121, 0.55);
+  stroke-width: 0.9;
   transition: opacity 0.35s ease;
 }
 
@@ -764,6 +768,8 @@
 
 .geo__label {
   text-anchor: middle;
+  user-select: none;
+  -webkit-user-select: none;
   font-family: 'Qomra', sans-serif;
   pointer-events: none;
   paint-order: stroke;
@@ -780,8 +786,8 @@
 }
 
 .geo__label--sub {
-  fill: rgba(235, 232, 215, 0.75);
-  font-weight: 400;
+  fill: rgba(235, 232, 215, 0.82);
+  font-weight: 500;
 }
 
 /* أزرار التحكم */

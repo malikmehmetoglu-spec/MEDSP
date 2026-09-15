@@ -15,7 +15,7 @@ const MIN_ZOOM = 1;
 /* عتبات ظهور النواحي وأسمائها */
 const SUB_FADE_IN = 1.7;
 const SUB_FULL = 2.6;
-const SUB_LABELS = 4.2;
+const SUB_LABELS = 3.4;
 
 function useBounds(basemap) {
   return useMemo(() => {
@@ -224,7 +224,7 @@ export default function SyriaMap({ basemap, locations }) {
                   key={f.code}
                   d={toPath(f.g)}
                   className="geo geo--sub"
-                  style={{ opacity: subOpacity, strokeWidth: 0.5 / zoom }}
+                  style={{ opacity: subOpacity }}
                 />
               ))}
 
@@ -237,7 +237,6 @@ export default function SyriaMap({ basemap, locations }) {
                 key={f.code}
                 d={toPath(f.g)}
                 className="geo geo--gov"
-                style={{ strokeWidth: 1.1 / zoom }}
               />
             ))}
 
@@ -250,7 +249,6 @@ export default function SyriaMap({ basemap, locations }) {
                   cy={y}
                   r={radius(loc.count)}
                   className={hovered?.code === loc.code ? 'map__dot map__dot--on' : 'map__dot'}
-                  style={{ strokeWidth: 1 / zoom }}
                   onMouseEnter={() =>
                     setHovered({ ...loc, x: x * zoom + view.x, y: y * zoom + view.y })
                   }
@@ -267,7 +265,7 @@ export default function SyriaMap({ basemap, locations }) {
                   x={x}
                   y={y}
                   className="geo__label geo__label--gov"
-                  style={{ fontSize: 13 / zoom, opacity: govLabelOpacity }}
+                  style={{ fontSize: 15 / zoom, opacity: govLabelOpacity }}
                 >
                   {f.name}
                 </text>
@@ -283,7 +281,7 @@ export default function SyriaMap({ basemap, locations }) {
                     x={x}
                     y={y}
                     className="geo__label geo__label--sub"
-                    style={{ fontSize: 9 / zoom, opacity: subLabelOpacity }}
+                    style={{ fontSize: 12 / zoom, opacity: subLabelOpacity }}
                   >
                     {f.name}
                   </text>
