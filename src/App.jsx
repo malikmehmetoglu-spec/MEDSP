@@ -5,7 +5,7 @@ import FireReport from './components/FireReport';
 import Footer from './components/Footer';
 import { categories } from './data/categories';
 
-const ar = (n) => Number(n).toLocaleString('ar-SY');
+const ar = (n) => Number(n).toLocaleString('en-US');
 
 function Pending({ category }) {
   return (
