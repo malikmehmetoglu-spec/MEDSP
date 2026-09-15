@@ -124,19 +124,39 @@ export default function SyriaMap({ basemap, locations }) {
 
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
+  /*
+    تقييد التحريك حتى لا تُسحب الخريطة خارج الإطار فتبدو مختفية.
+    يُسمح بهامش يعادل عُشر المساحة الظاهرة في كل اتجاه.
+  */
+  const clampView = useCallback(
+    (next) => {
+      const zoom = clamp(Number(next.zoom) || 1, MIN_ZOOM, MAX_ZOOM);
+      const marginX = size.width * 0.1;
+      const marginY = size.height * 0.1;
+      const minX = size.width - size.width * zoom - marginX;
+      const minY = size.height - size.height * zoom - marginY;
+
+      const x = Number.isFinite(next.x) ? clamp(next.x, minX, marginX) : 0;
+      const y = Number.isFinite(next.y) ? clamp(next.y, minY, marginY) : 0;
+
+      return { zoom, x, y };
+    },
+    [size]
+  );
+
   const zoomAt = useCallback(
     (factor, cx, cy) => {
       setView((prev) => {
         const zoom = clamp(prev.zoom * factor, MIN_ZOOM, MAX_ZOOM);
         const ratio = zoom / prev.zoom;
-        return {
+        return clampView({
           zoom,
           x: cx - (cx - prev.x) * ratio,
           y: cy - (cy - prev.y) * ratio,
-        };
+        });
       });
     },
-    []
+    [clampView]
   );
 
   /*
@@ -170,18 +190,28 @@ export default function SyriaMap({ basemap, locations }) {
 
   const onPointerMove = (event) => {
     if (!drag.current) return;
-    setView((prev) => ({
-      ...prev,
-      x: drag.current.ox + (event.clientX - drag.current.sx),
-      y: drag.current.oy + (event.clientY - drag.current.sy),
-    }));
+    const { ox, oy, sx, sy } = drag.current;
+    setView((prev) =>
+      clampView({
+        zoom: prev.zoom,
+        x: ox + (event.clientX - sx),
+        y: oy + (event.clientY - sy),
+      })
+    );
   };
 
-  const endDrag = () => {
+  const endDrag = (event) => {
     drag.current = null;
+    if (event?.pointerId !== undefined) {
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      } catch {
+        /* المؤشر أُفلت مسبقاً */
+      }
+    }
   };
 
-  const reset = () => setView({ zoom: 1, x: 0, y: 0 });
+  const reset = () => setView({ zoom: MIN_ZOOM, x: 0, y: 0 });
 
   const { zoom } = view;
 
@@ -208,7 +238,12 @@ export default function SyriaMap({ basemap, locations }) {
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}
+          onPointerCancel={endDrag}
           onPointerLeave={endDrag}
+          onDoubleClick={(event) => {
+            const box = event.currentTarget.getBoundingClientRect();
+            zoomAt(1.6, event.clientX - box.left, event.clientY - box.top);
+          }}
           className={drag.current ? 'map__svg map__svg--grabbing' : 'map__svg'}
           role="img"
           aria-label="خريطة توزّع الحرائق"
