@@ -1,0 +1,326 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+/*
+  خريطة سوريا — مبنية بالكامل من طبقات الوزارة، بلا أي خدمة خرائط خارجية.
+
+  الطبقات: خلفية الدولة، المسطحات المائية، حدود المحافظات وأسماؤها،
+  ثم النواحي وحدودها وأسماؤها تظهر تدريجياً عند التكبير.
+  فوقها نقاط الحرائق بحجم يتناسب مع عددها في كل موقع.
+*/
+
+const PAD = 16;
+const MAX_ZOOM = 12;
+const MIN_ZOOM = 1;
+
+/* عتبات ظهور النواحي وأسمائها */
+const SUB_FADE_IN = 1.7;
+const SUB_FULL = 2.6;
+const SUB_LABELS = 4.2;
+
+function useBounds(basemap) {
+  return useMemo(() => {
+    let minLon = 180;
+    let maxLon = -180;
+    let minLat = 90;
+    let maxLat = -90;
+
+    const scan = (geometry) => {
+      const polygons =
+        geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
+      for (const polygon of polygons) {
+        for (const [lon, lat] of polygon[0]) {
+          if (lon < minLon) minLon = lon;
+          if (lon > maxLon) maxLon = lon;
+          if (lat < minLat) minLat = lat;
+          if (lat > maxLat) maxLat = lat;
+        }
+      }
+    };
+
+    basemap.country.forEach((f) => scan(f.g));
+    return { minLon, maxLon, minLat, maxLat };
+  }, [basemap]);
+}
+
+export default function SyriaMap({ basemap, locations }) {
+  const wrapRef = useRef(null);
+  const [size, setSize] = useState({ width: 900, height: 560 });
+  const [view, setView] = useState({ zoom: 1, x: 0, y: 0 });
+  const [hovered, setHovered] = useState(null);
+  const drag = useRef(null);
+
+  const bounds = useBounds(basemap);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return undefined;
+    const ro = new ResizeObserver(([entry]) => {
+      const { width } = entry.contentRect;
+      setSize({ width, height: Math.max(380, Math.round(width * 0.62)) });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  /* إسقاط مستطيل مع تصحيح لتقارب خطوط الطول */
+  const project = useMemo(() => {
+    const spanLon = bounds.maxLon - bounds.minLon;
+    const spanLat = bounds.maxLat - bounds.minLat;
+    const aspect = Math.cos((((bounds.minLat + bounds.maxLat) / 2) * Math.PI) / 180);
+
+    const usableW = size.width - PAD * 2;
+    const usableH = size.height - PAD * 2;
+    const scale = Math.min(usableW / (spanLon * aspect), usableH / spanLat);
+
+    const offsetX = PAD + (usableW - spanLon * aspect * scale) / 2;
+    const offsetY = PAD + (usableH - spanLat * scale) / 2;
+
+    return (lon, lat) => [
+      offsetX + (lon - bounds.minLon) * aspect * scale,
+      offsetY + (bounds.maxLat - lat) * scale,
+    ];
+  }, [bounds, size]);
+
+  const toPath = useCallback(
+    (geometry) => {
+      const polygons =
+        geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
+      let d = '';
+      for (const polygon of polygons) {
+        polygon[0].forEach(([lon, lat], i) => {
+          const [x, y] = project(lon, lat);
+          d += `${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`;
+        });
+        d += 'Z';
+      }
+      return d;
+    },
+    [project]
+  );
+
+  /* مركز كل مضلع لوضع الاسم عليه */
+  const centroid = useCallback(
+    (geometry) => {
+      const polygons =
+        geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
+      let best = polygons[0][0];
+      let bestLen = 0;
+      for (const polygon of polygons) {
+        if (polygon[0].length > bestLen) {
+          bestLen = polygon[0].length;
+          best = polygon[0];
+        }
+      }
+      let sx = 0;
+      let sy = 0;
+      for (const [lon, lat] of best) {
+        sx += lon;
+        sy += lat;
+      }
+      return project(sx / best.length, sy / best.length);
+    },
+    [project]
+  );
+
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+  const zoomAt = useCallback(
+    (factor, cx, cy) => {
+      setView((prev) => {
+        const zoom = clamp(prev.zoom * factor, MIN_ZOOM, MAX_ZOOM);
+        const ratio = zoom / prev.zoom;
+        return {
+          zoom,
+          x: cx - (cx - prev.x) * ratio,
+          y: cy - (cy - prev.y) * ratio,
+        };
+      });
+    },
+    []
+  );
+
+  /*
+    مستمع أصلي بـ passive:false — مستمع React للعجلة سلبي
+    فلا يستطيع منع تمرير الصفحة أثناء التكبير.
+  */
+  const svgRef = useRef(null);
+
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return undefined;
+
+    const onWheel = (event) => {
+      event.preventDefault();
+      const box = el.getBoundingClientRect();
+      zoomAt(
+        event.deltaY < 0 ? 1.18 : 1 / 1.18,
+        event.clientX - box.left,
+        event.clientY - box.top
+      );
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [zoomAt]);
+
+  const onPointerDown = (event) => {
+    drag.current = { sx: event.clientX, sy: event.clientY, ox: view.x, oy: view.y };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const onPointerMove = (event) => {
+    if (!drag.current) return;
+    setView((prev) => ({
+      ...prev,
+      x: drag.current.ox + (event.clientX - drag.current.sx),
+      y: drag.current.oy + (event.clientY - drag.current.sy),
+    }));
+  };
+
+  const endDrag = () => {
+    drag.current = null;
+  };
+
+  const reset = () => setView({ zoom: 1, x: 0, y: 0 });
+
+  const { zoom } = view;
+
+  /* شفافية النواحي تتدرج مع التكبير */
+  const subOpacity = clamp((zoom - SUB_FADE_IN) / (SUB_FULL - SUB_FADE_IN), 0, 1);
+  const subLabelOpacity = clamp((zoom - SUB_LABELS) / 1.4, 0, 1);
+  const govLabelOpacity = clamp(1 - (zoom - SUB_LABELS) / 2.2, 0.25, 1);
+
+  const peak = locations.length ? locations[0].count : 1;
+  const radius = (count) => (3.2 + Math.sqrt(count / peak) * 14) / Math.sqrt(zoom);
+
+  const ordered = useMemo(
+    () => [...locations].sort((a, b) => a.count - b.count),
+    [locations]
+  );
+
+  return (
+    <div className="map" ref={wrapRef}>
+      <div className="map__stage" style={{ height: size.height }}>
+        <svg
+          width={size.width}
+          height={size.height}
+          ref={svgRef}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endDrag}
+          onPointerLeave={endDrag}
+          className={drag.current ? 'map__svg map__svg--grabbing' : 'map__svg'}
+          role="img"
+          aria-label="خريطة توزّع الحرائق"
+        >
+          <g transform={`translate(${view.x} ${view.y}) scale(${zoom})`}>
+            {basemap.country.map((f, i) => (
+              <path key={`c${i}`} d={toPath(f.g)} className="geo geo--country" />
+            ))}
+
+            {subOpacity > 0 &&
+              basemap.subdistricts.map((f) => (
+                <path
+                  key={f.code}
+                  d={toPath(f.g)}
+                  className="geo geo--sub"
+                  style={{ opacity: subOpacity, strokeWidth: 0.5 / zoom }}
+                />
+              ))}
+
+            {basemap.water.map((f, i) => (
+              <path key={`w${i}`} d={toPath(f.g)} className="geo geo--water" />
+            ))}
+
+            {basemap.governorates.map((f) => (
+              <path
+                key={f.code}
+                d={toPath(f.g)}
+                className="geo geo--gov"
+                style={{ strokeWidth: 1.1 / zoom }}
+              />
+            ))}
+
+            {ordered.map((loc) => {
+              const [x, y] = project(loc.lon, loc.lat);
+              return (
+                <circle
+                  key={loc.code}
+                  cx={x}
+                  cy={y}
+                  r={radius(loc.count)}
+                  className={hovered?.code === loc.code ? 'map__dot map__dot--on' : 'map__dot'}
+                  style={{ strokeWidth: 1 / zoom }}
+                  onMouseEnter={() =>
+                    setHovered({ ...loc, x: x * zoom + view.x, y: y * zoom + view.y })
+                  }
+                  onMouseLeave={() => setHovered(null)}
+                />
+              );
+            })}
+
+            {basemap.governorates.map((f) => {
+              const [x, y] = centroid(f.g);
+              return (
+                <text
+                  key={`gl${f.code}`}
+                  x={x}
+                  y={y}
+                  className="geo__label geo__label--gov"
+                  style={{ fontSize: 13 / zoom, opacity: govLabelOpacity }}
+                >
+                  {f.name}
+                </text>
+              );
+            })}
+
+            {subLabelOpacity > 0 &&
+              basemap.subdistricts.map((f) => {
+                const [x, y] = centroid(f.g);
+                return (
+                  <text
+                    key={`sl${f.code}`}
+                    x={x}
+                    y={y}
+                    className="geo__label geo__label--sub"
+                    style={{ fontSize: 9 / zoom, opacity: subLabelOpacity }}
+                  >
+                    {f.name}
+                  </text>
+                );
+              })}
+          </g>
+        </svg>
+
+        {hovered && (
+          <div
+            className="map__tip"
+            style={{ right: size.width - hovered.x + 16, top: hovered.y - 12 }}
+          >
+            <strong>{hovered.name}</strong>
+            <span>{hovered.governorate}</span>
+            <span className="map__tip-count" dir="ltr">
+              {hovered.count.toLocaleString('en-US')}
+            </span>
+          </div>
+        )}
+
+        <div className="map__controls">
+          <button type="button" onClick={() => zoomAt(1.4, size.width / 2, size.height / 2)} aria-label="تكبير">
+            +
+          </button>
+          <button type="button" onClick={() => zoomAt(1 / 1.4, size.width / 2, size.height / 2)} aria-label="تصغير">
+            −
+          </button>
+          <button type="button" onClick={reset} aria-label="إعادة الضبط" className="map__reset">
+            ⟲
+          </button>
+        </div>
+      </div>
+
+      <p className="map__legend">
+        حجم الدائرة يعكس عدد الحرائق في الموقع. كبّر لعرض حدود النواحي وأسمائها.
+      </p>
+    </div>
+  );
+}

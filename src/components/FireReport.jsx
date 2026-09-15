@@ -1,4 +1,4 @@
-import FireMap from './FireMap';
+import SyriaMap from './SyriaMap';
 import BarChart from './BarChart';
 import Donut from './Donut';
 import Figure from './Figure';
@@ -105,7 +105,7 @@ function Panel({ title, note, children, span }) {
   );
 }
 
-export default function FireReport({ data, geo }) {
+export default function FireReport({ data, basemap }) {
   const unknownShare = Math.round((data.causesUnknown / data.total) * 100);
   const placeShare = Math.round((data.placeTypesCoverage / data.total) * 100);
 
@@ -123,7 +123,7 @@ export default function FireReport({ data, geo }) {
           title="مواقع الحرائق"
           note={`${fmt(data.locations.length)} موقعاً مُرمّزاً، مطابقة بإحداثياتها الرسمية`}
         >
-          <FireMap backdrop={geo.backdrop} locations={data.locations} />
+          <SyriaMap basemap={basemap} locations={data.locations} />
         </Panel>
 
         <Panel title="توزّع الحرائق حسب المحافظة" note="مرتّبة تنازلياً" span="wide">

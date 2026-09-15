@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/build-data.mjs && vite build",
+    "build": "node scripts/build-geo.mjs && node scripts/build-data.mjs && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "data": "node scripts/build-data.mjs"
+    "data": "node scripts/build-data.mjs",
+    "geo": "node scripts/build-geo.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",

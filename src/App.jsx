@@ -27,9 +27,9 @@ export default function App() {
     Promise.all([
       fetch('data/overview.json').then((r) => r.json()),
       fetch('data/fire.json').then((r) => r.json()),
-      fetch('data/geo.json').then((r) => r.json()),
+      fetch('data/basemap.json').then((r) => r.json()),
     ])
-      .then(([overview, fire, geo]) => setState({ status: 'ready', overview, fire, geo }))
+      .then(([overview, fire, basemap]) => setState({ status: 'ready', overview, fire, basemap }))
       .catch(() => setState({ status: 'error' }));
   }, []);
 
@@ -64,7 +64,7 @@ export default function App() {
           )}
 
           {state.status === 'ready' && active.ready && (
-            <FireReport data={state.fire} geo={state.geo} />
+            <FireReport data={state.fire} basemap={state.basemap} />
           )}
 
           {state.status === 'ready' && !active.ready && <Pending category={active} />}

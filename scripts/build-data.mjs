@@ -250,14 +250,8 @@ function run() {
     })).filter((o) => o.value > 0),
   };
 
-  /* خلفية الخريطة: المواقع المأهولة ترسم حدود البلاد بلا خرائط خارجية */
-  const backdrop = [...places.values()]
-    .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon))
-    .map((p) => [Number(p.lon.toFixed(3)), Number(p.lat.toFixed(3))]);
-
   write('overview.json', overview);
   write('fire.json', buildFireReport(rows, places));
-  write('geo.json', { backdrop, governorates });
 
   console.log(`\nالفترة: ${period} — ${rows.length} سجلاً بعد إزالة التكرار`);
 }

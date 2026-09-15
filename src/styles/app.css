@@ -609,6 +609,10 @@
 .map__stage {
   position: relative;
   width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 20, 18, 0.35);
+  border: 1px solid var(--edge);
 }
 
 .map__stage canvas,
@@ -717,4 +721,101 @@
   .masthead__period {
     display: none;
   }
+}
+
+/* ===== طبقات الخريطة ===== */
+
+.map__svg {
+  cursor: grab;
+  touch-action: none;
+  display: block;
+}
+
+.map__svg--grabbing {
+  cursor: grabbing;
+}
+
+.geo {
+  vector-effect: non-scaling-stroke;
+}
+
+.geo--country {
+  fill: rgba(235, 232, 215, 0.05);
+  stroke: rgba(185, 167, 121, 0.45);
+  stroke-width: 1.2;
+}
+
+.geo--gov {
+  fill: rgba(66, 129, 119, 0.12);
+  stroke: rgba(185, 167, 121, 0.55);
+}
+
+.geo--sub {
+  fill: none;
+  stroke: rgba(185, 167, 121, 0.3);
+  transition: opacity 0.35s ease;
+}
+
+.geo--water {
+  fill: rgba(44, 104, 122, 0.55);
+  stroke: rgba(122, 176, 190, 0.5);
+  stroke-width: 0.6;
+}
+
+.geo__label {
+  text-anchor: middle;
+  font-family: 'Qomra', sans-serif;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: rgba(0, 25, 22, 0.85);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  transition: opacity 0.35s ease;
+}
+
+.geo__label--gov {
+  fill: var(--ivory-mist);
+  font-weight: 700;
+}
+
+.geo__label--sub {
+  fill: rgba(235, 232, 215, 0.75);
+  font-weight: 400;
+}
+
+/* أزرار التحكم */
+
+.map__controls {
+  position: absolute;
+  inset-inline-end: 14px;
+  top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 3;
+}
+
+.map__controls button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid var(--edge);
+  background: rgba(0, 29, 26, 0.72);
+  backdrop-filter: blur(10px);
+  color: var(--ivory-mist);
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+
+.map__controls button:hover {
+  border-color: var(--edge-strong);
+  background: rgba(2, 68, 58, 0.85);
+}
+
+.map__reset {
+  font-size: 0.95rem;
 }
