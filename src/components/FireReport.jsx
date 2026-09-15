@@ -2,6 +2,7 @@ import SyriaMap from './SyriaMap';
 import BarChart from './BarChart';
 import Donut from './Donut';
 import Figure from './Figure';
+import Icon from './Icon';
 import { useInView } from '../hooks/motion';
 
 const fmt = (n) => Number(n).toLocaleString('en-US');
@@ -21,6 +22,7 @@ function Hero({ data }) {
 
   const stats = [
     {
+      icon: 'area',
       label: 'المساحة المحترقة',
       value: data.burnedArea,
       unit: 'دونم',
@@ -29,6 +31,7 @@ function Hero({ data }) {
       tone: 'gold',
     },
     {
+      icon: 'clock',
       label: 'متوسط زمن الوصول',
       value: data.avgArrival,
       unit: 'دقيقة',
@@ -37,6 +40,7 @@ function Hero({ data }) {
       tone: 'teal',
     },
     {
+      icon: 'target',
       label: 'الحرائق محدَّدة السبب',
       value: known,
       unit: 'حريق',
@@ -49,7 +53,10 @@ function Hero({ data }) {
   return (
     <section className="hero">
       <div className="hero__primary">
-        <span className="hero__eyebrow">إجمالي الحرائق المسجّلة</span>
+        <span className="hero__eyebrow">
+          <Icon name="flame" />
+          إجمالي الحرائق المسجّلة
+        </span>
         <Figure value={data.total} className="hero__figure" />
         <span className="hero__sub">
           في {fmt(data.locations.length)} موقعاً ضمن {fmt(data.byGovernorate.length)} محافظة
@@ -59,7 +66,10 @@ function Hero({ data }) {
       <div className="hero__side">
         {stats.map((stat) => (
           <article className="stat" key={stat.label}>
-            <span className="stat__label">{stat.label}</span>
+            <span className="stat__head">
+              <Icon name={stat.icon} className={`icon--${stat.tone}`} />
+              <span className="stat__label">{stat.label}</span>
+            </span>
             <span className="stat__value">
               <Figure value={stat.value} className="stat__number" />
               <em>{stat.unit}</em>
@@ -75,18 +85,21 @@ function Hero({ data }) {
 
 function Toll({ data }) {
   const rows = [
-    { label: 'إصابات المدنيين', value: data.civilianInjuries },
-    { label: 'وفيات المدنيين', value: data.civilianDeaths },
-    { label: 'إصابات كوادر الوزارة', value: data.staffInjuries, staff: true },
-    { label: 'وفيات كوادر الوزارة', value: data.staffDeaths, staff: true },
+    { label: 'إصابات المدنيين', value: data.civilianInjuries, icon: 'civilianHurt' },
+    { label: 'وفيات المدنيين', value: data.civilianDeaths, icon: 'civilian' },
+    { label: 'إصابات كوادر الوزارة', value: data.staffInjuries, icon: 'staffHurt', staff: true },
+    { label: 'وفيات كوادر الوزارة', value: data.staffDeaths, icon: 'staff', staff: true },
   ];
 
   return (
     <div className="toll">
       {rows.map((row) => (
         <div className={row.staff ? 'toll__item toll__item--staff' : 'toll__item'} key={row.label}>
-          <Figure value={row.value} className="toll__value" />
-          <span className="toll__label">{row.label}</span>
+          <Icon name={row.icon} className="toll__icon" />
+          <div className="toll__text">
+            <Figure value={row.value} className="toll__value" />
+            <span className="toll__label">{row.label}</span>
+          </div>
         </div>
       ))}
     </div>

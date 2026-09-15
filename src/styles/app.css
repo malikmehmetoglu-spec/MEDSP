@@ -353,7 +353,7 @@
 .toll {
   display: grid;
   gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
 }
 
 .toll__item {
@@ -825,4 +825,80 @@
 
 .map__reset {
   font-size: 0.95rem;
+}
+
+/* ===== الأيقونات ===== */
+
+.icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--golden-wheat);
+}
+
+.icon--teal {
+  color: var(--mountain-teal);
+}
+
+.icon--forest {
+  color: #8fcabe;
+}
+
+.hero__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hero__eyebrow .icon {
+  width: 17px;
+  height: 17px;
+}
+
+.stat__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ===== الأثر البشري ===== */
+
+.toll__item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  padding-inline-start: 16px;
+}
+
+.toll__icon {
+  width: 34px;
+  height: 34px;
+  color: var(--mountain-teal);
+  opacity: 0.85;
+}
+
+.toll__item--staff .toll__icon {
+  color: #d98e99;
+}
+
+.toll__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+.toll__value {
+  font-size: 2.7rem;
+}
+
+.toll__label {
+  font-size: 0.9rem;
+}
+
+@media (max-width: 520px) {
+  .toll__value {
+    font-size: 2.2rem;
+  }
 }

@@ -1,0 +1,89 @@
+/*
+  أيقونات خطية مرسومة يدوياً — لا مكتبة خارجية.
+  كلها بمقاس واحد وسماكة خط واحدة لتبدو من عائلة واحدة.
+*/
+
+const PATHS = {
+  /* لهب — الحرائق */
+  flame: (
+    <>
+      <path d="M12 3c0 3-3 4-3 7a3 3 0 0 0 6 0c0-1.2-.6-2-1.2-2.8" />
+      <path d="M12 21a6 6 0 0 1-6-6c0-2.4 1.2-4 2.4-5.4" />
+      <path d="M12 21a6 6 0 0 0 6-6c0-1.6-.6-3-1.5-4.2" />
+    </>
+  ),
+  /* ساعة — الزمن */
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </>
+  ),
+  /* هدف — التحديد */
+  target: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="12" cy="12" r="0.6" fill="currentColor" stroke="none" />
+    </>
+  ),
+  /* مساحة — الأرض المحترقة */
+  area: (
+    <>
+      <path d="M3.5 8.5 12 4l8.5 4.5v7L12 20l-8.5-4.5z" />
+      <path d="M12 4v16" />
+    </>
+  ),
+  /* مدني مصاب */
+  civilianHurt: (
+    <>
+      <circle cx="12" cy="6.5" r="2.8" />
+      <path d="M5.5 20.5v-2a6.5 6.5 0 0 1 9-6" />
+      <path d="M18 14.5v5M15.5 17h5" />
+    </>
+  ),
+  /* مدني — وفاة */
+  civilian: (
+    <>
+      <circle cx="12" cy="6.5" r="2.8" />
+      <path d="M5.5 20.5v-2a6.5 6.5 0 0 1 13 0v2" />
+    </>
+  ),
+  /* خوذة إطفاء — كادر مصاب */
+  staffHurt: (
+    <>
+      <path d="M5 16.5a7 7 0 0 1 14 0" />
+      <path d="M2.5 16.5h19" />
+      <path d="M9.5 16.5c0-4.2 1-7 2.5-7s2.5 2.8 2.5 7" />
+      <path d="M18 19v4M16 21h4" />
+    </>
+  ),
+  /* خوذة إطفاء */
+  staff: (
+    <>
+      <path d="M5 16.5a7 7 0 0 1 14 0" />
+      <path d="M2.5 16.5h19" />
+      <path d="M9.5 16.5c0-4.2 1-7 2.5-7s2.5 2.8 2.5 7" />
+    </>
+  ),
+};
+
+export default function Icon({ name, className }) {
+  const shape = PATHS[name];
+  if (!shape) return null;
+
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className ? `icon ${className}` : 'icon'}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {shape}
+    </svg>
+  );
+}
