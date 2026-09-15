@@ -622,9 +622,10 @@
 }
 
 .map__dot {
-  fill: rgba(200, 88, 74, 0.32);
-  stroke: #e0705c;
-  stroke-width: 1.1;
+  fill: rgba(200, 88, 74, 0.34);
+  stroke: rgba(224, 112, 92, 0.75);
+  stroke-width: 0.6;
+  vector-effect: non-scaling-stroke;
   cursor: pointer;
   transition: fill 0.12s ease;
 }
@@ -632,7 +633,7 @@
 .map__dot--on {
   fill: #e0705c;
   stroke: var(--ivory-mist);
-  stroke-width: 2;
+  stroke-width: 1.4;
   filter: drop-shadow(0 0 10px rgba(224, 112, 92, 0.85));
 }
 

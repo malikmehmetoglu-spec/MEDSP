@@ -221,7 +221,7 @@ export default function SyriaMap({ basemap, locations }) {
   const govLabelOpacity = clamp(1 - (zoom - SUB_LABELS) / 2.2, 0.25, 1);
 
   const peak = locations.length ? locations[0].count : 1;
-  const radius = (count) => (3.2 + Math.sqrt(count / peak) * 14) / Math.sqrt(zoom);
+  const radius = (count) => (2.1 + Math.sqrt(count / peak) * 10) / Math.sqrt(zoom);
 
   const ordered = useMemo(
     () => [...locations].sort((a, b) => a.count - b.count),
