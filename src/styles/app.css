@@ -467,7 +467,7 @@
 
 .bars__row {
   display: grid;
-  grid-template-columns: 16px minmax(70px, 128px) 1fr auto;
+  grid-template-columns: 16px minmax(70px, 190px) 1fr auto;
   align-items: center;
   gap: 11px;
   padding: 5px 8px;

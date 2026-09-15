@@ -7,7 +7,7 @@
 export const categories = [
   { id: 'fire', name: 'الإطفاء', op: 'عملية أطفاء', ready: true,
     summary: 'حرائق المباني والمحاصيل والمركبات، أسبابها ومواقعها وأثرها البشري.' },
-  { id: 'ambulance', name: 'الإسعاف', op: 'إسعاف', ready: false,
+  { id: 'ambulance', name: 'الإسعاف', op: 'إسعاف', ready: true,
     summary: 'بلاغات الإسعاف، أزمنة الوصول، والجهات التي نُقل إليها المصابون.' },
   { id: 'services', name: 'الأعمال الخدمية', op: 'أعمال خدمية', ready: false,
     summary: 'الخدمات العامة، الإصحاح والإمداد بالمياه، وترحيل الأنقاض.' },

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Masthead from './components/Masthead';
 import CategoryTabs from './components/CategoryTabs';
 import FireReport from './components/FireReport';
+import AmbulanceReport from './components/AmbulanceReport';
 import Footer from './components/Footer';
 import { categories } from './data/categories';
 
@@ -27,9 +28,12 @@ export default function App() {
     Promise.all([
       fetch('data/overview.json').then((r) => r.json()),
       fetch('data/fire.json').then((r) => r.json()),
+      fetch('data/ambulance.json').then((r) => r.json()),
       fetch('data/basemap.json').then((r) => r.json()),
     ])
-      .then(([overview, fire, basemap]) => setState({ status: 'ready', overview, fire, basemap }))
+      .then(([overview, fire, ambulance, basemap]) =>
+        setState({ status: 'ready', overview, fire, ambulance, basemap })
+      )
       .catch(() => setState({ status: 'error' }));
   }, []);
 
@@ -63,8 +67,12 @@ export default function App() {
             </div>
           )}
 
-          {state.status === 'ready' && active.ready && (
-            <FireReport fire={state.fire} basemap={state.basemap} />
+          {state.status === 'ready' && active.id === 'fire' && (
+            <FireReport report={state.fire} basemap={state.basemap} />
+          )}
+
+          {state.status === 'ready' && active.id === 'ambulance' && (
+            <AmbulanceReport report={state.ambulance} basemap={state.basemap} />
           )}
 
           {state.status === 'ready' && !active.ready && <Pending category={active} />}

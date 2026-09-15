@@ -120,12 +120,17 @@ function sum(rows, field) {
   return rows.reduce((total, row) => total + num(row[field]), 0);
 }
 
-/* ---------- تقرير الإطفاء ---------- */
+/* ---------- بناء التقارير ---------- */
 
 /*
-  تُرسل السجلات نفسها للمتصفح بصيغة مضغوطة بدل المجاميع الجاهزة،
-  ليُعاد الحساب عند تغيير الفترة الزمنية أو أي مرشّح آخر.
-  القيم النصية تُستبدل بفهارس في قوائم مرجعية لتصغير الحجم.
+  باني تقارير عام: يُعطى اسم العملية، وقائمة الأبعاد (الحقول التي تُعدّ)،
+  وقائمة المقاييس (الحقول التي تُجمع)، فيُخرج سجلات مضغوطة.
+
+  تُرسل السجلات نفسها للمتصفح بدل المجاميع الجاهزة ليُعاد الحساب
+  عند تغيير أي مرشّح. القيم النصية تُستبدل بفهارس لتصغير الحجم.
+
+  ترتيب أعمدة السجل:
+  [اليوم, المحافظة, المديرية, المركز, الموقع, ...الأبعاد, ...المقاييس]
 */
 
 function indexer() {
@@ -145,28 +150,23 @@ function indexer() {
   };
 }
 
-function buildFireReport(rows, places) {
-  const fires = rows.filter((r) => clean(r['اسم العملية']) === 'عملية أطفاء');
+function buildReport(rows, places, { operation, dims, metrics }) {
+  const subset = rows.filter((r) => clean(r['اسم العملية']) === operation);
 
   const govs = indexer();
   const directorates = indexer();
   const centers = indexer();
-  const causes = indexer();
-  const placeTypes = indexer();
-  const inhabited = indexer();
   const sites = indexer();
   const siteInfo = [];
+  const dimIndex = dims.map(() => indexer());
 
   let unmatched = 0;
   const records = [];
 
-  for (const row of fires) {
+  for (const row of subset) {
     const raw = row['التاريخ'];
-    const date =
-      raw instanceof Date ? raw : new Date(raw);
-    const day = Number.isNaN(date.getTime())
-      ? ''
-      : date.toISOString().slice(0, 10);
+    const date = raw instanceof Date ? raw : new Date(raw);
+    const day = Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
 
     const code = clean(row['ترميز المنطقة']);
     const place = places.get(code);
@@ -187,47 +187,97 @@ function buildFireReport(rows, places) {
       unmatched += 1;
     }
 
-    records.push([
+    const record = [
       day,
       govs.id(row['المحافظة']),
       directorates.id(row['المديرية']),
       centers.id(row['المركز']),
-      causes.id(row['نوع العملية']),
-      placeTypes.id(row['نوع مكان الحريق']),
-      inhabited.id(row['نوع المكان']),
-      Math.round(num(row['المساحة المحترقة (دنم)'])),
-      num(row['عدد المصابين الأطفال']) +
-        num(row['عدد المصابين الرجال']) +
-        num(row['عدد المصابين النساء']),
-      num(row['عدد الشهداء الأطفال']) +
-        num(row['عدد الشهداء الرجال']) +
-        num(row['عدد الشهداء النساء']),
-      num(row['عدد المصابين من وزارة الطوارئ و إدارة الكوارث']),
-      num(row['عدد شهداء وزارة الطوارئ و إدارة الكوارث']),
-      Math.round(num(row['زمن الوصول للموقع بالدقائق'])),
       siteIdx,
-    ]);
+    ];
+
+    dims.forEach((dim, i) => record.push(dimIndex[i].id(row[dim.column])));
+    metrics.forEach((metric) => {
+      const value = metric.columns.reduce((sum, col) => sum + num(row[col]), 0);
+      record.push(Math.round(value));
+    });
+
+    records.push(record);
   }
 
   const days = records.map((r) => r[0]).filter(Boolean).sort();
 
   return {
-    total: fires.length,
+    total: subset.length,
     unmatched,
     from: days[0] ?? null,
     to: days[days.length - 1] ?? null,
+    dims: dims.map((dim, i) => ({
+      key: dim.key,
+      title: dim.title,
+      note: dim.note ?? null,
+      exclude: dim.exclude ?? null,
+      values: dimIndex[i].list,
+    })),
+    metrics: metrics.map((m) => ({ key: m.key, title: m.title })),
     dict: {
       govs: govs.list,
       directorates: directorates.list,
       centers: centers.list,
-      causes: causes.list,
-      placeTypes: placeTypes.list,
-      inhabited: inhabited.list,
       sites: siteInfo,
     },
     records,
   };
 }
+
+/* ---------- تعريف التقارير ---------- */
+
+const FIRE = {
+  operation: 'عملية أطفاء',
+  dims: [
+    { key: 'cause', title: 'أسباب الحرائق', column: 'نوع العملية', exclude: 'مجهول' },
+    { key: 'placeType', title: 'نوع مكان الحريق', column: 'نوع مكان الحريق' },
+    { key: 'inhabited', title: 'طبيعة الموقع', column: 'نوع المكان' },
+  ],
+  metrics: [
+    { key: 'area', title: 'المساحة المحترقة', columns: ['المساحة المحترقة (دنم)'] },
+    {
+      key: 'civInjured',
+      title: 'إصابات المدنيين',
+      columns: ['عدد المصابين الأطفال', 'عدد المصابين الرجال', 'عدد المصابين النساء'],
+    },
+    {
+      key: 'civDead',
+      title: 'وفيات المدنيين',
+      columns: ['عدد الشهداء الأطفال', 'عدد الشهداء الرجال', 'عدد الشهداء النساء'],
+    },
+    {
+      key: 'staffInjured',
+      title: 'إصابات كوادر الوزارة',
+      columns: ['عدد المصابين من وزارة الطوارئ و إدارة الكوارث'],
+    },
+    {
+      key: 'staffDead',
+      title: 'وفيات كوادر الوزارة',
+      columns: ['عدد شهداء وزارة الطوارئ و إدارة الكوارث'],
+    },
+    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'] },
+  ],
+};
+
+const AMBULANCE = {
+  operation: 'إسعاف',
+  dims: [
+    { key: 'reason', title: 'سبب طلب الإسعاف', column: 'نوع العملية' },
+    { key: 'condition', title: 'حالة المصاب', column: 'حالة الاسعاف', note: 'مسجّلة في جزء من البلاغات' },
+    { key: 'destination', title: 'جهة النقل', column: 'نوع مكان الاسعاف الى' },
+    { key: 'referral', title: 'الإحالة', column: 'احالة' },
+  ],
+  metrics: [
+    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'] },
+    { key: 'toHospital', title: 'زمن النقل للمشفى', columns: ['زمن الوصول للمشفى بالدقائق'] },
+    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'] },
+  ],
+};
 
 /* ---------- التنفيذ ---------- */
 
@@ -281,7 +331,8 @@ function run() {
   };
 
   write('overview.json', overview);
-  write('fire.json', buildFireReport(rows, places));
+  write('fire.json', buildReport(rows, places, FIRE));
+  write('ambulance.json', buildReport(rows, places, AMBULANCE));
 
   console.log(`\nالفترة: ${period} — ${rows.length} سجلاً بعد إزالة التكرار`);
 }
