@@ -5,7 +5,7 @@ import Figure from './Figure';
 import Icon from './Icon';
 import { useInView } from '../hooks/motion';
 import useFireStats from '../hooks/useFireStats';
-import PeriodFilter from './PeriodFilter';
+import Filters from './Filters';
 import { useState } from 'react';
 
 const fmt = (n) => Number(n).toLocaleString('en-US');
@@ -123,7 +123,22 @@ function Panel({ title, note, children, span }) {
 
 export default function FireReport({ fire, basemap }) {
   const [range, setRange] = useState({ from: fire.from, to: fire.to });
-  const data = useFireStats(fire, range);
+  const [directorate, setDirectorate] = useState(null);
+  const [center, setCenter] = useState(null);
+
+  const data = useFireStats(fire, range, { directorate, center });
+
+  /* تغيير المديرية يُلغي المركز لأنه قد لا يتبعها */
+  const pickDirectorate = (value) => {
+    setDirectorate(value);
+    setCenter(null);
+  };
+
+  const reset = () => {
+    setRange({ from: fire.from, to: fire.to });
+    setDirectorate(null);
+    setCenter(null);
+  };
 
   const unknownShare = data.total
     ? Math.round((data.causesUnknown / data.total) * 100)
@@ -134,17 +149,24 @@ export default function FireReport({ fire, basemap }) {
 
   return (
     <>
-      <PeriodFilter
+      <Filters
         bounds={{ from: fire.from, to: fire.to }}
         range={range}
-        onChange={setRange}
+        onRange={setRange}
+        directorates={data.directorates}
+        centers={data.availableCenters}
+        directorate={directorate}
+        center={center}
+        onDirectorate={pickDirectorate}
+        onCenter={setCenter}
+        onReset={reset}
         count={data.total}
       />
 
       {data.total === 0 ? (
         <div className="pending">
-          <h3>لا توجد حرائق في هذه الفترة</h3>
-          <p>وسّع الفترة الزمنية أو اختر كامل الفترة لعرض البيانات.</p>
+          <h3>لا توجد حرائق بهذه المرشّحات</h3>
+          <p>وسّع الفترة الزمنية أو أزل مرشّح المديرية أو المركز.</p>
         </div>
       ) : (
       <>

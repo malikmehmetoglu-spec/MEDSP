@@ -6,12 +6,15 @@ import { useMemo } from 'react';
   فتغيير الفترة يحدّث التقرير فوراً دون أي طلب للخادم.
 
   فهارس أعمدة السجل:
-  0 اليوم | 1 المحافظة | 2 السبب | 3 نوع المكان | 4 مأهول
-  5 المساحة | 6 إصابات مدنيين | 7 وفيات مدنيين
-  8 إصابات كوادر | 9 وفيات كوادر | 10 زمن الوصول | 11 الموقع
+  0 اليوم | 1 المحافظة | 2 المديرية | 3 المركز | 4 السبب
+  5 نوع المكان | 6 مأهول | 7 المساحة | 8 إصابات مدنيين | 9 وفيات مدنيين
+  10 إصابات كوادر | 11 وفيات كوادر | 12 زمن الوصول | 13 الموقع
 */
 
-const D = { DAY: 0, GOV: 1, CAUSE: 2, PLACE: 3, INHAB: 4, AREA: 5, CINJ: 6, CDEAD: 7, SINJ: 8, SDEAD: 9, ETA: 10, SITE: 11 };
+const D = {
+  DAY: 0, GOV: 1, DIR: 2, CENTER: 3, CAUSE: 4, PLACE: 5, INHAB: 6,
+  AREA: 7, CINJ: 8, CDEAD: 9, SINJ: 10, SDEAD: 11, ETA: 12, SITE: 13,
+};
 
 function rank(counts, labels) {
   return counts
@@ -20,18 +23,34 @@ function rank(counts, labels) {
     .sort((a, b) => b.value - a.value);
 }
 
-export default function useFireStats(fire, range) {
+export default function useFireStats(fire, range, filters = {}) {
+  const { directorate = null, center = null } = filters;
+
   return useMemo(() => {
     const { dict, records } = fire;
     const { from, to } = range;
+
+    /* الفلاتر تعمل معاً: الفترة + المديرية + المركز */
+    const dirIdx = directorate ? dict.directorates.indexOf(directorate) : -1;
+    const centerIdx = center ? dict.centers.indexOf(center) : -1;
 
     const rows = records.filter((r) => {
       const day = r[D.DAY];
       if (!day) return false;
       if (from && day < from) return false;
       if (to && day > to) return false;
+      if (directorate && r[D.DIR] !== dirIdx) return false;
+      if (center && r[D.CENTER] !== centerIdx) return false;
       return true;
     });
+
+    /* المراكز المتاحة تتقلص تبعاً للمديرية المختارة */
+    const centerSet = new Set();
+    for (const r of records) {
+      if (directorate && r[D.DIR] !== dirIdx) continue;
+      if (r[D.CENTER] >= 0) centerSet.add(dict.centers[r[D.CENTER]]);
+    }
+    const availableCenters = [...centerSet].sort((a, b) => a.localeCompare(b, 'ar'));
 
     const govCounts = new Array(dict.govs.length).fill(0);
     const causeCounts = new Array(dict.causes.length).fill(0);
@@ -112,6 +131,8 @@ export default function useFireStats(fire, range) {
       inhabited: rank(inhabCounts, dict.inhabited),
       locations,
       timeline,
+      directorates: dict.directorates,
+      availableCenters,
     };
-  }, [fire, range]);
+  }, [fire, range, directorate, center]);
 }

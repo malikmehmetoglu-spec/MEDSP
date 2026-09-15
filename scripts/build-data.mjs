@@ -149,6 +149,8 @@ function buildFireReport(rows, places) {
   const fires = rows.filter((r) => clean(r['اسم العملية']) === 'عملية أطفاء');
 
   const govs = indexer();
+  const directorates = indexer();
+  const centers = indexer();
   const causes = indexer();
   const placeTypes = indexer();
   const inhabited = indexer();
@@ -188,6 +190,8 @@ function buildFireReport(rows, places) {
     records.push([
       day,
       govs.id(row['المحافظة']),
+      directorates.id(row['المديرية']),
+      centers.id(row['المركز']),
       causes.id(row['نوع العملية']),
       placeTypes.id(row['نوع مكان الحريق']),
       inhabited.id(row['نوع المكان']),
@@ -214,6 +218,8 @@ function buildFireReport(rows, places) {
     to: days[days.length - 1] ?? null,
     dict: {
       govs: govs.list,
+      directorates: directorates.list,
+      centers: centers.list,
       causes: causes.list,
       placeTypes: placeTypes.list,
       inhabited: inhabited.list,
