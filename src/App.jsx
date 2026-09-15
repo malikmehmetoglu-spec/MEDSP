@@ -48,7 +48,7 @@ export default function App() {
         <article className="shell">
           <div className="report__head">
             <h1>تقرير {active.name}</h1>
-            {count !== null && (
+            {count !== null && !active.ready && (
               <span className="report__status">{ar(count)} عملية مسجّلة</span>
             )}
           </div>
@@ -64,7 +64,7 @@ export default function App() {
           )}
 
           {state.status === 'ready' && active.ready && (
-            <FireReport data={state.fire} basemap={state.basemap} />
+            <FireReport fire={state.fire} basemap={state.basemap} />
           )}
 
           {state.status === 'ready' && !active.ready && <Pending category={active} />}

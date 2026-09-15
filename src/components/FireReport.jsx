@@ -4,6 +4,9 @@ import Donut from './Donut';
 import Figure from './Figure';
 import Icon from './Icon';
 import { useInView } from '../hooks/motion';
+import useFireStats from '../hooks/useFireStats';
+import PeriodFilter from './PeriodFilter';
+import { useState } from 'react';
 
 const fmt = (n) => Number(n).toLocaleString('en-US');
 
@@ -27,7 +30,7 @@ function Hero({ data }) {
       value: data.burnedArea,
       unit: 'دونم',
       note: `مسجّلة في ${fmt(data.burnedAreaRecords)} حريقاً`,
-      share: Math.round((data.burnedAreaRecords / data.total) * 100),
+      share: data.total ? Math.round((data.burnedAreaRecords / data.total) * 100) : 0,
       tone: 'gold',
     },
     {
@@ -44,8 +47,8 @@ function Hero({ data }) {
       label: 'الحرائق محدَّدة السبب',
       value: known,
       unit: 'حريق',
-      note: `${Math.round((known / data.total) * 100)}% من الإجمالي`,
-      share: Math.round((known / data.total) * 100),
+      note: `${data.total ? Math.round((known / data.total) * 100) : 0}% من الإجمالي`,
+      share: data.total ? Math.round((known / data.total) * 100) : 0,
       tone: 'forest',
     },
   ];
@@ -118,12 +121,33 @@ function Panel({ title, note, children, span }) {
   );
 }
 
-export default function FireReport({ data, basemap }) {
-  const unknownShare = Math.round((data.causesUnknown / data.total) * 100);
-  const placeShare = Math.round((data.placeTypesCoverage / data.total) * 100);
+export default function FireReport({ fire, basemap }) {
+  const [range, setRange] = useState({ from: fire.from, to: fire.to });
+  const data = useFireStats(fire, range);
+
+  const unknownShare = data.total
+    ? Math.round((data.causesUnknown / data.total) * 100)
+    : 0;
+  const placeShare = data.total
+    ? Math.round((data.placeTypesCoverage / data.total) * 100)
+    : 0;
 
   return (
     <>
+      <PeriodFilter
+        bounds={{ from: fire.from, to: fire.to }}
+        range={range}
+        onChange={setRange}
+        count={data.total}
+      />
+
+      {data.total === 0 ? (
+        <div className="pending">
+          <h3>لا توجد حرائق في هذه الفترة</h3>
+          <p>وسّع الفترة الزمنية أو اختر كامل الفترة لعرض البيانات.</p>
+        </div>
+      ) : (
+      <>
       <Hero data={data} />
 
       <div className="panels">
@@ -159,6 +183,8 @@ export default function FireReport({ data, basemap }) {
           <BarChart data={data.placeTypes} tone="teal" max={8} />
         </Panel>
       </div>
+      </>
+      )}
     </>
   );
 }

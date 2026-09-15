@@ -122,80 +122,104 @@ function sum(rows, field) {
 
 /* ---------- تقرير الإطفاء ---------- */
 
+/*
+  تُرسل السجلات نفسها للمتصفح بصيغة مضغوطة بدل المجاميع الجاهزة،
+  ليُعاد الحساب عند تغيير الفترة الزمنية أو أي مرشّح آخر.
+  القيم النصية تُستبدل بفهارس في قوائم مرجعية لتصغير الحجم.
+*/
+
+function indexer() {
+  const list = [];
+  const map = new Map();
+  return {
+    list,
+    id(value) {
+      const key = clean(value);
+      if (!key) return -1;
+      if (!map.has(key)) {
+        map.set(key, list.length);
+        list.push(key);
+      }
+      return map.get(key);
+    },
+  };
+}
+
 function buildFireReport(rows, places) {
   const fires = rows.filter((r) => clean(r['اسم العملية']) === 'عملية أطفاء');
 
-  /* المساحة المحترقة — تُحتسب من السجلات التي سُجّلت مساحتها فقط */
-  const withArea = fires.filter((r) => num(r['المساحة المحترقة (دنم)']) > 0);
-  const burnedArea = sum(withArea, 'المساحة المحترقة (دنم)');
+  const govs = indexer();
+  const causes = indexer();
+  const placeTypes = indexer();
+  const inhabited = indexer();
+  const sites = indexer();
+  const siteInfo = [];
 
-  const civilianInjuries =
-    sum(fires, 'عدد المصابين الأطفال') +
-    sum(fires, 'عدد المصابين الرجال') +
-    sum(fires, 'عدد المصابين النساء');
-
-  const civilianDeaths =
-    sum(fires, 'عدد الشهداء الأطفال') +
-    sum(fires, 'عدد الشهداء الرجال') +
-    sum(fires, 'عدد الشهداء النساء');
-
-  const staffInjuries = sum(fires, 'عدد المصابين من وزارة الطوارئ و إدارة الكوارث');
-  const staffDeaths = sum(fires, 'عدد شهداء وزارة الطوارئ و إدارة الكوارث');
-
-  const arrivalTimes = fires
-    .map((r) => num(r['زمن الوصول للموقع بالدقائق']))
-    .filter((v) => v > 0);
-  const avgArrival = arrivalTimes.length
-    ? arrivalTimes.reduce((a, b) => a + b, 0) / arrivalTimes.length
-    : 0;
-
-  /* الأسباب — "مجهول" يُفصل ولا يُدمج في الرسم */
-  const allCauses = tally(fires, 'نوع العملية');
-  const unknown = allCauses.find((c) => c.label === 'مجهول')?.value ?? 0;
-  const causes = allCauses.filter((c) => c.label !== 'مجهول');
-
-  /* المواقع — تجميع الحرائق على كل موقع مُرمّز */
-  const byPlace = new Map();
   let unmatched = 0;
+  const records = [];
 
   for (const row of fires) {
+    const raw = row['التاريخ'];
+    const date =
+      raw instanceof Date ? raw : new Date(raw);
+    const day = Number.isNaN(date.getTime())
+      ? ''
+      : date.toISOString().slice(0, 10);
+
     const code = clean(row['ترميز المنطقة']);
     const place = places.get(code);
-    if (!place || !Number.isFinite(place.lat) || !Number.isFinite(place.lon)) {
+    let siteIdx = -1;
+
+    if (place && Number.isFinite(place.lat) && Number.isFinite(place.lon)) {
+      siteIdx = sites.id(code);
+      if (!siteInfo[siteIdx]) {
+        siteInfo[siteIdx] = {
+          code,
+          name: place.name,
+          governorate: place.governorate,
+          lat: Number(place.lat.toFixed(4)),
+          lon: Number(place.lon.toFixed(4)),
+        };
+      }
+    } else {
       unmatched += 1;
-      continue;
     }
-    const entry = byPlace.get(code) ?? {
-      code,
-      name: place.name,
-      governorate: place.governorate,
-      lat: place.lat,
-      lon: place.lon,
-      count: 0,
-    };
-    entry.count += 1;
-    byPlace.set(code, entry);
+
+    records.push([
+      day,
+      govs.id(row['المحافظة']),
+      causes.id(row['نوع العملية']),
+      placeTypes.id(row['نوع مكان الحريق']),
+      inhabited.id(row['نوع المكان']),
+      Math.round(num(row['المساحة المحترقة (دنم)'])),
+      num(row['عدد المصابين الأطفال']) +
+        num(row['عدد المصابين الرجال']) +
+        num(row['عدد المصابين النساء']),
+      num(row['عدد الشهداء الأطفال']) +
+        num(row['عدد الشهداء الرجال']) +
+        num(row['عدد الشهداء النساء']),
+      num(row['عدد المصابين من وزارة الطوارئ و إدارة الكوارث']),
+      num(row['عدد شهداء وزارة الطوارئ و إدارة الكوارث']),
+      Math.round(num(row['زمن الوصول للموقع بالدقائق'])),
+      siteIdx,
+    ]);
   }
 
-  const locations = [...byPlace.values()].sort((a, b) => b.count - a.count);
+  const days = records.map((r) => r[0]).filter(Boolean).sort();
 
   return {
     total: fires.length,
-    burnedArea: Math.round(burnedArea),
-    burnedAreaRecords: withArea.length,
-    civilianInjuries,
-    civilianDeaths,
-    staffInjuries,
-    staffDeaths,
-    avgArrival: Math.round(avgArrival),
-    causes,
-    causesUnknown: unknown,
-    inhabited: tally(fires, 'نوع المكان'),
-    placeTypes: tally(fires, 'نوع مكان الحريق'),
-    placeTypesCoverage: fires.filter((r) => clean(r['نوع مكان الحريق'])).length,
-    byGovernorate: tally(fires, 'المحافظة'),
-    locations,
-    locationsUnmatched: unmatched,
+    unmatched,
+    from: days[0] ?? null,
+    to: days[days.length - 1] ?? null,
+    dict: {
+      govs: govs.list,
+      causes: causes.list,
+      placeTypes: placeTypes.list,
+      inhabited: inhabited.list,
+      sites: siteInfo,
+    },
+    records,
   };
 }
 
@@ -215,7 +239,7 @@ function run() {
   const periods = [];
 
   for (const file of files) {
-    const wb = XLSX.readFile(path.join(dataDir, file));
+    const wb = XLSX.readFile(path.join(dataDir, file), { cellDates: true });
     const sheet = wb.Sheets['التقارير'];
     if (!sheet) {
       console.warn(`  تخطّي ${file} — لا تحتوي على ورقة "التقارير"`);
