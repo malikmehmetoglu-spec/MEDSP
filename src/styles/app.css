@@ -224,3 +224,278 @@
     height: 44px;
   }
 }
+
+/* ===== بطاقات الأرقام ===== */
+
+.kpis {
+  display: grid;
+  gap: 14px;
+  margin-top: 28px;
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+}
+
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-top: 3px solid var(--forest);
+  border-radius: var(--radius);
+  padding: 18px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.kpi--alert {
+  border-top-color: var(--damask-red);
+}
+
+.kpi__value {
+  font-size: 2.15rem;
+  font-weight: 900;
+  line-height: 1.1;
+  color: var(--forest);
+  letter-spacing: -0.02em;
+}
+
+.kpi--alert .kpi__value {
+  color: var(--damask-red);
+}
+
+.kpi__unit {
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-inline-start: 6px;
+  color: var(--antique-sand);
+}
+
+.kpi__label {
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.kpi__note {
+  font-size: 0.8rem;
+  font-weight: 300;
+  color: var(--ink-soft);
+}
+
+/* ===== اللوحات ===== */
+
+.panels {
+  display: grid;
+  gap: 18px;
+  margin-top: 22px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 900px) {
+  .panels {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .panel--wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 20px 22px 24px;
+}
+
+.panel__head {
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.panel__head h3 {
+  color: var(--forest);
+  font-weight: 700;
+}
+
+.panel__note {
+  margin-top: 5px;
+  font-size: var(--caption);
+  font-weight: 300;
+  color: var(--ink-soft);
+}
+
+/* ===== الخريطة ===== */
+
+.map__stage {
+  position: relative;
+  width: 100%;
+}
+
+.map__stage canvas,
+.map__stage svg {
+  position: absolute;
+  inset: 0;
+}
+
+.map__dot {
+  fill: rgba(109, 34, 45, 0.5);
+  stroke: var(--damask-red);
+  stroke-width: 1;
+  cursor: pointer;
+  transition: fill 0.12s ease;
+}
+
+.map__dot--on {
+  fill: var(--damask-red);
+  stroke: var(--golden-wheat);
+  stroke-width: 2;
+}
+
+.map__tip {
+  position: absolute;
+  background: var(--forest);
+  color: var(--ivory-mist);
+  border-radius: var(--radius);
+  padding: 9px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: var(--caption);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 2;
+}
+
+.map__tip strong {
+  font-weight: 700;
+}
+
+.map__tip-count {
+  color: var(--golden-wheat);
+  font-weight: 500;
+}
+
+.map__legend {
+  margin-top: 12px;
+  font-size: var(--caption);
+  font-weight: 300;
+  color: var(--ink-soft);
+}
+
+/* ===== حالة الانتظار ===== */
+
+.pending {
+  margin-top: 28px;
+  background: var(--surface);
+  border: 1px dashed var(--rule-strong);
+  border-radius: var(--radius);
+  padding: 34px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pending h3 {
+  color: var(--forest);
+  font-weight: 700;
+}
+
+.pending p {
+  color: var(--ink-soft);
+  font-weight: 300;
+}
+
+/* ===== فترة البيانات في الترويسة ===== */
+
+.masthead__period {
+  margin-inline-start: auto;
+  font-size: var(--caption);
+  font-weight: 300;
+  color: var(--ivory-mist);
+  border: 1px solid rgba(185, 167, 121, 0.45);
+  border-radius: 999px;
+  padding: 5px 14px;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .masthead__period {
+    display: none;
+  }
+
+  .kpi__value {
+    font-size: 1.8rem;
+  }
+}
+
+/* ===== الرسوم الشريطية ===== */
+
+.bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.bars__row {
+  display: grid;
+  grid-template-columns: minmax(80px, 148px) 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.bars__label {
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bars__track {
+  height: 17px;
+  background: rgba(149, 133, 99, 0.13);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.bars__fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--forest);
+  min-width: 2px;
+}
+
+.bars--gold .bars__fill {
+  background: var(--antique-sand);
+}
+
+.bars--teal .bars__fill {
+  background: var(--mountain-teal);
+}
+
+.bars__value {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--forest);
+  min-width: 46px;
+  text-align: start;
+}
+
+.bars--gold .bars__value {
+  color: var(--antique-sand);
+}
+
+.bars--teal .bars__value {
+  color: var(--mountain-teal);
+}
+
+@media (max-width: 520px) {
+  .bars__row {
+    grid-template-columns: minmax(72px, 110px) 1fr auto;
+    gap: 8px;
+  }
+}
