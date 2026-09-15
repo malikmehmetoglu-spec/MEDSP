@@ -1,38 +1,74 @@
 import FireMap from './FireMap';
 import BarChart from './BarChart';
 import Donut from './Donut';
+import Figure from './Figure';
+import { useInView } from '../hooks/motion';
 
 const fmt = (n) => Number(n).toLocaleString('en-US');
 
+/* عمود مصغّر يرافق البطاقة ليعطي إحساساً بالنسبة دون رسم كامل */
+function Meter({ share, tone }) {
+  const [ref, seen] = useInView();
+  return (
+    <span className={`meter meter--${tone}`} ref={ref}>
+      <span className="meter__fill" style={{ width: seen ? `${share}%` : '0%' }} />
+    </span>
+  );
+}
+
 function Hero({ data }) {
   const known = data.causes.reduce((s, c) => s + c.value, 0);
+
+  const stats = [
+    {
+      label: 'المساحة المحترقة',
+      value: data.burnedArea,
+      unit: 'دونم',
+      note: `مسجّلة في ${fmt(data.burnedAreaRecords)} حريقاً`,
+      share: Math.round((data.burnedAreaRecords / data.total) * 100),
+      tone: 'gold',
+    },
+    {
+      label: 'متوسط زمن الوصول',
+      value: data.avgArrival,
+      unit: 'دقيقة',
+      note: 'محسوب من كل البلاغات',
+      share: 100,
+      tone: 'teal',
+    },
+    {
+      label: 'الحرائق محدَّدة السبب',
+      value: known,
+      unit: 'حريق',
+      note: `${Math.round((known / data.total) * 100)}% من الإجمالي`,
+      share: Math.round((known / data.total) * 100),
+      tone: 'forest',
+    },
+  ];
+
   return (
     <section className="hero">
       <div className="hero__primary">
         <span className="hero__eyebrow">إجمالي الحرائق المسجّلة</span>
-        <span className="hero__figure">{fmt(data.total)}</span>
+        <Figure value={data.total} className="hero__figure" />
         <span className="hero__sub">
-          موزّعة على {fmt(data.locations.length)} موقعاً في {fmt(data.byGovernorate.length)} محافظة
+          في {fmt(data.locations.length)} موقعاً ضمن {fmt(data.byGovernorate.length)} محافظة
         </span>
       </div>
 
-      <dl className="hero__side">
-        <div>
-          <dt>المساحة المحترقة</dt>
-          <dd>{fmt(data.burnedArea)} <em>دونم</em></dd>
-          <small>مسجّلة في {fmt(data.burnedAreaRecords)} حريقاً</small>
-        </div>
-        <div>
-          <dt>متوسط زمن الوصول</dt>
-          <dd>{fmt(data.avgArrival)} <em>دقيقة</em></dd>
-          <small>محسوب من كل البلاغات</small>
-        </div>
-        <div>
-          <dt>السبب محدَّد</dt>
-          <dd>{fmt(known)} <em>حريق</em></dd>
-          <small>{Math.round((known / data.total) * 100)}% من الإجمالي</small>
-        </div>
-      </dl>
+      <div className="hero__side">
+        {stats.map((stat) => (
+          <article className="stat" key={stat.label}>
+            <span className="stat__label">{stat.label}</span>
+            <span className="stat__value">
+              <Figure value={stat.value} className="stat__number" />
+              <em>{stat.unit}</em>
+            </span>
+            <Meter share={stat.share} tone={stat.tone} />
+            <span className="stat__note">{stat.note}</span>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
@@ -49,7 +85,7 @@ function Toll({ data }) {
     <div className="toll">
       {rows.map((row) => (
         <div className={row.staff ? 'toll__item toll__item--staff' : 'toll__item'} key={row.label}>
-          <span className="toll__value">{fmt(row.value)}</span>
+          <Figure value={row.value} className="toll__value" />
           <span className="toll__label">{row.label}</span>
         </div>
       ))}
@@ -77,11 +113,11 @@ export default function FireReport({ data, geo }) {
     <>
       <Hero data={data} />
 
-      <Panel title="الأثر البشري" note="مسجّل في كل بلاغات الإطفاء دون استثناء" span="full">
-        <Toll data={data} />
-      </Panel>
-
       <div className="panels">
+        <Panel title="الأثر البشري" note="مسجّل في كل بلاغات الإطفاء دون استثناء" span="full">
+          <Toll data={data} />
+        </Panel>
+
         <Panel
           span="full"
           title="مواقع الحرائق"
@@ -100,7 +136,7 @@ export default function FireReport({ data, geo }) {
 
         <Panel
           title="أسباب الحرائق"
-          note={`لم يُحدَّد السبب في ${fmt(data.causesUnknown)} حريقاً — ${unknownShare}% من الإجمالي`}
+          note={`لم يُحدَّد السبب في ${fmt(data.causesUnknown)} حريقاً، أي ${unknownShare}% من الإجمالي`}
           span="wide"
         >
           <BarChart data={data.causes} tone="gold" showShare />
