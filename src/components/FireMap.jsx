@@ -45,7 +45,7 @@ export default function FireMap({ backdrop, locations }) {
     if (!el) return undefined;
     const ro = new ResizeObserver(([entry]) => {
       const { width } = entry.contentRect;
-      setSize({ width, height: Math.max(380, Math.round(width * 0.72)) });
+      setSize({ width, height: Math.max(360, Math.round(width * 0.58)) });
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -62,7 +62,7 @@ export default function FireMap({ backdrop, locations }) {
     const ctx = canvas.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, size.width, size.height);
-    ctx.fillStyle = 'rgba(66, 129, 119, 0.55)';
+    ctx.fillStyle = 'rgba(143, 202, 190, 0.34)';
     for (const [lon, lat] of backdrop) {
       const [x, y] = project(lon, lat);
       ctx.fillRect(x, y, 1.1, 1.1);

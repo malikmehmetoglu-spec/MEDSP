@@ -1,48 +1,42 @@
 /*
-  نظام التصميم — مستخرج من الدليل الإرشادي لاستخدام الهوية البصرية
-  أي لون هنا مأخوذ حرفياً من أكواد الدليل. لا تُضاف ألوان خارجه.
+  نظام التصميم.
+  الألوان مأخوذة من الدليل الإرشادي للهوية البصرية، لكن توظيفها رقمي:
+  خلفية غامرة بدل الورق الفاتح، ولوحات زجاجية بدل البطاقات المحدودة.
 */
 
 :root {
-  /* الأخضر */
+  /* ألوان الدليل */
   --forest: #02443a;
   --emerald-shadow: #002723;
   --mountain-teal: #428177;
-
-  /* الذهبي */
   --golden-wheat: #b9a779;
   --antique-sand: #958563;
   --ivory-mist: #ebe8d7;
-
-  /* الأحمر */
   --damask-red: #6d222d;
   --black-cherry: #48181d;
-  --deep-umber: #261013;
-
-  /* المحايد */
   --charcoal: #161616;
-  --stone: #3c3c3d;
   --white: #ffffff;
 
-  /* أدوار الاستخدام */
-  --page-bg: var(--ivory-mist);
-  --surface: var(--white);
-  --ink: var(--charcoal);
-  --ink-soft: var(--stone);
-  --rule: rgba(149, 133, 99, 0.32);
-  --rule-strong: rgba(149, 133, 99, 0.6);
+  /* أدوار الاستخدام على خلفية داكنة */
+  --ink: var(--ivory-mist);
+  --ink-soft: rgba(235, 232, 215, 0.62);
+  --ink-faint: rgba(235, 232, 215, 0.4);
 
-  /* المقاسات */
-  --shell: 1180px;
-  --gutter: 28px;
-  --radius: 4px;
+  --glass: rgba(235, 232, 215, 0.045);
+  --glass-strong: rgba(235, 232, 215, 0.08);
+  --edge: rgba(185, 167, 121, 0.16);
+  --edge-strong: rgba(185, 167, 121, 0.34);
 
-  /* التسلسل الهرمي للنصوص حسب الدليل */
-  --h1: clamp(1.75rem, 1.2rem + 1.8vw, 2.6rem);
-  --h2: clamp(1.35rem, 1.05rem + 1.1vw, 1.85rem);
-  --h3: 1.18rem;
+  --shell: 1240px;
+  --gutter: 26px;
+  --radius: 18px;
+  --radius-sm: 10px;
+
+  --h1: clamp(1.8rem, 1.2rem + 2vw, 2.8rem);
+  --h2: clamp(1.3rem, 1rem + 1.1vw, 1.7rem);
+  --h3: 1.08rem;
   --body: 1rem;
-  --caption: 0.86rem;
+  --caption: 0.84rem;
 }
 
 * {
@@ -52,20 +46,26 @@
 html,
 body,
 #root {
-  height: 100%;
+  min-height: 100%;
 }
 
 body {
   margin: 0;
-  background: var(--page-bg);
   color: var(--ink);
   font-family: 'Qomra', 'Segoe UI', system-ui, sans-serif;
   font-weight: 400;
   font-size: var(--body);
-  /* تباعد الأسطر ضمن ١٢٠٪–١٥٠٪ حسب قواعد الدليل */
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+
+  background-color: var(--emerald-shadow);
+  background-image:
+    radial-gradient(90% 60% at 85% -5%, rgba(66, 129, 119, 0.4), transparent 62%),
+    radial-gradient(70% 55% at 5% 8%, rgba(2, 68, 58, 0.85), transparent 60%),
+    radial-gradient(120% 90% at 50% 105%, rgba(185, 167, 121, 0.09), transparent 62%),
+    linear-gradient(180deg, #013029, #001d1a 55%, #001513);
+  background-attachment: fixed;
 }
 
 h1,
@@ -78,6 +78,7 @@ h3 {
 h1 {
   font-size: var(--h1);
   font-weight: 900;
+  letter-spacing: -0.02em;
 }
 
 h2 {
@@ -87,12 +88,12 @@ h2 {
 
 h3 {
   font-size: var(--h3);
-  font-weight: 500;
+  font-weight: 700;
 }
 
 p {
   margin: 0;
-  max-width: 68ch;
+  max-width: 70ch;
 }
 
 button {
@@ -104,6 +105,7 @@ button {
 :focus-visible {
   outline: 2px solid var(--golden-wheat);
   outline-offset: 3px;
+  border-radius: 6px;
 }
 
 @media (prefers-reduced-motion: reduce) {
