@@ -15,7 +15,9 @@ const shift = (day, back) => {
 };
 
 const label = (day) => {
+  if (!day) return '—';
   const d = new Date(`${day}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return '—';
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 };
 
@@ -44,11 +46,20 @@ export default function Filters({
   const isFullRange = range.from === bounds.from && range.to === bounds.to;
   const dirty = !isFullRange || directorate || center;
 
-  const clampDay = (value) => {
-    if (!value) return null;
-    if (value < bounds.from) return bounds.from;
-    if (value > bounds.to) return bounds.to;
-    return value;
+  /*
+    لا تُصحَّح القيمة أثناء الكتابة — التصحيح الفوري كان يعيد الحقل
+    إلى حدّه كلما كتب المستخدم رقماً، فيتعذّر إدخال تاريخ يدوياً.
+    التصحيح يجري عند مغادرة الحقل فقط.
+  */
+  const settle = (next) => {
+    let from = next.from || bounds.from;
+    let to = next.to || bounds.to;
+
+    if (from < bounds.from) from = bounds.from;
+    if (to > bounds.to) to = bounds.to;
+    if (from > to) [from, to] = [to, from];
+
+    onRange({ from, to });
   };
 
   return (
@@ -75,8 +86,9 @@ export default function Filters({
               type="date"
               value={range.from ?? ''}
               min={bounds.from}
-              max={range.to ?? bounds.to}
-              onChange={(e) => onRange({ ...range, from: clampDay(e.target.value) })}
+              max={bounds.to}
+              onChange={(e) => onRange({ ...range, from: e.target.value })}
+              onBlur={() => settle(range)}
             />
           </label>
           <label>
@@ -84,9 +96,10 @@ export default function Filters({
             <input
               type="date"
               value={range.to ?? ''}
-              min={range.from ?? bounds.from}
+              min={bounds.from}
               max={bounds.to}
-              onChange={(e) => onRange({ ...range, to: clampDay(e.target.value) })}
+              onChange={(e) => onRange({ ...range, to: e.target.value })}
+              onBlur={() => settle(range)}
             />
           </label>
         </div>

@@ -64,11 +64,7 @@ export default function App() {
 
   return (
     <div className="layout">
-      <Masthead
-        period={base.status === 'ready' ? base.overview.period : null}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-      />
+      <Masthead theme={theme} onToggleTheme={toggleTheme} />
       <CategoryTabs
         items={[{ id: 'overview', name: 'النظرة العامة' }, ...categories]}
         activeId={activeId}
