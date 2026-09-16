@@ -1066,3 +1066,65 @@
     min-width: 140px;
   }
 }
+
+/* ===== بطاقات العمليات في الصفحة الرئيسية ===== */
+
+.opgrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.opcard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 16px 16px 14px;
+  background: var(--glass);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-sm);
+  text-align: start;
+  color: inherit;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+button.opcard:hover {
+  border-color: var(--edge-strong);
+  background: var(--glass-strong);
+  transform: translateY(-2px);
+}
+
+.opcard__icon {
+  width: 20px;
+  height: 20px;
+  margin-bottom: 4px;
+}
+
+.opcard__value {
+  font-size: 1.75rem;
+  font-weight: 900;
+  color: var(--ink);
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  direction: ltr;
+  text-align: right;
+  width: 100%;
+}
+
+.opcard__label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.opcard--off {
+  opacity: 0.5;
+  border-style: dashed;
+  cursor: default;
+}
+
+.opcard--off .opcard__value {
+  color: var(--ink-faint);
+  font-weight: 700;
+}

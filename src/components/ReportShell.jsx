@@ -124,6 +124,7 @@ export default function ReportShell({ report, basemap, view }) {
         onCenter={setCenter}
         onReset={reset}
         count={data.total}
+        unit={view.unit ?? 'عملية'}
       />
 
       {data.total === 0 ? (

@@ -151,7 +151,9 @@ function indexer() {
 }
 
 function buildReport(rows, places, { operation, dims, metrics }) {
-  const subset = rows.filter((r) => clean(r['اسم العملية']) === operation);
+  const subset = operation
+    ? rows.filter((r) => clean(r['اسم العملية']) === operation)
+    : rows;
 
   const govs = indexer();
   const directorates = indexer();
@@ -161,6 +163,7 @@ function buildReport(rows, places, { operation, dims, metrics }) {
   const dimIndex = dims.map(() => indexer());
 
   let unmatched = 0;
+  const anomalies = metrics.map(() => 0);
   const records = [];
 
   for (const row of subset) {
@@ -196,9 +199,18 @@ function buildReport(rows, places, { operation, dims, metrics }) {
     ];
 
     dims.forEach((dim, i) => record.push(dimIndex[i].id(row[dim.column])));
-    metrics.forEach((metric) => {
+    metrics.forEach((metric, i) => {
       const value = metric.columns.reduce((sum, col) => sum + num(row[col]), 0);
-      record.push(Math.round(value));
+      /*
+        قيم مستحيلة تدخل أحياناً بالخطأ (مثل مئات الملايين من الكوادر).
+        تُستبعد بدل أن تُجمع، ويُحصى عددها لإظهاره في التقرير.
+      */
+      if (metric.cap && value > metric.cap) {
+        anomalies[i] += 1;
+        record.push(0);
+      } else {
+        record.push(Math.round(value));
+      }
     });
 
     records.push(record);
@@ -218,7 +230,7 @@ function buildReport(rows, places, { operation, dims, metrics }) {
       exclude: dim.exclude ?? null,
       values: dimIndex[i].list,
     })),
-    metrics: metrics.map((m) => ({ key: m.key, title: m.title })),
+    metrics: metrics.map((m, i) => ({ key: m.key, title: m.title, anomalies: anomalies[i] })),
     dict: {
       govs: govs.list,
       directorates: directorates.list,
@@ -260,7 +272,7 @@ const FIRE = {
       title: 'وفيات كوادر الوزارة',
       columns: ['عدد شهداء وزارة الطوارئ و إدارة الكوارث'],
     },
-    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'] },
+    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'], cap: 1440 },
   ],
 };
 
@@ -273,9 +285,9 @@ const AMBULANCE = {
     { key: 'referral', title: 'الإحالة', column: 'احالة' },
   ],
   metrics: [
-    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'] },
-    { key: 'toHospital', title: 'زمن النقل للمشفى', columns: ['زمن الوصول للمشفى بالدقائق'] },
-    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'] },
+    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'], cap: 1440 },
+    { key: 'toHospital', title: 'زمن النقل للمشفى', columns: ['زمن الوصول للمشفى بالدقائق'], cap: 1440 },
+    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'], cap: 500 },
   ],
 };
 
@@ -288,9 +300,9 @@ const SERVICES = {
     { key: 'status', title: 'حالة النشاط', column: 'حالة النشاط' },
   ],
   metrics: [
-    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'] },
-    { key: 'duration', title: 'الوقت المستغرق', columns: ['الوقت المستغرق'] },
-    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'] },
+    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'], cap: 1440 },
+    { key: 'duration', title: 'الوقت المستغرق', columns: ['الوقت المستغرق'], cap: 10080 },
+    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'], cap: 500 },
   ],
 };
 
@@ -316,7 +328,7 @@ const TRAFFIC = {
       title: 'الوفيات',
       columns: ['عدد الشهداء الأطفال', 'عدد الشهداء الرجال', 'عدد الشهداء النساء'],
     },
-    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'] },
+    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'], cap: 1440 },
   ],
 };
 
@@ -330,8 +342,8 @@ const DROWNING = {
     { key: 'firstAid', title: 'الإسعافات الأولية المقدمة', column: 'الإسعافات الأولية المقدمة' },
   ],
   metrics: [
-    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'] },
-    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'] },
+    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'], cap: 1440 },
+    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'], cap: 500 },
   ],
 };
 
@@ -342,9 +354,9 @@ const COLD_RESCUE = {
     { key: 'inhabited', title: 'طبيعة الموقع', column: 'نوع المكان' },
   ],
   metrics: [
-    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'] },
-    { key: 'duration', title: 'الوقت المستغرق', columns: ['الوقت المستغرق'] },
-    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'] },
+    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'], cap: 1440 },
+    { key: 'duration', title: 'الوقت المستغرق', columns: ['الوقت المستغرق'], cap: 10080 },
+    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'], cap: 500 },
   ],
 };
 
@@ -352,9 +364,9 @@ const ANIMAL_RESCUE = {
   operation: 'انقاذ حيوان',
   dims: [{ key: 'inhabited', title: 'طبيعة الموقع', column: 'نوع المكان' }],
   metrics: [
-    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'] },
-    { key: 'duration', title: 'الوقت المستغرق', columns: ['الوقت المستغرق'] },
-    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'] },
+    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'], cap: 1440 },
+    { key: 'duration', title: 'الوقت المستغرق', columns: ['الوقت المستغرق'], cap: 10080 },
+    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'], cap: 500 },
   ],
 };
 
@@ -362,9 +374,9 @@ const HAZARD = {
   operation: 'وسم أماكن خطرة',
   dims: [{ key: 'inhabited', title: 'طبيعة الموقع', column: 'نوع المكان' }],
   metrics: [
-    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'] },
-    { key: 'duration', title: 'الوقت المستغرق', columns: ['الوقت المستغرق'] },
-    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'] },
+    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'], cap: 1440 },
+    { key: 'duration', title: 'الوقت المستغرق', columns: ['الوقت المستغرق'], cap: 10080 },
+    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'], cap: 500 },
   ],
 };
 
@@ -389,7 +401,7 @@ const ATTACKS = {
     { key: 'affected', title: 'المتضررون', columns: ['عدد المتضررين'] },
     { key: 'raids', title: 'عدد الغارات', columns: ['عدد الغارات'] },
     { key: 'munitions', title: 'الذخائر المستخدمة', columns: ['عدد الذخائر المستخدمة أثناء الهجوم'] },
-    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'] },
+    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'], cap: 1440 },
   ],
 };
 
@@ -401,12 +413,49 @@ const EVACUATION = {
   ],
   metrics: [
     { key: 'evacuated', title: 'الذين تم إخلاؤهم', columns: ['عدد الذين تم اخلائهم'] },
-    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'] },
-    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'] },
+    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'], cap: 1440 },
+    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'], cap: 500 },
+  ],
+};
+
+/* نظرة عامة: كل العمليات في مجموعة واحدة لتغذية الصفحة الرئيسية */
+const OVERVIEW = {
+  operation: null,
+  dims: [
+    { key: 'operation', title: 'عدد العمليات حسب النوع', column: 'اسم العملية' },
+  ],
+  metrics: [
+    {
+      key: 'injured',
+      title: 'الإصابات',
+      columns: [
+        'عدد المصابين الأطفال', 'عدد المصابين الرجال', 'عدد المصابين النساء',
+        'عدد المصابين من وزارة الطوارئ و إدارة الكوارث',
+      ],
+    },
+    {
+      key: 'dead',
+      title: 'الوفيات',
+      columns: [
+        'عدد الشهداء الأطفال', 'عدد الشهداء الرجال', 'عدد الشهداء النساء',
+        'عدد شهداء وزارة الطوارئ و إدارة الكوارث',
+      ],
+    },
+    {
+      key: 'beneficiaries',
+      title: 'المستفيدون',
+      columns: [
+        'عدد المستفيدين المباشر', 'عدد المستفيدين غير المباشر',
+        'عدد المستفيدين الرجال', 'عدد المستفيدين النساء',
+        'عدد المستفيدين الأطفال الذكور', 'عدد المستفيدين الأطفال الاناث',
+      ],
+    },
+    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'], cap: 500 },
   ],
 };
 
 const REPORTS = {
+  overview: OVERVIEW,
   fire: FIRE,
   ambulance: AMBULANCE,
   services: SERVICES,
@@ -470,7 +519,7 @@ function run() {
     })).filter((o) => o.value > 0),
   };
 
-  write('overview.json', overview);
+  write('summary.json', overview);
   for (const [id, config] of Object.entries(REPORTS)) {
     write(`${id}.json`, buildReport(rows, places, config));
   }

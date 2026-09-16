@@ -31,6 +31,7 @@ export default function Filters({
   onCenter,
   onReset,
   count,
+  unit = 'عملية',
 }) {
   const presets = [
     { id: 'all', name: 'كامل الفترة', from: bounds.from, to: bounds.to },
@@ -124,7 +125,7 @@ export default function Filters({
         <p className="filters__summary">
           {label(range.from)} — {label(range.to)}
           <strong dir="ltr">{count.toLocaleString('en-US')}</strong>
-          <span>حريق</span>
+          <span>{unit}</span>
         </p>
       </div>
     </div>

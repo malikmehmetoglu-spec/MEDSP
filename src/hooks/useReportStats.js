@@ -104,6 +104,7 @@ export default function useReportStats(report, range, filters = {}) {
     metrics.forEach((metric, i) => {
       metricResults[metric.key] = {
         title: metric.title,
+        anomalies: metric.anomalies ?? 0,
         sum: metricSums[i],
         count: metricValues[i].length,
         median: median(metricValues[i]),

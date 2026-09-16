@@ -2,16 +2,15 @@ import { useEffect, useState } from 'react';
 import Masthead from './components/Masthead';
 import CategoryTabs from './components/CategoryTabs';
 import ReportShell from './components/ReportShell';
+import Home from './components/Home';
 import Footer from './components/Footer';
 import { categories } from './data/categories';
 import { REPORT_VIEWS } from './data/reportViews';
 import useTheme from './hooks/useTheme';
 
-const ar = (n) => Number(n).toLocaleString('en-US');
-
 export default function App() {
   const { theme, toggle: toggleTheme } = useTheme();
-  const [activeId, setActiveId] = useState(categories[0].id);
+  const [activeId, setActiveId] = useState('overview');
   const [base, setBase] = useState({ status: 'loading' });
   /* تُحمّل بيانات كل تقرير عند فتحه أول مرة فقط، ثم تُحفظ */
   const [reports, setReports] = useState({});
@@ -19,7 +18,7 @@ export default function App() {
 
   useEffect(() => {
     Promise.all([
-      fetch('data/overview.json').then((r) => r.json()),
+      fetch('data/summary.json').then((r) => r.json()),
       fetch('data/basemap.json').then((r) => r.json()),
     ])
       .then(([overview, basemap]) => setBase({ status: 'ready', overview, basemap }))
@@ -44,12 +43,19 @@ export default function App() {
     };
   }, [activeId, reports]);
 
-  const active = categories.find((c) => c.id === activeId) ?? categories[0];
+  const isHome = activeId === 'overview';
+  const active = isHome
+    ? {
+        id: 'overview',
+        name: 'النظرة العامة',
+        summary: 'ملخّص كل عمليات الوزارة المسجّلة في الفترة المختارة.',
+      }
+    : categories.find((c) => c.id === activeId) ?? categories[0];
   const report = reports[activeId];
   const view = REPORT_VIEWS[activeId];
 
   const count =
-    base.status === 'ready'
+    base.status === 'ready' && !isHome
       ? base.overview.byOperation.find((o) => o.label === active.op)?.value ?? 0
       : null;
 
@@ -63,12 +69,16 @@ export default function App() {
         theme={theme}
         onToggleTheme={toggleTheme}
       />
-      <CategoryTabs items={categories} activeId={activeId} onSelect={setActiveId} />
+      <CategoryTabs
+        items={[{ id: 'overview', name: 'النظرة العامة' }, ...categories]}
+        activeId={activeId}
+        onSelect={setActiveId}
+      />
 
       <main>
         <article className="shell">
           <div className="report__head">
-            <h1>تقرير {active.name}</h1>
+            <h1>{isHome ? 'النظرة العامة' : `تقرير ${active.name}`}</h1>
           </div>
           <p className="report__summary">{active.summary}</p>
 
@@ -85,14 +95,18 @@ export default function App() {
             </div>
           )}
 
-          {!loading && !failed && report && count === 0 && (
+          {!loading && !failed && report && isHome && (
+            <Home report={report} basemap={base.basemap} onOpen={setActiveId} />
+          )}
+
+          {!loading && !failed && report && !isHome && count === 0 && (
             <div className="pending">
               <h3>لا توجد عمليات مسجّلة</h3>
               <p>لم تُسجَّل أي عملية من هذا النوع ضمن الفترة المتاحة.</p>
             </div>
           )}
 
-          {!loading && !failed && report && count > 0 && (
+          {!loading && !failed && report && !isHome && count > 0 && (
             <ReportShell
               key={activeId}
               report={report}

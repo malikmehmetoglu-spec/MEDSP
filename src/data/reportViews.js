@@ -48,6 +48,7 @@ export const REPORT_VIEWS = {
   fire: {
     icon: 'flame',
     eyebrow: 'إجمالي الحرائق المسجّلة',
+    unit: 'حريق',
     stats: (d) => {
       const known = d.dims.cause.coverage - d.dims.cause.excluded;
       return [
@@ -92,6 +93,7 @@ export const REPORT_VIEWS = {
   ambulance: {
     icon: 'civilianHurt',
     eyebrow: 'إجمالي بلاغات الإسعاف',
+    unit: 'بلاغ',
     stats: (d) => [
       etaStat(d),
       {
@@ -138,6 +140,7 @@ export const REPORT_VIEWS = {
   traffic: {
     icon: 'target',
     eyebrow: 'إجمالي حوادث السير',
+    unit: 'حادث',
     stats: (d) => [
       etaStat(d),
       {
@@ -181,6 +184,7 @@ export const REPORT_VIEWS = {
   drowning: {
     icon: 'civilian',
     eyebrow: 'إجمالي حالات الغرق',
+    unit: 'حالة',
     stats: (d) => [
       etaStat(d),
       {
