@@ -5,10 +5,12 @@ import ReportShell from './components/ReportShell';
 import Footer from './components/Footer';
 import { categories } from './data/categories';
 import { REPORT_VIEWS } from './data/reportViews';
+import useTheme from './hooks/useTheme';
 
 const ar = (n) => Number(n).toLocaleString('en-US');
 
 export default function App() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const [activeId, setActiveId] = useState(categories[0].id);
   const [base, setBase] = useState({ status: 'loading' });
   /* تُحمّل بيانات كل تقرير عند فتحه أول مرة فقط، ثم تُحفظ */
@@ -56,7 +58,11 @@ export default function App() {
 
   return (
     <div className="layout">
-      <Masthead period={base.status === 'ready' ? base.overview.period : null} />
+      <Masthead
+        period={base.status === 'ready' ? base.overview.period : null}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
       <CategoryTabs items={categories} activeId={activeId} onSelect={setActiveId} />
 
       <main>

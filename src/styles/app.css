@@ -67,20 +67,49 @@
 .masthead__parent {
   font-size: var(--caption);
   font-weight: 300;
-  color: var(--golden-wheat);
+  color: var(--accent-text);
 }
 
 .masthead__period {
   margin-inline-start: auto;
   font-size: var(--caption);
   font-weight: 400;
-  color: var(--ivory-mist);
+  color: var(--ink);
   background: var(--glass-strong);
   border: 1px solid var(--edge);
   border-radius: 999px;
   padding: 7px 16px;
   white-space: nowrap;
   backdrop-filter: blur(12px);
+}
+
+.masthead__inner > .theme-toggle:last-child {
+  margin-inline-start: auto;
+}
+
+.theme-toggle {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--edge);
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+
+.theme-toggle:hover {
+  border-color: var(--edge-strong);
+  background: var(--glass-strong);
+  transform: translateY(-1px);
+}
+
+.theme-toggle__icon {
+  width: 18px;
+  height: 18px;
+  color: var(--accent-text);
 }
 
 /* الشريط الزخرفي كخيط رفيع لا كحزام */
@@ -98,7 +127,7 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  background: rgba(0, 29, 26, 0.72);
+  background: var(--surface-header);
   backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--edge);
 }
@@ -129,7 +158,7 @@
 }
 
 .categories__item:hover {
-  color: var(--ivory-mist);
+  color: var(--ink);
   background: var(--glass);
 }
 
@@ -158,7 +187,7 @@
   border: 1px solid var(--edge);
   border-radius: 999px;
   background: var(--glass);
-  color: var(--golden-wheat);
+  color: var(--accent-text);
   font-size: var(--caption);
   font-weight: 500;
 }
@@ -209,7 +238,7 @@
 .hero__primary {
   background:
     radial-gradient(120% 130% at 88% -10%, rgba(185, 167, 121, 0.22), transparent 58%),
-    rgba(235, 232, 215, 0.06);
+    var(--hero-overlay);
   padding: 34px 30px;
   display: flex;
   flex-direction: column;
@@ -234,7 +263,7 @@
 .hero__eyebrow {
   font-size: 0.86rem;
   font-weight: 400;
-  color: var(--golden-wheat);
+  color: var(--accent-text);
   position: relative;
 }
 
@@ -245,7 +274,7 @@
   padding-block: 2px;
   letter-spacing: -0.04em;
   position: relative;
-  background: linear-gradient(170deg, #ffffff, var(--golden-wheat));
+  background: linear-gradient(170deg, var(--figure-grad-start), var(--golden-wheat));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -305,7 +334,7 @@
 .stat__number {
   font-size: 2.05rem;
   font-weight: 900;
-  color: var(--ivory-mist);
+  color: var(--ink);
   line-height: 1.24;
   letter-spacing: -0.03em;
 }
@@ -314,7 +343,7 @@
   font-style: normal;
   font-size: 0.8rem;
   font-weight: 500;
-  color: var(--golden-wheat);
+  color: var(--accent-text);
 }
 
 .stat__note {
@@ -326,7 +355,7 @@
 .meter {
   display: block;
   height: 3px;
-  background: rgba(235, 232, 215, 0.1);
+  background: var(--surface-track);
   border-radius: 2px;
   overflow: hidden;
   margin-top: 2px;
@@ -372,7 +401,7 @@
   font-size: 2.1rem;
   font-weight: 900;
   line-height: 1.24;
-  color: var(--ivory-mist);
+  color: var(--ink);
   letter-spacing: -0.03em;
 }
 
@@ -428,7 +457,7 @@
 }
 
 .panel__head h3 {
-  color: var(--ivory-mist);
+  color: var(--ink);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -497,7 +526,7 @@
 
 .bars__track {
   height: 8px;
-  background: rgba(235, 232, 215, 0.08);
+  background: var(--surface-track-2);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -530,7 +559,7 @@
   justify-content: flex-end;
   font-size: 0.9rem;
   font-weight: 700;
-  color: var(--ivory-mist);
+  color: var(--ink);
 }
 
 .bars__share {
@@ -558,7 +587,7 @@
   text-anchor: middle;
   font-size: 30px;
   font-weight: 900;
-  fill: var(--ivory-mist);
+  fill: var(--ink);
   font-family: 'Qomra', sans-serif;
 }
 
@@ -601,7 +630,7 @@
 .donut__num {
   margin-inline-start: auto;
   font-weight: 700;
-  color: var(--ivory-mist);
+  color: var(--ink);
 }
 
 /* ===== الخريطة ===== */
@@ -611,7 +640,7 @@
   width: 100%;
   overflow: hidden;
   border-radius: var(--radius-sm);
-  background: rgba(0, 20, 18, 0.35);
+  background: var(--surface-map);
   border: 1px solid var(--edge);
 }
 
@@ -632,17 +661,17 @@
 
 .map__dot--on {
   fill: #e0705c;
-  stroke: var(--ivory-mist);
+  stroke: var(--dot-ring-active);
   stroke-width: 1.4;
   filter: drop-shadow(0 0 10px rgba(224, 112, 92, 0.85));
 }
 
 .map__tip {
   position: absolute;
-  background: rgba(0, 29, 26, 0.92);
+  background: var(--surface-tooltip);
   border: 1px solid var(--edge-strong);
   backdrop-filter: blur(10px);
-  color: var(--ivory-mist);
+  color: var(--ink);
   border-radius: var(--radius-sm);
   padding: 10px 14px;
   display: flex;
@@ -685,7 +714,7 @@
 }
 
 .pending h3 {
-  color: var(--ivory-mist);
+  color: var(--ink);
 }
 
 .pending p {
@@ -774,7 +803,7 @@
   font-family: 'Qomra', sans-serif;
   pointer-events: none;
   paint-order: stroke;
-  stroke: rgba(0, 25, 22, 0.85);
+  stroke: var(--geo-label-stroke);
   stroke-width: 3px;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
@@ -782,12 +811,12 @@
 }
 
 .geo__label--gov {
-  fill: var(--ivory-mist);
+  fill: var(--ink);
   font-weight: 700;
 }
 
 .geo__label--sub {
-  fill: rgba(235, 232, 215, 0.82);
+  fill: var(--geo-label-fill-sub);
   font-weight: 500;
 }
 
@@ -810,9 +839,9 @@
   place-items: center;
   border-radius: 10px;
   border: 1px solid var(--edge);
-  background: rgba(0, 29, 26, 0.72);
+  background: var(--surface-control);
   backdrop-filter: blur(10px);
-  color: var(--ivory-mist);
+  color: var(--ink);
   font-size: 1.1rem;
   line-height: 1;
   transition: border-color 0.16s ease, background 0.16s ease;
@@ -820,7 +849,7 @@
 
 .map__controls button:hover {
   border-color: var(--edge-strong);
-  background: rgba(2, 68, 58, 0.85);
+  background: var(--surface-control-hover);
 }
 
 .map__reset {
@@ -948,7 +977,7 @@
 }
 
 .chip:hover {
-  color: var(--ivory-mist);
+  color: var(--ink);
   background: var(--glass-strong);
 }
 
@@ -988,12 +1017,12 @@
 .select select {
   font: inherit;
   font-size: 0.84rem;
-  color: var(--ivory-mist);
-  background: rgba(0, 25, 22, 0.6);
+  color: var(--ink);
+  background: var(--surface-input);
   border: 1px solid var(--edge);
   border-radius: var(--radius-sm);
   padding: 7px 11px;
-  color-scheme: dark;
+  color-scheme: var(--input-color-scheme);
   max-width: 230px;
 }
 
@@ -1020,7 +1049,7 @@
 .filters__summary strong {
   font-size: 1.05rem;
   font-weight: 700;
-  color: var(--golden-wheat);
+  color: var(--accent-text);
 }
 
 @media (max-width: 860px) {

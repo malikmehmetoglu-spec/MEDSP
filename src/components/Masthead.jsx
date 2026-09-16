@@ -1,4 +1,6 @@
-export default function Masthead({ period }) {
+import ThemeToggle from './ThemeToggle';
+
+export default function Masthead({ period, theme, onToggleTheme }) {
   return (
     <header>
       <div className="masthead">
@@ -13,6 +15,7 @@ export default function Masthead({ period }) {
             <span className="masthead__parent">وزارة الطوارئ وإدارة الكوارث</span>
           </div>
           {period && <span className="masthead__period">بيانات {period}</span>}
+          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         </div>
       </div>
       <div className="brand-band" aria-hidden="true" />

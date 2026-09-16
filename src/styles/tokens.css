@@ -17,7 +17,7 @@
   --charcoal: #161616;
   --white: #ffffff;
 
-  /* أدوار الاستخدام على خلفية داكنة */
+  /* ===== أدوار الوضع الداكن (الافتراضي) ===== */
   --ink: var(--ivory-mist);
   --ink-soft: rgba(235, 232, 215, 0.62);
   --ink-faint: rgba(235, 232, 215, 0.4);
@@ -26,6 +26,35 @@
   --glass-strong: rgba(235, 232, 215, 0.08);
   --edge: rgba(185, 167, 121, 0.16);
   --edge-strong: rgba(185, 167, 121, 0.34);
+
+  /* نص تمييزي ذهبي — يستخدم لون أفتح على الخلفية الداكنة */
+  --accent-text: var(--golden-wheat);
+
+  /* خلفية الصفحة الكاملة */
+  --page-bg-solid: #001d1a;
+  --page-bg:
+    radial-gradient(90% 60% at 85% -5%, rgba(66, 129, 119, 0.4), transparent 62%),
+    radial-gradient(70% 55% at 5% 8%, rgba(2, 68, 58, 0.85), transparent 60%),
+    radial-gradient(120% 90% at 50% 105%, rgba(185, 167, 121, 0.09), transparent 62%),
+    linear-gradient(180deg, #013029, #001d1a 55%, #001513);
+
+  /* أسطح خاصة (شريط علوي لاصق، تلميحات، مدخلات، الخريطة...) */
+  --surface-header: rgba(0, 29, 26, 0.72);
+  --surface-tooltip: rgba(0, 29, 26, 0.92);
+  --surface-input: rgba(0, 25, 22, 0.6);
+  --surface-control: rgba(0, 29, 26, 0.72);
+  --surface-control-hover: rgba(2, 68, 58, 0.85);
+  --surface-map: rgba(0, 20, 18, 0.35);
+  --surface-track: rgba(235, 232, 215, 0.1);
+  --surface-track-2: rgba(235, 232, 215, 0.08);
+  --hero-overlay: rgba(235, 232, 215, 0.06);
+  --figure-grad-start: #ffffff;
+  --input-color-scheme: dark;
+
+  /* تسميات الخريطة (المحافظات/المناطق) والنقاط النشطة */
+  --geo-label-fill-sub: rgba(235, 232, 215, 0.82);
+  --geo-label-stroke: rgba(0, 25, 22, 0.85);
+  --dot-ring-active: var(--ivory-mist);
 
   --shell: 1240px;
   --gutter: 26px;
@@ -37,6 +66,44 @@
   --h3: 1.08rem;
   --body: 1rem;
   --caption: 0.84rem;
+}
+
+/* ===== أدوار الوضع الفاتح ===== */
+:root[data-theme='light'] {
+  --ink: var(--forest);
+  --ink-soft: rgba(2, 68, 58, 0.66);
+  --ink-faint: rgba(2, 68, 58, 0.46);
+
+  --glass: rgba(2, 68, 58, 0.04);
+  --glass-strong: rgba(2, 68, 58, 0.075);
+  --edge: rgba(2, 68, 58, 0.14);
+  --edge-strong: rgba(2, 68, 58, 0.28);
+
+  /* أفتح إلى الرمل العتيق — أوضح على خلفية فاتحة من الذهبي الفاتح */
+  --accent-text: var(--antique-sand);
+
+  --page-bg-solid: #f6f4e9;
+  --page-bg:
+    radial-gradient(90% 60% at 85% -5%, rgba(149, 133, 99, 0.14), transparent 62%),
+    radial-gradient(70% 55% at 5% 8%, rgba(66, 129, 119, 0.08), transparent 60%),
+    radial-gradient(120% 90% at 50% 105%, rgba(185, 167, 121, 0.14), transparent 62%),
+    linear-gradient(180deg, #fdfcf6, #f5f3e7 55%, #ebe8d7);
+
+  --surface-header: rgba(246, 244, 233, 0.82);
+  --surface-tooltip: rgba(255, 255, 255, 0.97);
+  --surface-input: rgba(255, 255, 255, 0.75);
+  --surface-control: rgba(255, 255, 255, 0.8);
+  --surface-control-hover: rgba(235, 232, 215, 0.95);
+  --surface-map: rgba(2, 68, 58, 0.035);
+  --surface-track: rgba(2, 68, 58, 0.12);
+  --surface-track-2: rgba(2, 68, 58, 0.1);
+  --hero-overlay: rgba(2, 68, 58, 0.045);
+  --figure-grad-start: var(--forest);
+  --input-color-scheme: light;
+
+  --geo-label-fill-sub: rgba(2, 68, 58, 0.78);
+  --geo-label-stroke: rgba(255, 255, 255, 0.92);
+  --dot-ring-active: var(--forest);
 }
 
 * {
@@ -59,13 +126,10 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 
-  background-color: var(--emerald-shadow);
-  background-image:
-    radial-gradient(90% 60% at 85% -5%, rgba(66, 129, 119, 0.4), transparent 62%),
-    radial-gradient(70% 55% at 5% 8%, rgba(2, 68, 58, 0.85), transparent 60%),
-    radial-gradient(120% 90% at 50% 105%, rgba(185, 167, 121, 0.09), transparent 62%),
-    linear-gradient(180deg, #013029, #001d1a 55%, #001513);
+  background-color: var(--page-bg-solid);
+  background-image: var(--page-bg);
   background-attachment: fixed;
+  transition: background-color 0.25s ease;
 }
 
 h1,
