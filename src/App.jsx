@@ -7,6 +7,10 @@ import Footer from './components/Footer';
 import { categories } from './data/categories';
 import { REPORT_VIEWS } from './data/reportViews';
 import useTheme from './hooks/useTheme';
+import SurveyPage from './survey/SurveyPage';
+import { damageSurvey } from './survey/demoSurvey';
+
+const SURVEY_TAB = '__survey__';
 
 export default function App() {
   const { theme, toggle: toggleTheme } = useTheme();
@@ -26,7 +30,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (reports[activeId]) return;
+    if (activeId === SURVEY_TAB || reports[activeId]) return;
     let cancelled = false;
 
     fetch(`data/${activeId}.json`)
@@ -44,6 +48,7 @@ export default function App() {
   }, [activeId, reports]);
 
   const isHome = activeId === 'overview';
+  const isSurvey = activeId === SURVEY_TAB;
   const active = isHome
     ? {
         id: 'overview',
@@ -66,12 +71,20 @@ export default function App() {
     <div className="layout">
       <Masthead theme={theme} onToggleTheme={toggleTheme} />
       <CategoryTabs
-        items={[{ id: 'overview', name: 'النظرة العامة' }, ...categories]}
+        items={[
+          { id: 'overview', name: 'النظرة العامة' },
+          ...categories,
+          /* المشاريع الإحصائية — مؤقت لعرض محرك الاستبيانات */
+          { id: SURVEY_TAB, name: 'استمارة ميدانية' },
+        ]}
         activeId={activeId}
         onSelect={setActiveId}
       />
 
       <main>
+        {isSurvey ? (
+          <SurveyPage definition={damageSurvey} />
+        ) : (
         <article className="shell">
           <div className="report__head">
             <h1>{isHome ? 'النظرة العامة' : `تقرير ${active.name}`}</h1>
@@ -111,6 +124,7 @@ export default function App() {
             />
           )}
         </article>
+        )}
       </main>
 
       <Footer />

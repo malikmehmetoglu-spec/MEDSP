@@ -77,6 +77,20 @@ const PATHS = {
   moon: (
     <path d="M20 14.2A8.5 8.5 0 1 1 9.8 4a7 7 0 0 0 10.2 10.2Z" />
   ),
+  /* كاميرا */
+  camera: (
+    <>
+      <path d="M3 8.6h3.2l1.6-2.4h8.4l1.6 2.4H21v10.2H3z" />
+      <circle cx="12" cy="13.4" r="3.4" />
+    </>
+  ),
+  /* دبوس موقع */
+  pin: (
+    <>
+      <path d="M12 21.5s6.5-6.2 6.5-11a6.5 6.5 0 1 0-13 0c0 4.8 6.5 11 6.5 11Z" />
+      <circle cx="12" cy="10.4" r="2.5" />
+    </>
+  ),
 };
 
 export default function Icon({ name, className }) {

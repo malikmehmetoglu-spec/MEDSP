@@ -1,0 +1,833 @@
+/* ===== نظام الاستبيانات ===== */
+
+.survey {
+  display: grid;
+  gap: 18px;
+}
+
+/* ---------- التقدّم والأقسام ---------- */
+
+.survey__progress {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--glass);
+  backdrop-filter: blur(14px);
+}
+
+.survey__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.survey__step {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-faint);
+  font-size: var(--caption);
+  transition: color 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+}
+
+.survey__step.is-done {
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.survey__step.is-done:hover {
+  color: var(--ink);
+  background: var(--glass-strong);
+}
+
+.survey__step.is-on {
+  color: var(--emerald-shadow);
+  background: var(--golden-wheat);
+  border-color: var(--golden-wheat);
+  font-weight: 700;
+}
+
+:root[data-theme='light'] .survey__step.is-on {
+  color: var(--ivory-mist);
+  background: var(--forest);
+  border-color: var(--forest);
+}
+
+.survey__stepnum {
+  display: grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 0.72rem;
+  font-weight: 700;
+  flex: none;
+}
+
+.survey__step.is-on .survey__stepnum {
+  border-color: currentColor;
+}
+
+.survey__bar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-track);
+  overflow: hidden;
+}
+
+.survey__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--mountain-teal), var(--golden-wheat));
+  transition: width 0.3s ease;
+}
+
+.survey__pct {
+  font-size: var(--caption);
+  color: var(--ink-faint);
+}
+
+/* ---------- الصفحة ---------- */
+
+.survey__page {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--glass);
+  backdrop-filter: blur(14px);
+}
+
+.survey__pagetitle {
+  font-size: var(--h3);
+  color: var(--ink);
+}
+
+.survey__intro,
+.survey__empty {
+  font-size: var(--caption);
+  color: var(--ink-soft);
+}
+
+.survey__alert {
+  padding: 11px 15px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(109, 34, 45, 0.45);
+  background: rgba(109, 34, 45, 0.12);
+  color: #e0705c;
+  font-size: var(--caption);
+}
+
+/* ---------- السؤال ---------- */
+
+.q {
+  display: grid;
+  gap: 9px;
+  padding: 16px 0;
+  border-top: 1px solid var(--edge);
+}
+
+.q:first-of-type {
+  border-top: 0;
+  padding-top: 4px;
+}
+
+.q__head {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.q__num {
+  flex: none;
+  min-width: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.q__label {
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.q__req {
+  color: #e0705c;
+  margin-inline-start: 4px;
+}
+
+.q__hint,
+.q-hint {
+  font-size: var(--caption);
+  color: var(--ink-faint);
+  margin-inline-start: 29px;
+}
+
+.q__error,
+.q-error {
+  font-size: var(--caption);
+  color: #e0705c;
+  margin-inline-start: 29px;
+}
+
+.q-warn {
+  font-size: var(--caption);
+  color: var(--accent-text);
+}
+
+.q--invalid .q-input,
+.q--invalid .q-input--select {
+  border-color: rgba(224, 112, 92, 0.6);
+}
+
+/* ---------- المدخلات ---------- */
+
+.q-input {
+  width: 100%;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface-input);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-sm);
+  padding: 10px 13px;
+  color-scheme: var(--input-color-scheme);
+  transition: border-color 0.16s ease;
+  margin-inline-start: 29px;
+  max-width: calc(100% - 29px);
+}
+
+.q-input:focus {
+  border-color: var(--edge-strong);
+  outline: none;
+}
+
+.q-input--area {
+  resize: vertical;
+  min-height: 92px;
+  line-height: 1.6;
+}
+
+.q-input--date {
+  max-width: 220px;
+}
+
+.q-number {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.q-number .q-input {
+  max-width: 180px;
+}
+
+.q-number__unit {
+  font-size: var(--caption);
+  color: var(--ink-faint);
+}
+
+/* ---------- الاختيارات ---------- */
+
+.q-choices {
+  display: grid;
+  gap: 7px;
+  margin-inline-start: 29px;
+}
+
+.q-choices--cols {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.q-choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: start;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--edge);
+  background: var(--glass);
+  color: var(--ink-soft);
+  font-size: 0.94rem;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.q-choice:hover:not(:disabled) {
+  border-color: var(--edge-strong);
+  color: var(--ink);
+}
+
+.q-choice.is-on {
+  border-color: var(--golden-wheat);
+  background: var(--glass-strong);
+  color: var(--ink);
+  font-weight: 500;
+}
+
+:root[data-theme='light'] .q-choice.is-on {
+  border-color: var(--forest);
+}
+
+.q-choice.is-blocked {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.q-choice__mark {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  border-radius: 4px;
+  border: 1.5px solid var(--edge-strong);
+  position: relative;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+
+.q-choice__mark--radio {
+  border-radius: 999px;
+}
+
+.q-choice.is-on .q-choice__mark {
+  border-color: var(--golden-wheat);
+  background: var(--golden-wheat);
+}
+
+:root[data-theme='light'] .q-choice.is-on .q-choice__mark {
+  border-color: var(--forest);
+  background: var(--forest);
+}
+
+.q-choice.is-on .q-choice__mark::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 5px;
+  height: 9px;
+  border: solid var(--emerald-shadow);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+
+:root[data-theme='light'] .q-choice.is-on .q-choice__mark::after {
+  border-color: var(--ivory-mist);
+}
+
+.q-choice.is-on .q-choice__mark--radio::after {
+  width: 7px;
+  height: 7px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--emerald-shadow);
+  transform: none;
+}
+
+:root[data-theme='light'] .q-choice.is-on .q-choice__mark--radio::after {
+  background: var(--ivory-mist);
+}
+
+.q-choice__label {
+  line-height: 1.4;
+}
+
+/* ترتيب الأفضليات */
+
+.q-choice__rank {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border-radius: 999px;
+  border: 1.5px solid var(--edge-strong);
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.q-choice__rank.is-on {
+  border-color: var(--golden-wheat);
+  background: var(--golden-wheat);
+  color: var(--emerald-shadow);
+}
+
+:root[data-theme='light'] .q-choice__rank.is-on {
+  border-color: var(--forest);
+  background: var(--forest);
+  color: var(--ivory-mist);
+}
+
+/* ---------- المقياس المتدرّج ---------- */
+
+.q-range {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex-wrap: wrap;
+  margin-inline-start: 29px;
+}
+
+.q-range__steps {
+  display: flex;
+  gap: 6px;
+}
+
+.q-range__step {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--edge);
+  background: var(--glass);
+  color: var(--ink-soft);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.q-range__step:hover {
+  border-color: var(--edge-strong);
+  color: var(--ink);
+}
+
+.q-range__step.is-on {
+  border-color: var(--golden-wheat);
+  background: var(--golden-wheat);
+  color: var(--emerald-shadow);
+}
+
+:root[data-theme='light'] .q-range__step.is-on {
+  border-color: var(--forest);
+  background: var(--forest);
+  color: var(--ivory-mist);
+}
+
+.q-range__end {
+  font-size: var(--caption);
+  color: var(--ink-faint);
+}
+
+/* ---------- المحافظة والناحية ---------- */
+
+.q-area {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 11px;
+  margin-inline-start: 29px;
+}
+
+.q-area__part {
+  display: grid;
+  gap: 5px;
+}
+
+.q-area__label {
+  font-size: var(--caption);
+  color: var(--ink-faint);
+}
+
+.q-area .q-input {
+  margin-inline-start: 0;
+  max-width: 100%;
+}
+
+.q-input--select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: left 15px top 50%, left 10px top 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-inline-start: 30px;
+}
+
+.q-input--select:disabled {
+  opacity: 0.5;
+}
+
+/* ---------- الإحداثيات ---------- */
+
+.q-geo {
+  margin-inline-start: 29px;
+  display: grid;
+  gap: 9px;
+}
+
+.q-geo__capture {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 13px 18px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--edge-strong);
+  background: var(--glass);
+  color: var(--ink-soft);
+  transition: border-color 0.16s ease, color 0.16s ease;
+}
+
+.q-geo__capture:hover:not(:disabled) {
+  border-color: var(--golden-wheat);
+  color: var(--ink);
+}
+
+.q-geo__icon,
+.q-image__icon {
+  width: 19px;
+  height: 19px;
+  color: var(--accent-text);
+}
+
+.q-geo__result {
+  display: grid;
+  gap: 9px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--edge);
+  background: var(--glass);
+}
+
+.q-geo__coords {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+
+.q-geo__coords > div {
+  display: grid;
+  gap: 2px;
+}
+
+.q-geo__key {
+  font-size: 0.76rem;
+  color: var(--ink-faint);
+}
+
+.q-geo__val {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.q-geo__val.is-poor {
+  color: #e0705c;
+}
+
+.q-geo__actions,
+.q-image__actions {
+  display: flex;
+  gap: 7px;
+}
+
+/* ---------- الصور ---------- */
+
+.q-image {
+  margin-inline-start: 29px;
+  display: grid;
+  gap: 9px;
+}
+
+.q-image__input {
+  display: none;
+}
+
+.q-image__drop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 22px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--edge-strong);
+  background: var(--glass);
+  color: var(--ink-soft);
+  transition: border-color 0.16s ease, color 0.16s ease;
+}
+
+.q-image__drop:hover:not(:disabled) {
+  border-color: var(--golden-wheat);
+  color: var(--ink);
+}
+
+.q-image__preview {
+  display: grid;
+  gap: 9px;
+  justify-items: start;
+}
+
+.q-image__preview img {
+  max-width: 260px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--edge);
+}
+
+/* ---------- الملاحظة ---------- */
+
+.q-note {
+  padding: 13px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--edge-strong);
+  border-inline-start: 3px solid var(--golden-wheat);
+  background: var(--glass-strong);
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+:root[data-theme='light'] .q-note {
+  border-inline-start-color: var(--antique-sand);
+}
+
+/* ---------- المجموعة ---------- */
+
+.q-group__head {
+  padding-top: 14px;
+  border-top: 1px solid var(--edge-strong);
+}
+
+.q-group__title {
+  font-size: 0.98rem;
+  color: var(--accent-text);
+  letter-spacing: 0.01em;
+}
+
+/* ---------- المجموعة المتكررة ---------- */
+
+.q-repeat {
+  display: grid;
+  gap: 11px;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--edge-strong);
+  background: var(--glass);
+}
+
+.q-repeat__head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.q-repeat__title {
+  font-size: 0.98rem;
+  color: var(--ink);
+}
+
+.q-repeat__count {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--glass-strong);
+  border: 1px solid var(--edge);
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--accent-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.q-repeat__empty {
+  font-size: var(--caption);
+  color: var(--ink-faint);
+}
+
+.q-repeat__row {
+  display: grid;
+  gap: 4px;
+  padding: 13px 15px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--edge);
+  background: var(--surface-input);
+}
+
+.q-repeat__rowhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  padding-bottom: 7px;
+}
+
+.q-repeat__badge {
+  font-size: var(--caption);
+  font-weight: 700;
+  color: var(--accent-text);
+}
+
+.q-repeat__row .q {
+  padding: 11px 0;
+}
+
+.q-repeat__row .q__hint,
+.q-repeat__row .q__error,
+.q-repeat__row .q-input,
+.q-repeat__row .q-choices,
+.q-repeat__row .q-range,
+.q-repeat__row .q-area {
+  margin-inline-start: 0;
+  max-width: 100%;
+}
+
+/* ---------- الأزرار ---------- */
+
+.q-btn {
+  padding: 8px 15px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--edge);
+  background: var(--glass);
+  color: var(--ink-soft);
+  font-size: var(--caption);
+  transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease;
+}
+
+.q-btn:hover:not(:disabled) {
+  border-color: var(--edge-strong);
+  color: var(--ink);
+}
+
+.q-btn--sm {
+  padding: 5px 11px;
+}
+
+.q-btn--danger:hover:not(:disabled) {
+  border-color: rgba(224, 112, 92, 0.6);
+  color: #e0705c;
+}
+
+.q-btn--add {
+  justify-self: start;
+  border-style: dashed;
+  color: var(--accent-text);
+}
+
+.q-btn--add:hover {
+  border-color: var(--golden-wheat);
+}
+
+/* ---------- شريط التنقل ---------- */
+
+.survey__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 11px;
+  flex-wrap: wrap;
+}
+
+.survey__navbtn {
+  padding: 11px 24px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--edge);
+  background: var(--glass);
+  color: var(--ink-soft);
+  font-weight: 500;
+  transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease;
+}
+
+.survey__navbtn:hover:not(:disabled) {
+  border-color: var(--edge-strong);
+  color: var(--ink);
+}
+
+.survey__navbtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.survey__navbtn--primary {
+  background: var(--golden-wheat);
+  border-color: var(--golden-wheat);
+  color: var(--emerald-shadow);
+  font-weight: 700;
+}
+
+.survey__navbtn--primary:hover:not(:disabled) {
+  background: var(--ivory-mist);
+  border-color: var(--ivory-mist);
+  color: var(--emerald-shadow);
+}
+
+:root[data-theme='light'] .survey__navbtn--primary {
+  background: var(--forest);
+  border-color: var(--forest);
+  color: var(--ivory-mist);
+}
+
+:root[data-theme='light'] .survey__navbtn--primary:hover:not(:disabled) {
+  background: var(--emerald-shadow);
+  border-color: var(--emerald-shadow);
+  color: var(--ivory-mist);
+}
+
+/* ---------- الهاتف ---------- */
+
+@media (max-width: 640px) {
+  .survey__page {
+    padding: 16px 14px;
+  }
+
+  .q__hint,
+  .q__error,
+  .q-input,
+  .q-choices,
+  .q-range,
+  .q-area,
+  .q-geo,
+  .q-image {
+    margin-inline-start: 0;
+    max-width: 100%;
+  }
+
+  .q-choices--cols {
+    grid-template-columns: 1fr;
+  }
+
+  /* أهداف لمس أكبر للعمل الميداني */
+  .q-choice {
+    padding: 14px;
+  }
+
+  .q-range__step {
+    width: 48px;
+    height: 48px;
+  }
+
+  .survey__navbtn {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .survey__steplabel {
+    display: none;
+  }
+}
+
+/* عرض الناتج في شاشة المراجعة */
+.survey__json {
+  direction: ltr;
+  text-align: left;
+  font-family: ui-monospace, 'Cascadia Code', Menlo, monospace;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  padding: 15px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--edge);
+  background: var(--surface-input);
+  color: var(--ink-soft);
+  overflow-x: auto;
+  max-height: 460px;
+  margin: 0;
+}
