@@ -134,9 +134,8 @@
 
 .categories__list {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
   padding: 12px 0;
 }
 
@@ -1127,4 +1126,21 @@ button.opcard:hover {
 .opcard--off .opcard__value {
   color: var(--ink-faint);
   font-weight: 700;
+}
+
+/* المشاريع الإحصائية نوع مختلف عن التقارير الدورية — يُفصل بصرياً */
+.categories__item--apart {
+  margin-inline-start: auto;
+  border-color: var(--edge);
+  color: var(--accent-text);
+}
+
+.categories__item--apart:hover {
+  border-color: var(--edge-strong);
+}
+
+@media (max-width: 900px) {
+  .categories__item--apart {
+    margin-inline-start: 0;
+  }
 }

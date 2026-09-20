@@ -6,7 +6,7 @@ export default function CategoryTabs({ items, activeId, onSelect }) {
           {items.map((item) => (
             <button
               key={item.id}
-              className="categories__item"
+              className={`categories__item${item.apart ? ' categories__item--apart' : ''}`}
               role="tab"
               type="button"
               aria-selected={item.id === activeId}

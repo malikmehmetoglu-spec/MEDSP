@@ -75,7 +75,7 @@ export default function App() {
           { id: 'overview', name: 'النظرة العامة' },
           ...categories,
           /* المشاريع الإحصائية — مؤقت لعرض محرك الاستبيانات */
-          { id: SURVEY_TAB, name: 'استمارة ميدانية' },
+          { id: SURVEY_TAB, name: 'استمارة ميدانية', apart: true },
         ]}
         activeId={activeId}
         onSelect={setActiveId}
