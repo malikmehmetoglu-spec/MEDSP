@@ -9,7 +9,7 @@ import SurveyForm from './SurveyForm';
   تُوصَل لاحقاً عند نقطة submit فقط، فبقية النظام لا يتأثر بمكان التخزين.
 */
 
-function ReviewPanel({ data, onBack }) {
+function ReviewPanel({ data, onBack, onAgain }) {
   return (
     <div className="survey__page">
       <h3 className="survey__pagetitle">تمت التعبئة</h3>
@@ -21,13 +21,20 @@ function ReviewPanel({ data, onBack }) {
         <button type="button" className="survey__navbtn" onClick={onBack}>
           رجوع للتعديل
         </button>
+        {onAgain && (
+          <button type="button" className="survey__navbtn survey__navbtn--primary" onClick={onAgain}>
+            تعبئة استمارة جديدة
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
-export default function SurveyPage({ definition }) {
-  const survey = useSurvey(definition);
+export default function SurveyPage({ definition, onSubmit }) {
+  /* إعادة التصفير تُنجَز بتغيير المفتاح، فتعود الحالة نظيفة تماماً */
+  const [round, setRound] = useState(0);
+  const survey = useSurvey(definition, { round });
   const [submitted, setSubmitted] = useState(null);
 
   const isLast = survey.page === survey.pages.length - 1;
@@ -42,7 +49,14 @@ export default function SurveyPage({ definition }) {
       if (firstBad !== -1 && firstBad !== survey.page) survey.goTo(firstBad);
       return;
     }
-    setSubmitted(survey.collect());
+    const data = survey.collect();
+    if (onSubmit) {
+      Promise.resolve(onSubmit(data))
+        .then(() => setSubmitted(data))
+        .catch((err) => window.alert(err.message));
+      return;
+    }
+    setSubmitted(data);
   };
 
   if (submitted) {
@@ -51,7 +65,11 @@ export default function SurveyPage({ definition }) {
         <header className="report__head">
           <h1>{definition.title}</h1>
         </header>
-        <ReviewPanel data={submitted} onBack={() => setSubmitted(null)} />
+        <ReviewPanel
+          data={submitted}
+          onBack={() => setSubmitted(null)}
+          onAgain={onSubmit ? () => { setSubmitted(null); setRound((r) => r + 1); } : null}
+        />
       </section>
     );
   }

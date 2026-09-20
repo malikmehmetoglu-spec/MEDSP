@@ -7,13 +7,25 @@ import Footer from './components/Footer';
 import { categories } from './data/categories';
 import { REPORT_VIEWS } from './data/reportViews';
 import useTheme from './hooks/useTheme';
-import SurveyPage from './survey/SurveyPage';
-import { damageSurvey } from './survey/demoSurvey';
+import ProjectsTab from './projects/ProjectsTab';
+import AdminApp from './admin/AdminApp';
 
-const SURVEY_TAB = '__survey__';
+const PROJECTS_TAB = '__projects__';
+
+/* توجيه بسيط بالمسار المجزّأ: #/admin يفتح مساحة العمل الإدارية */
+function useHashRoute() {
+  const [hash, setHash] = useState(() => window.location.hash);
+  useEffect(() => {
+    const on = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', on);
+    return () => window.removeEventListener('hashchange', on);
+  }, []);
+  return hash;
+}
 
 export default function App() {
   const { theme, toggle: toggleTheme } = useTheme();
+  const hash = useHashRoute();
   const [activeId, setActiveId] = useState('overview');
   const [base, setBase] = useState({ status: 'loading' });
   /* تُحمّل بيانات كل تقرير عند فتحه أول مرة فقط، ثم تُحفظ */
@@ -30,7 +42,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (activeId === SURVEY_TAB || reports[activeId]) return;
+    if (activeId === PROJECTS_TAB || reports[activeId]) return;
     let cancelled = false;
 
     fetch(`data/${activeId}.json`)
@@ -48,7 +60,7 @@ export default function App() {
   }, [activeId, reports]);
 
   const isHome = activeId === 'overview';
-  const isSurvey = activeId === SURVEY_TAB;
+  const isProjects = activeId === PROJECTS_TAB;
   const active = isHome
     ? {
         id: 'overview',
@@ -67,6 +79,25 @@ export default function App() {
   const loading = base.status === 'loading' || (!report && error !== activeId);
   const failed = base.status === 'error' || error === activeId;
 
+  /* مساحة العمل الإدارية على مسار منفصل */
+  if (hash.startsWith('#/admin')) {
+    return (
+      <div className="layout">
+        <Masthead theme={theme} onToggleTheme={toggleTheme} />
+        <div className="adminbar">
+          <div className="shell adminbar__inner">
+            <span className="adminbar__label">مساحة العمل — إدارة المشاريع</span>
+            <a className="adminbar__exit" href="#/">عرض الموقع العام</a>
+          </div>
+        </div>
+        <main>
+          <AdminApp basemap={base.basemap} />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="layout">
       <Masthead theme={theme} onToggleTheme={toggleTheme} />
@@ -75,15 +106,21 @@ export default function App() {
           { id: 'overview', name: 'النظرة العامة' },
           ...categories,
           /* المشاريع الإحصائية — مؤقت لعرض محرك الاستبيانات */
-          { id: SURVEY_TAB, name: 'استمارة ميدانية', apart: true },
+          { id: PROJECTS_TAB, name: 'المشاريع الإحصائية', apart: true },
         ]}
         activeId={activeId}
         onSelect={setActiveId}
       />
 
       <main>
-        {isSurvey ? (
-          <SurveyPage definition={damageSurvey} />
+        {isProjects ? (
+          <section className="shell">
+            <div className="report__head"><h1>المشاريع الإحصائية</h1></div>
+            <p className="report__summary">
+              تقارير تفاعلية مبنية على بيانات ميدانية معتمدة.
+            </p>
+            <ProjectsTab basemap={base.basemap} />
+          </section>
         ) : (
         <article className="shell">
           <div className="report__head">

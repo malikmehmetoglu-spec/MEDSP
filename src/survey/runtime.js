@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useReducer } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { evaluateExpression, isTruthy } from './expression';
 import { QUESTION_TYPES, MULTI_VALUE_TYPES, NON_ANSWER_TYPES, emptyValue, isBlank } from './schema';
 
@@ -211,16 +211,24 @@ export default function useSurvey(definition, options = {}) {
 
   const allNodes = useMemo(() => pages.flatMap((p) => p.children), [pages]);
 
-  const [state, dispatch] = useReducer(
-    reducer,
-    null,
-    () => ({
-      answers: initialAnswers(allNodes, options.initialAnswers),
-      touched: {},
-      page: 0,
-      showErrors: false,
-    }),
-  );
+  const fresh = useCallback(() => ({
+    answers: initialAnswers(allNodes, options.initialAnswers),
+    touched: {},
+    page: 0,
+    showErrors: false,
+  }), [allNodes, options.initialAnswers]);
+
+  const [state, dispatch] = useReducer(reducer, null, fresh);
+
+  /* تصفير كامل عند بدء جولة تعبئة جديدة */
+  const round = options.round ?? 0;
+  const lastRound = useRef(round);
+  useEffect(() => {
+    if (lastRound.current !== round) {
+      lastRound.current = round;
+      dispatch({ type: 'reset', state: fresh() });
+    }
+  }, [round, fresh]);
 
   const exprErrors = useMemo(() => [], []);
   const onExprError = useCallback((err, src) => {
