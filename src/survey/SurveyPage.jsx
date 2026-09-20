@@ -31,7 +31,7 @@ function ReviewPanel({ data, onBack, onAgain }) {
   );
 }
 
-export default function SurveyPage({ definition, onSubmit }) {
+export default function SurveyPage({ definition, onSubmit, submitLabel, hideReview }) {
   /* إعادة التصفير تُنجَز بتغيير المفتاح، فتعود الحالة نظيفة تماماً */
   const [round, setRound] = useState(0);
   const survey = useSurvey(definition, { round });
@@ -52,7 +52,7 @@ export default function SurveyPage({ definition, onSubmit }) {
     const data = survey.collect();
     if (onSubmit) {
       Promise.resolve(onSubmit(data))
-        .then(() => setSubmitted(data))
+        .then(() => { if (!hideReview) setSubmitted(data); })
         .catch((err) => window.alert(err.message));
       return;
     }
@@ -95,7 +95,7 @@ export default function SurveyPage({ definition, onSubmit }) {
 
         {isLast ? (
           <button type="button" className="survey__navbtn survey__navbtn--primary" onClick={submit}>
-            إنهاء ومراجعة
+            {submitLabel || 'إنهاء ومراجعة'}
           </button>
         ) : (
           <button

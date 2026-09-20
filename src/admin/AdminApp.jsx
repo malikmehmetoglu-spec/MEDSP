@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as store from '../projects/store';
 import SurveyBuilder from './SurveyBuilder';
 import ResponsesTable from './ResponsesTable';
+import SharePanel from './SharePanel';
 import ProjectReport from '../projects/ProjectReport';
 import SurveyPage from '../survey/SurveyPage';
 
@@ -15,6 +16,7 @@ import SurveyPage from '../survey/SurveyPage';
 
 const TABS = [
   { id: 'build', label: 'بناء الاستبيان' },
+  { id: 'share', label: 'المشاركة' },
   { id: 'results', label: 'النتائج' },
   { id: 'report', label: 'التقرير' },
   { id: 'preview', label: 'معاينة التعبئة' },
@@ -260,6 +262,18 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged }) {
                 </button>
               </div>
             </>
+          )}
+
+          {tab === 'share' && (
+            <SharePanel
+              survey={surveys.find((s) => s.id === activeSurvey)}
+              onUpdate={async (cfg) => {
+                await store.openSurveyLink(activeSurvey, cfg);
+                await load();
+                setNotice('حُدّثت إعدادات المشاركة');
+                setTimeout(() => setNotice(''), 2000);
+              }}
+            />
           )}
 
           {tab === 'results' && draft && (

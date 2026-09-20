@@ -9,6 +9,7 @@ import { REPORT_VIEWS } from './data/reportViews';
 import useTheme from './hooks/useTheme';
 import ProjectsTab from './projects/ProjectsTab';
 import AdminApp from './admin/AdminApp';
+import FillPage from './projects/FillPage';
 
 const PROJECTS_TAB = '__projects__';
 
@@ -78,6 +79,18 @@ export default function App() {
 
   const loading = base.status === 'loading' || (!report && error !== activeId);
   const failed = base.status === 'error' || error === activeId;
+
+  /* رابط تعبئة عام: #/s/<id> — صفحة مستقلة بلا تبويبات ولا بيانات إدارية */
+  const fillMatch = hash.match(/^#\/s\/([\w-]+)/);
+  if (fillMatch) {
+    return (
+      <div className="layout">
+        <Masthead theme={theme} onToggleTheme={toggleTheme} />
+        <main><FillPage surveyId={fillMatch[1]} /></main>
+        <Footer />
+      </div>
+    );
+  }
 
   /* مساحة العمل الإدارية على مسار منفصل */
   if (hash.startsWith('#/admin')) {

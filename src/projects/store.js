@@ -139,6 +139,8 @@ export async function createSurvey(projectId, input = {}) {
     title: input.title?.trim() || 'استبيان جديد',
     description: input.description?.trim() || '',
     open: false,
+    password: '',
+    closesAt: '',
     pages: input.pages || [
       { name: 'main', title: 'القسم الأول', children: [] },
     ],
@@ -165,6 +167,48 @@ export async function deleteSurvey(id) {
   data.responses = data.responses.filter((r) => r.surveyId !== id);
   write(data);
   return settle(true);
+}
+
+/*
+  فتح استبيان للتعبئة عبر رابط عام.
+
+  ملاحظة أمنية مهمة: كلمة المرور هنا تُخزَّن كنص صريح وتُتحقَّق في
+  المتصفح — فهي حاجز تنظيمي يمنع التعبئة العرضية، وليست حماية
+  تشفيرية. من يفتح أدوات المطوّر يقرأها. عند الانتقال إلى الخادم
+  يجب أن يتحول التحقق إلى الخادم مع تخزين البصمة لا النص.
+*/
+export async function openSurveyLink(id, { open, password = '', closesAt = '' }) {
+  return updateSurvey(id, { open, password, closesAt });
+}
+
+/* جلب استبيان للتعبئة العامة — بلا إجابات ولا بيانات إدارية */
+export async function getPublicSurvey(id) {
+  const data = read();
+  const survey = data.surveys.find((s) => s.id === id);
+  if (!survey) return { status: 'missing' };
+  if (!survey.open) return { status: 'closed' };
+  if (survey.closesAt && new Date(survey.closesAt) < new Date()) {
+    return { status: 'expired' };
+  }
+  const project = data.projects.find((p) => p.id === survey.projectId);
+  return {
+    status: 'ok',
+    needsPassword: Boolean(survey.password),
+    survey: {
+      id: survey.id,
+      title: survey.title,
+      description: survey.description,
+      pages: survey.pages,
+    },
+    projectName: project?.name || '',
+  };
+}
+
+export async function verifySurveyPassword(id, attempt) {
+  const data = read();
+  const survey = data.surveys.find((s) => s.id === id);
+  if (!survey) return false;
+  return survey.password === attempt;
 }
 
 /* ---------- الإجابات ---------- */
