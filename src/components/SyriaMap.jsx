@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
   الطبقات: خلفية الدولة، المسطحات المائية، حدود المحافظات وأسماؤها،
   ثم النواحي وحدودها وأسماؤها تظهر تدريجياً عند التكبير.
-  فوقها نقاط الحرائق بحجم يتناسب مع عددها في كل موقع.
+  فوقها نقاط بحجم يتناسب مع عدد السجلات في كل موقع.
 */
 
 const PAD = 16;
@@ -42,7 +42,8 @@ function useBounds(basemap) {
   }, [basemap]);
 }
 
-export default function SyriaMap({ basemap, locations }) {
+/* noun: ما تمثّله النقاط، بصيغة الجمع المعرّفة (البلاغات، الاستمارات…) */
+export default function SyriaMap({ basemap, locations, noun = 'البلاغات' }) {
   const wrapRef = useRef(null);
   const [size, setSize] = useState({ width: 900, height: 560 });
   const [view, setView] = useState({ zoom: 1, x: 0, y: 0 });
@@ -246,7 +247,7 @@ export default function SyriaMap({ basemap, locations }) {
           }}
           className={drag.current ? 'map__svg map__svg--grabbing' : 'map__svg'}
           role="img"
-          aria-label="خريطة توزّع الحرائق"
+          aria-label={`خريطة توزّع ${noun}`}
         >
           <g transform={`translate(${view.x} ${view.y}) scale(${zoom})`}>
             {basemap.country.map((f, i) => (
@@ -352,7 +353,7 @@ export default function SyriaMap({ basemap, locations }) {
       </div>
 
       <p className="map__legend">
-        حجم الدائرة يعكس عدد الحرائق في الموقع. كبّر لعرض حدود النواحي وأسمائها.
+        حجم الدائرة يعكس عدد {noun} في الموقع. كبّر لعرض حدود النواحي وأسمائها.
       </p>
     </div>
   );

@@ -19,7 +19,7 @@ function Meter({ share, tone }) {
   );
 }
 
-function Stat({ icon, label, value, unit, note, share, tone }) {
+export function Stat({ icon, label, value, unit, note, share, tone }) {
   return (
     <article className="stat">
       <span className="stat__head">

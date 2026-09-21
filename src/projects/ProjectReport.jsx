@@ -1,241 +1,258 @@
 import { useMemo, useState } from 'react';
 import { buildReport } from './buildReport';
+import { Panel, Stat, Toll } from '../components/ReportShell';
+import BarChart from '../components/BarChart';
 import Donut from '../components/Donut';
 import SyriaMap from '../components/SyriaMap';
+import Figure from '../components/Figure';
+import Icon from '../components/Icon';
+
+/*
+  تقرير المشروع — مبني بمكوّنات تقارير المنصة نفسها (hero، panels،
+  Stat، Panel، BarChart، Donut، SyriaMap) فيطابقها شكلاً وسلوكاً.
+
+  التخطيط يُشتق من أنواع الأسئلة:
+    البطاقة الرئيسية  ← إجمالي السجلات المعتمدة
+    البطاقات الجانبية ← أول ثلاثة أسئلة رقمية
+    اختيار واحد      ← رسم حلقي (ثلث العرض)
+    اختيار متعدد     ← أشرطة (ثلثا العرض)
+    مقياس            ← أشرطة مرتبة بالدرجة
+    محافظة/ناحية     ← خريطة بعرض كامل + ترتيب المحافظات
+    مجموعة متكررة    ← شريط أرقام بعرض كامل
+*/
 
 const fmt = (n) => Number(n).toLocaleString('en-US');
+const TONES = ['teal', 'forest', 'gold'];
+const dmy = (iso) => new Date(iso).toLocaleDateString('en-GB');
 
-/* ---------------- كتل العرض ---------------- */
-
-function StatBlock({ node, stats }) {
-  return (
-    <div className="stat">
-      <span className="stat__label">{node.label}</span>
-      <strong className="stat__number">{fmt(stats.sum)}</strong>
-      <span className="stat__unit">{node.unit || ''}</span>
-      <p className="stat__note">
-        المتوسط {fmt(stats.avg)} · الأدنى {fmt(stats.min)} · الأعلى {fmt(stats.max)}
-      </p>
-    </div>
-  );
-}
-
-function BarsBlock({ node, dist }) {
-  const max = Math.max(...dist.map((d) => d.count), 1);
-  return (
-    <section className="panel">
-      <div className="panel__head"><h3>{node.label}</h3></div>
-      <div className="bars">
-        {dist.map((d, i) => (
-          <div className="bars__row" key={d.value}>
-            <span className="bars__rank">{i + 1}</span>
-            <span className="bars__label">{d.label}</span>
-            <span className="bars__track">
-              <span className="bars__fill" style={{ width: `${(d.count / max) * 100}%` }} />
-            </span>
-            <span className="bars__value">
-              {fmt(d.count)}<small>{d.pct}%</small>
-            </span>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function DonutBlock({ node, dist }) {
-  return (
-    <section className="panel">
-      <div className="panel__head"><h3>{node.label}</h3></div>
-      <Donut data={dist.map((d) => ({ label: d.label, value: d.count }))} tone="teal" />
-    </section>
-  );
-}
-
-function ScaleBlock({ node, stats, dist }) {
-  const ordered = [...dist].sort((a, b) => Number(a.value) - Number(b.value));
-  const max = Math.max(...ordered.map((d) => d.count), 1);
-  return (
-    <section className="panel">
-      <div className="panel__head">
-        <h3>{node.label}</h3>
-        <span className="panel__note">المتوسط {fmt(stats.avg)}</span>
-      </div>
-      <div className="scale">
-        {ordered.map((d) => (
-          <div className="scale__col" key={d.value}>
-            <span className="scale__barwrap">
-              <span className="scale__bar" style={{ height: `${(d.count / max) * 100}%` }} />
-            </span>
-            <span className="scale__num">{fmt(d.count)}</span>
-            <span className="scale__tick">{d.value}</span>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* مركز تقريبي لمضلّع — لوضع نقطة الناحية على الخريطة */
 function centroid(geometry) {
   const polys = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
-  let sx = 0;
-  let sy = 0;
-  let n = 0;
-  for (const poly of polys) {
-    for (const [x, y] of poly[0]) { sx += x; sy += y; n += 1; }
-  }
+  let sx = 0; let sy = 0; let n = 0;
+  for (const poly of polys) for (const [x, y] of poly[0]) { sx += x; sy += y; n += 1; }
   return n ? [sx / n, sy / n] : null;
 }
 
-function MapBlock({ node, geo, basemap }) {
-  const locations = useMemo(() => {
-    if (!basemap) return [];
-    const subs = new Map(basemap.subdistricts.map((s) => [s.code, s]));
-    const govs = new Map(basemap.governorates.map((g) => [g.code, g]));
-
-    return geo.bySubdistrict
+function useGeo(block, basemap) {
+  return useMemo(() => {
+    if (!basemap) return { locations: [], byGov: [] };
+    const subs = new Map(basemap.subdistricts.map((x) => [x.code, x]));
+    const names = new Map(basemap.governorates.map((g) => [g.code, g.name]));
+    const locations = block.geo.bySubdistrict
       .map((d) => {
-        const area = subs.get(d.code) || govs.get(d.code);
-        if (!area) return null;
-        const c = centroid(area.g);
-        if (!c) return null;
-        return { lon: c[0], lat: c[1], name: area.name, count: d.count };
+        const area = subs.get(d.code);
+        const c = area && centroid(area.g);
+        return c ? { lon: c[0], lat: c[1], name: area.name, count: d.count } : null;
       })
       .filter(Boolean)
       .sort((a, b) => b.count - a.count);
-  }, [basemap, geo]);
+    const byGov = block.geo.byGovernorate
+      .map((d) => ({ label: names.get(d.code) || d.code, value: d.count }))
+      .sort((a, b) => b.value - a.value);
+    return { locations, byGov };
+  }, [block, basemap]);
+}
 
-  if (!basemap || locations.length === 0) return null;
-
+function MapPanel({ block, basemap }) {
+  const { locations } = useGeo(block, basemap);
+  if (!basemap) return null;
   return (
-    <section className="panel">
-      <div className="panel__head">
-        <h3>{node.label}</h3>
-        <span className="panel__note">{fmt(geo.total)} سجلاً</span>
-      </div>
-      <SyriaMap basemap={basemap} locations={locations} />
-      <ul className="donut__key">
-        {geo.byGovernorate
-          .slice()
-          .sort((a, b) => b.count - a.count)
-          .slice(0, 8)
-          .map((d) => {
-            const name = basemap.governorates.find((g) => g.code === d.code)?.name || d.code;
-            return (
-              <li key={d.code}>
-                <span className="donut__swatch" style={{ background: 'var(--mountain-teal)' }} />
-                <span className="donut__name">{name}</span>
-                <span className="donut__num" dir="ltr">{fmt(d.count)}</span>
-              </li>
-            );
-          })}
-      </ul>
-    </section>
+    <Panel span="full" title={block.node.label}
+      note={`${fmt(locations.length)} ناحية، مطابقة بحدودها الرسمية`}>
+      <SyriaMap basemap={basemap} locations={locations} noun="الاستمارات" />
+    </Panel>
   );
 }
 
-function TimelineBlock({ node, series }) {
-  const max = Math.max(...series.map((d) => d.count), 1);
+function GovPanel({ block, basemap, span }) {
+  const { byGov } = useGeo(block, basemap);
+  if (!basemap) return null;
   return (
-    <section className="panel">
-      <div className="panel__head"><h3>{node.label}</h3></div>
-      <div className="timeline">
-        {series.map((d) => (
-          <div className="timeline__col" key={d.date} title={`${d.date}: ${d.count}`}>
-            <span className="timeline__bar" style={{ height: `${(d.count / max) * 100}%` }} />
-            <span className="timeline__tick">{d.date.slice(5)}</span>
-          </div>
-        ))}
-      </div>
-    </section>
+    <Panel span={span} title="التوزّع حسب المحافظة" note="مرتّبة تنازلياً">
+      <BarChart data={byGov} showShare />
+    </Panel>
   );
 }
 
-function RepeatBlock({ node, rowCount, sums }) {
-  return (
-    <section className="panel">
-      <div className="panel__head"><h3>{node.label}</h3></div>
-      <div className="tolls">
-        <div className="toll">
-          <span className="toll__label">إجمالي المدخلات</span>
-          <strong className="toll__value">{fmt(rowCount)}</strong>
-        </div>
-        {sums.map((s) => (
-          <div className="toll" key={s.node.name}>
-            <span className="toll__label">{s.node.label}</span>
-            <strong className="toll__value">{fmt(s.total)}</strong>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
+/*
+  رصّ اللوحات في شبكة ثلاثية بلا فجوات.
+  كل لوحة إما ثلث (small) أو ثلثان (wide) أو صف كامل (full).
+  نقرن كل wide بـ small في صف واحد، ونجمع الصغيرة ثلاثاً ثلاثاً.
+  الصغيرة المتبقية وحدها تتمدد لصف كامل، واثنتان تصيران ثلثاً وثلثين.
+*/
+function packPanels(items) {
+  const full = items.filter((i) => i.span === 'full');
+  const wide = items.filter((i) => i.span === 'wide');
+  const small = items.filter((i) => !i.span);
+  const out = [...full];
+
+  for (const w of wide) {
+    out.push(w);
+    const partner = small.shift();
+    if (partner) out.push(partner);
+    else out[out.length - 1] = { ...w, span: 'full' };
+  }
+
+  while (small.length >= 3) out.push(...small.splice(0, 3));
+  if (small.length === 2) out.push({ ...small[0], span: 'wide' }, small[1]);
+  if (small.length === 1) out.push({ ...small[0], span: 'full' });
+
+  return out.map((i) => i.render(i.span));
 }
 
-/* ---------------- التقرير ---------------- */
+function panelsFor(report, numeric, basemap, nextTone) {
+  const items = [];
+
+  for (const b of report.blocks) {
+    const key = b.node.name;
+    if (b.kind === 'donut') {
+      const tone = nextTone();
+      items.push({ key, render: (span) => (
+        <Panel key={key} span={span} title={b.node.label}
+          note={`${fmt(b.dist.reduce((a, d) => a + d.count, 0))} إجابة`}>
+          <Donut data={b.dist.map((d) => ({ label: d.label, value: d.count }))} tone={tone} />
+        </Panel>
+      ) });
+    } else if (b.kind === 'bars') {
+      const tone = nextTone();
+      items.push({ key, span: 'wide', render: (span) => (
+        <Panel key={key} span={span} title={b.node.label}
+          note={b.node.type === 'rank' ? 'عدد مرات الاختيار' : 'يمكن اختيار أكثر من إجابة'}>
+          <BarChart data={b.dist.map((d) => ({ label: d.label, value: d.count }))} tone={tone} showShare />
+        </Panel>
+      ) });
+    } else if (b.kind === 'scale') {
+      const tone = nextTone();
+      const ordered = [...b.dist].sort((x, y) => Number(x.value) - Number(y.value));
+      items.push({ key, render: (span) => (
+        <Panel key={key} span={span} title={b.node.label}
+          note={`المتوسط ${fmt(b.stats.avg)} من ${b.node.max ?? 5}`}>
+          <BarChart data={ordered.map((d) => ({ label: `الدرجة ${d.value}`, value: d.count }))}
+            tone={tone} showShare />
+        </Panel>
+      ) });
+    } else if (b.kind === 'repeat') {
+      items.push({ key, span: 'full', render: () => (
+        <Panel key={key} span="full" title={b.node.label} note="مجموع ما سُجّل في كل الاستمارات">
+          <Toll rows={[
+            { icon: 't_repeat', label: 'إجمالي المسجّل', value: b.rowCount },
+            ...b.sums.map((s) => ({ icon: `t_${s.node.type}`, label: s.node.label, value: s.total })),
+          ]} />
+        </Panel>
+      ) });
+    } else if (b.kind === 'map') {
+      items.push({ key: `${key}-map`, span: 'full', render: () => (
+        <MapPanel key={`${key}-map`} block={b} basemap={basemap} />
+      ) });
+      items.push({ key: `${key}-gov`, span: 'wide', render: (span) => (
+        <GovPanel key={`${key}-gov`} span={span} block={b} basemap={basemap} />
+      ) });
+    }
+  }
+
+  if (numeric.length > 3) {
+    items.push({ key: 'more-numbers', span: 'full', render: () => (
+      <Panel key="more-numbers" span="full" title="مؤشرات رقمية أخرى" note="المجموع عبر كل الاستمارات">
+        <Toll rows={numeric.slice(3).map((b) => ({
+          icon: `t_${b.node.type}`, label: b.node.label, value: b.stats.sum,
+        }))} />
+      </Panel>
+    ) });
+  }
+
+  return items;
+}
 
 export default function ProjectReport({ project, basemap }) {
   const [surveyId, setSurveyId] = useState(project.surveys[0]?.id ?? null);
-
   const survey = project.surveys.find((s) => s.id === surveyId) || project.surveys[0];
+
   const responses = useMemo(
     () => project.responses.filter((r) => r.surveyId === survey?.id),
     [project.responses, survey],
   );
-
   const report = useMemo(
     () => (survey ? buildReport(survey, responses) : null),
     [survey, responses],
   );
 
-  if (!survey) {
-    return <p className="results__empty">لا يوجد استبيان في هذا المشروع.</p>;
-  }
+  if (!survey) return <div className="pending"><h3>لا يوجد استبيان في هذا المشروع</h3></div>;
+
+  const numeric = report.blocks.filter((b) => b.kind === 'stat');
+  const side = numeric.slice(0, 3);
+  const geo = report.blocks.find((b) => b.kind === 'map');
+  const govCount = geo ? geo.geo.byGovernorate.length : 0;
+  const dated = responses.map((r) => r.submittedAt).filter(Boolean).sort();
+
+  let tone = 0;
+  const nextTone = () => TONES[tone++ % TONES.length];
 
   return (
-    <div className="preport">
+    <>
       {project.surveys.length > 1 && (
         <div className="preport__tabs">
           {project.surveys.map((s) => (
-            <button
-              key={s.id}
-              type="button"
+            <button key={s.id} type="button"
               className={`preport__tab${s.id === survey.id ? ' is-on' : ''}`}
-              onClick={() => setSurveyId(s.id)}
-            >
+              onClick={() => setSurveyId(s.id)}>
               {s.title}
             </button>
           ))}
         </div>
       )}
 
-      <div className="stats">
-        <div className="stat stat--hero">
-          <span className="stat__label">إجمالي السجلات المعتمدة</span>
-          <strong className="stat__number">{fmt(report.total)}</strong>
+      {report.total === 0 ? (
+        <div className="pending">
+          <h3>لا توجد إجابات معتمدة بعد</h3>
+          <p>يظهر التقرير حين تُعتمد أول إجابة.</p>
         </div>
-        {report.blocks.filter((b) => b.kind === 'stat').map((b) => (
-          <StatBlock key={b.node.name} {...b} />
-        ))}
-      </div>
+      ) : (
+        <>
+          <section className="hero">
+            <div className="hero__primary">
+              <span className="hero__eyebrow">
+                <Icon name="t_textarea" />
+                {survey.title}
+              </span>
+              <Figure value={report.total} className="hero__figure" />
+              <span className="hero__sub">
+                استمارة معتمدة
+                {govCount > 0 && ` من ${fmt(govCount)} محافظة`}
+                {dated.length > 1 && (
+                  <>
+                    ، جُمعت بين <span className="nowrap" dir="ltr">{dmy(dated[0])}</span>
+                    {' '}و<span className="nowrap" dir="ltr">{dmy(dated[dated.length - 1])}</span>
+                  </>
+                )}
+              </span>
+            </div>
 
-      {report.blocks.map((b) => {
-        switch (b.kind) {
-          case 'donut': return <DonutBlock key={b.node.name} {...b} />;
-          case 'bars': return <BarsBlock key={b.node.name} {...b} />;
-          case 'scale': return <ScaleBlock key={b.node.name} {...b} />;
-          case 'map': return <MapBlock key={b.node.name} {...b} basemap={basemap} />;
-          case 'timeline': return <TimelineBlock key={b.node.name} {...b} />;
-          case 'repeat': return <RepeatBlock key={b.node.name} {...b} />;
-          default: return null;
-        }
-      })}
+            {side.length > 0 && (
+              <div className={`hero__side hero__side--${side.length}`}>
+                {side.map((b, i) => {
+                  const t = TONES[i % TONES.length];
+                  const share = b.stats.max ? Math.round((b.stats.avg / b.stats.max) * 100) : 0;
+                  return (
+                    <Stat
+                      key={b.node.name}
+                      icon={`t_${b.node.type}`}
+                      tone={t === 'gold' ? 'teal' : t}
+                      label={b.node.label}
+                      value={b.stats.sum}
+                      unit={b.node.unit || ''}
+                      share={share}
+                      note={`بمتوسط ${fmt(b.stats.avg)} لكل استمارة، وأعلى قيمة ${fmt(b.stats.max)}`}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </section>
 
-      {report.blocks.length === 0 && (
-        <p className="results__empty">
-          لا توجد بيانات كافية لتوليد رسوم. أضف أسئلة رقمية أو اختيارية.
-        </p>
+          <div className="panels">
+            {packPanels(panelsFor(report, numeric, basemap, nextTone))}
+          </div>
+        </>
       )}
-    </div>
+    </>
   );
 }
