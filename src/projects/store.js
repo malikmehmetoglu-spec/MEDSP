@@ -1,56 +1,122 @@
 /*
-  طبقة الوصول للبيانات.
+  طبقة الوصول للبيانات — Supabase.
 
-  كل قراءة وكتابة في النظام تمر من هنا. التخزين الحالي محلي في
-  المتصفح (localStorage) لمرحلة التجربة.
+  الواجهة (أسماء الدوال وأشكال الكائنات) مطابقة للنسخة المحلية السابقة،
+  فبقية النظام لم يتغير. الحقول تُحوَّل هنا من snake_case في القاعدة
+  إلى camelCase في الواجهة.
 
-  عند الانتقال إلى Supabase أو الخادم الداخلي: تُستبدل الدوال في هذا
-  الملف وحده بنداءات شبكة، وبقية النظام لا يتغير. لذلك كل الدوال
-  غير متزامنة (async) من الآن، رغم أن التخزين المحلي متزامن —
-  حتى لا تحتاج الواجهة لأي تعديل لاحقاً.
-
-  تنبيه: التخزين المحلي يعني أن البيانات على جهاز واحد فقط،
-  ولا تُشارك بين المستخدمين، وتُفقد بمسح بيانات المتصفح.
-  هذا مقبول للتجربة فقط.
+  عند الانتقال إلى الخادم الداخلي: إن كان PostgreSQL مع PostgREST
+  يبقى هذا الملف كما هو ويتغير عنوان الاتصال فقط.
 */
 
-const KEY = 'medsp-projects-v1';
+import { supabase } from './supabase';
 
 /* ---------- أدوات ---------- */
 
-export const uid = (prefix = 'id') =>
-  `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-
-const now = () => new Date().toISOString();
-
-function read() {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return { projects: [], surveys: [], responses: [] };
-    const data = JSON.parse(raw);
-    return {
-      projects: data.projects || [],
-      surveys: data.surveys || [],
-      responses: data.responses || [],
-    };
-  } catch {
-    return { projects: [], surveys: [], responses: [] };
-  }
+function fail(error, fallback = 'حدث خطأ في الاتصال بقاعدة البيانات') {
+  if (!error) return;
+  /* رسائل الخادم العربية (من raise exception) تُمرَّر كما هي */
+  const msg = error.message && /[\u0600-\u06FF]/.test(error.message) ? error.message : fallback;
+  const err = new Error(msg);
+  err.cause = error;
+  throw err;
 }
 
-function write(data) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(data));
-    return true;
-  } catch (err) {
-    /* الحصة ممتلئة — غالباً بسبب الصور المخزّنة كـ dataURL */
-    console.error('تعذّر الحفظ المحلي:', err);
-    return false;
-  }
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const isValidId = (id) => UUID.test(String(id || ''));
+
+const mapProject = (r) => r && ({
+  id: r.id,
+  name: r.name,
+  description: r.description,
+  owner: r.owner,
+  status: r.status,
+  published: r.published,
+  createdAt: r.created_at,
+  updatedAt: r.updated_at,
+});
+
+const mapSurvey = (r) => r && ({
+  id: r.id,
+  projectId: r.project_id,
+  title: r.title,
+  description: r.description,
+  pages: r.pages?.length ? r.pages : [{ name: 'main', title: 'القسم الأول', children: [] }],
+  open: r.is_open,
+  hasPassword: Boolean(r.has_password),
+  closesAt: r.closes_at || '',
+  createdAt: r.created_at,
+  updatedAt: r.updated_at,
+});
+
+const mapResponse = (r) => r && ({
+  id: r.id,
+  surveyId: r.survey_id,
+  answers: r.answers,
+  status: r.status,
+  source: r.source,
+  submittedAt: r.submitted_at,
+  reviewedBy: r.reviewed_by,
+  reviewedAt: r.reviewed_at,
+  reviewNote: r.review_note,
+  edited: r.edited,
+  history: r.history || [],
+});
+
+/* بصمة كلمة المرور لا تُقرأ أبداً للواجهة — فقط هل هي موجودة */
+const SURVEY_COLS = 'id, project_id, title, description, pages, is_open, closes_at, created_at, updated_at, has_password';
+
+const withFlag = (row) => row;
+
+/* ---------- الجلسة والصلاحية ---------- */
+
+export async function getSession() {
+  const { data } = await supabase.auth.getSession();
+  return data.session;
 }
 
-/* محاكاة تأخّر الشبكة بسيطة حتى تظهر حالات التحميل في الواجهة */
-const settle = (value) => Promise.resolve(value);
+export async function signIn(email, password) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    throw new Error(
+      error.message?.includes('Invalid login')
+        ? 'البريد أو كلمة المرور غير صحيحة'
+        : error.message?.includes('Email not confirmed')
+          ? 'لم يُؤكَّد البريد بعد. افتح رسالة التأكيد في بريدك أولاً.'
+          : 'تعذّر تسجيل الدخول',
+    );
+  }
+  return data.session;
+}
+
+export async function signUp(email, password) {
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) {
+    throw new Error(
+      error.message?.includes('already registered')
+        ? 'هذا البريد مسجّل مسبقاً — سجّل الدخول بدلاً من ذلك'
+        : error.message?.includes('Password')
+          ? 'كلمة المرور ضعيفة — استخدم 8 أحرف على الأقل'
+          : 'تعذّر إنشاء الحساب',
+    );
+  }
+  return data;
+}
+
+export async function signOut() {
+  await supabase.auth.signOut();
+}
+
+export async function checkAdmin() {
+  const { data, error } = await supabase.rpc('is_admin');
+  if (error) return false;
+  return Boolean(data);
+}
+
+export function onAuthChange(cb) {
+  const { data } = supabase.auth.onAuthStateChange((_event, session) => cb(session));
+  return () => data.subscription.unsubscribe();
+}
 
 /* ---------- المشاريع ---------- */
 
@@ -62,153 +128,122 @@ export const PROJECT_STATUS = {
 };
 
 export async function listProjects() {
-  return settle(read().projects.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+  const { data, error } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
+  fail(error);
+  return data.map(mapProject);
 }
 
 export async function getProject(id) {
-  return settle(read().projects.find((p) => p.id === id) || null);
+  const { data, error } = await supabase.from('projects').select('*').eq('id', id).maybeSingle();
+  fail(error);
+  return mapProject(data);
 }
 
 export async function createProject(input) {
-  const data = read();
-  const project = {
-    id: uid('prj'),
+  const { data, error } = await supabase.from('projects').insert({
     name: input.name?.trim() || 'مشروع بلا اسم',
     description: input.description?.trim() || '',
     owner: input.owner?.trim() || '',
-    status: 'draft',
-    published: false,
-    createdAt: now(),
-    updatedAt: now(),
-  };
-  data.projects.push(project);
-  write(data);
-  return settle(project);
+  }).select().single();
+  fail(error);
+  return mapProject(data);
 }
 
 export async function updateProject(id, patch) {
-  const data = read();
-  const i = data.projects.findIndex((p) => p.id === id);
-  if (i === -1) throw new Error('المشروع غير موجود');
-  data.projects[i] = { ...data.projects[i], ...patch, updatedAt: now() };
-  write(data);
-  return settle(data.projects[i]);
+  const row = {};
+  if ('name' in patch) row.name = patch.name;
+  if ('description' in patch) row.description = patch.description;
+  if ('owner' in patch) row.owner = patch.owner;
+  if ('status' in patch) row.status = patch.status;
+  if ('published' in patch) row.published = patch.published;
+  const { data, error } = await supabase.from('projects').update(row).eq('id', id).select().single();
+  fail(error);
+  return mapProject(data);
 }
 
 export async function deleteProject(id) {
-  const data = read();
-  const surveyIds = data.surveys.filter((s) => s.projectId === id).map((s) => s.id);
-  data.projects = data.projects.filter((p) => p.id !== id);
-  data.surveys = data.surveys.filter((s) => s.projectId !== id);
-  data.responses = data.responses.filter((r) => !surveyIds.includes(r.surveyId));
-  write(data);
-  return settle(true);
+  const { error } = await supabase.from('projects').delete().eq('id', id);
+  fail(error);
+  return true;
 }
 
-/* النشر يتطلب وجود بيانات معتمدة — لا يُنشر مشروع فارغ */
 export async function publishProject(id, publish) {
-  if (publish) {
-    const data = read();
-    const surveyIds = data.surveys.filter((s) => s.projectId === id).map((s) => s.id);
-    const approved = data.responses.filter(
-      (r) => surveyIds.includes(r.surveyId) && r.status === 'approved',
-    );
-    if (approved.length === 0) {
-      throw new Error('لا يمكن نشر مشروع بلا أي إجابة معتمدة');
-    }
-  }
   return updateProject(id, { published: Boolean(publish), status: publish ? 'published' : 'collecting' });
 }
 
 /* ---------- الاستبيانات ---------- */
 
 export async function listSurveys(projectId) {
-  const all = read().surveys;
-  return settle(projectId ? all.filter((s) => s.projectId === projectId) : all);
+  let q = supabase.from('surveys').select(SURVEY_COLS).order('created_at');
+  if (projectId) q = q.eq('project_id', projectId);
+  const { data, error } = await q;
+  fail(error);
+  return data.map((r) => mapSurvey(withFlag(r)));
 }
 
 export async function getSurvey(id) {
-  return settle(read().surveys.find((s) => s.id === id) || null);
+  const { data, error } = await supabase.from('surveys').select(SURVEY_COLS).eq('id', id).maybeSingle();
+  fail(error);
+  return mapSurvey(withFlag(data));
 }
 
 export async function createSurvey(projectId, input = {}) {
-  const data = read();
-  const survey = {
-    id: uid('svy'),
-    projectId,
+  const { data, error } = await supabase.from('surveys').insert({
+    project_id: projectId,
     title: input.title?.trim() || 'استبيان جديد',
     description: input.description?.trim() || '',
-    open: false,
-    password: '',
-    closesAt: '',
-    pages: input.pages || [
-      { name: 'main', title: 'القسم الأول', children: [] },
-    ],
-    createdAt: now(),
-    updatedAt: now(),
-  };
-  data.surveys.push(survey);
-  write(data);
-  return settle(survey);
+    pages: input.pages || [{ name: 'main', title: 'القسم الأول', children: [] }],
+  }).select(SURVEY_COLS).single();
+  fail(error);
+  return mapSurvey(withFlag(data));
 }
 
 export async function updateSurvey(id, patch) {
-  const data = read();
-  const i = data.surveys.findIndex((s) => s.id === id);
-  if (i === -1) throw new Error('الاستبيان غير موجود');
-  data.surveys[i] = { ...data.surveys[i], ...patch, updatedAt: now() };
-  write(data);
-  return settle(data.surveys[i]);
+  const row = {};
+  if ('title' in patch) row.title = patch.title;
+  if ('description' in patch) row.description = patch.description;
+  if ('pages' in patch) row.pages = patch.pages;
+  if ('open' in patch) row.is_open = patch.open;
+  if ('closesAt' in patch) row.closes_at = patch.closesAt || null;
+  const { data, error } = await supabase.from('surveys').update(row).eq('id', id).select(SURVEY_COLS).single();
+  fail(error);
+  return mapSurvey(withFlag(data));
 }
 
 export async function deleteSurvey(id) {
-  const data = read();
-  data.surveys = data.surveys.filter((s) => s.id !== id);
-  data.responses = data.responses.filter((r) => r.surveyId !== id);
-  write(data);
-  return settle(true);
+  const { error } = await supabase.from('surveys').delete().eq('id', id);
+  fail(error);
+  return true;
 }
 
 /*
-  فتح استبيان للتعبئة عبر رابط عام.
-
-  ملاحظة أمنية مهمة: كلمة المرور هنا تُخزَّن كنص صريح وتُتحقَّق في
-  المتصفح — فهي حاجز تنظيمي يمنع التعبئة العرضية، وليست حماية
-  تشفيرية. من يفتح أدوات المطوّر يقرأها. عند الانتقال إلى الخادم
-  يجب أن يتحول التحقق إلى الخادم مع تخزين البصمة لا النص.
+  إعدادات الرابط العام. كلمة المرور تُرسل للخادم الذي يخزّن بصمتها
+  (bcrypt) — لا تُحفظ نصاً ولا تُقرأ مرة أخرى.
+  password: undefined = لا تغيير، '' = إزالة، نص = تعيين
 */
-export async function openSurveyLink(id, { open, password = '', closesAt = '' }) {
-  return updateSurvey(id, { open, password, closesAt });
-}
-
-/* جلب استبيان للتعبئة العامة — بلا إجابات ولا بيانات إدارية */
-export async function getPublicSurvey(id) {
-  const data = read();
-  const survey = data.surveys.find((s) => s.id === id);
-  if (!survey) return { status: 'missing' };
-  if (!survey.open) return { status: 'closed' };
-  if (survey.closesAt && new Date(survey.closesAt) < new Date()) {
-    return { status: 'expired' };
+export async function openSurveyLink(id, { open, closesAt, password }) {
+  await updateSurvey(id, { open, closesAt });
+  if (password !== undefined) {
+    const { error } = await supabase.rpc('set_survey_password', { p_survey: id, p_password: password });
+    fail(error);
   }
-  const project = data.projects.find((p) => p.id === survey.projectId);
-  return {
-    status: 'ok',
-    needsPassword: Boolean(survey.password),
-    survey: {
-      id: survey.id,
-      title: survey.title,
-      description: survey.description,
-      pages: survey.pages,
-    },
-    projectName: project?.name || '',
-  };
+  return getSurvey(id);
 }
 
-export async function verifySurveyPassword(id, attempt) {
-  const data = read();
-  const survey = data.surveys.find((s) => s.id === id);
-  if (!survey) return false;
-  return survey.password === attempt;
+/* ---------- الوصول العام ---------- */
+
+export async function getPublicSurvey(id) {
+  if (!isValidId(id)) return { status: 'missing' };
+  const { data, error } = await supabase.rpc('get_public_survey', { p_survey: id });
+  if (error) return { status: 'missing' };
+  return data;
+}
+
+/* يُرجع تعريف الاستبيان إن صحّت كلمة المرور، وإلا null */
+export async function unlockSurvey(id, password) {
+  const { data, error } = await supabase.rpc('unlock_survey', { p_survey: id, p_password: password });
+  if (error) return null;
+  return data;
 }
 
 /* ---------- الإجابات ---------- */
@@ -220,135 +255,78 @@ export const RESPONSE_STATUS = {
 };
 
 export async function listResponses({ surveyId, projectId, status } = {}) {
-  const data = read();
-  let rows = data.responses;
-
-  if (surveyId) rows = rows.filter((r) => r.surveyId === surveyId);
-  if (projectId) {
-    const ids = data.surveys.filter((s) => s.projectId === projectId).map((s) => s.id);
-    rows = rows.filter((r) => ids.includes(r.surveyId));
-  }
-  if (status) rows = rows.filter((r) => r.status === status);
-
-  return settle(rows.sort((a, b) => b.submittedAt.localeCompare(a.submittedAt)));
+  let q = supabase.from('responses').select('*, surveys!inner(project_id)')
+    .order('submitted_at', { ascending: false });
+  if (surveyId) q = q.eq('survey_id', surveyId);
+  if (projectId) q = q.eq('surveys.project_id', projectId);
+  if (status) q = q.eq('status', status);
+  const { data, error } = await q;
+  fail(error);
+  return data.map(mapResponse);
 }
 
 export async function createResponse(surveyId, answers, meta = {}) {
-  const data = read();
-  const response = {
-    id: uid('rsp'),
-    surveyId,
-    answers,
-    status: 'pending',
-    submittedAt: now(),
-    source: meta.source || 'public',
-    reviewedBy: null,
-    reviewedAt: null,
-    reviewNote: '',
-    edited: false,
-    history: [{ at: now(), action: 'submitted', by: meta.by || 'مجهول' }],
-  };
-  data.responses.push(response);
-  const ok = write(data);
-  if (!ok) throw new Error('تعذّر الحفظ — مساحة التخزين المحلي ممتلئة');
-  return settle(response);
+  const { data, error } = await supabase.rpc('submit_response', {
+    p_survey: surveyId,
+    p_answers: answers,
+    p_password: meta.password ?? null,
+    p_source: meta.source || 'link',
+  });
+  fail(error, 'تعذّر إرسال الإجابة');
+  return { id: data };
 }
 
-/*
-  تغيير حالة إجابة. كل تغيير يُسجَّل في history — مطلب أساسي
-  لمؤسسة رسمية: من اعتمد ماذا ومتى.
-*/
-export async function reviewResponse(id, status, { by = 'المشرف', note = '' } = {}) {
-  const data = read();
-  const i = data.responses.findIndex((r) => r.id === id);
-  if (i === -1) throw new Error('الإجابة غير موجودة');
-  data.responses[i] = {
-    ...data.responses[i],
-    status,
-    reviewedBy: by,
-    reviewedAt: now(),
-    reviewNote: note,
-    history: [...data.responses[i].history, { at: now(), action: status, by, note }],
-  };
-  write(data);
-  return settle(data.responses[i]);
+async function currentUserLabel() {
+  const { data } = await supabase.auth.getUser();
+  return data.user?.email || 'مشرف';
 }
 
-/* تعديل قيمة في إجابة — يُعلَّم أنها عُدّلت ويُسجَّل التغيير */
-export async function editResponseAnswer(id, field, value, by = 'المشرف') {
-  const data = read();
-  const i = data.responses.findIndex((r) => r.id === id);
-  if (i === -1) throw new Error('الإجابة غير موجودة');
-  const before = data.responses[i].answers[field];
-  data.responses[i] = {
-    ...data.responses[i],
-    answers: { ...data.responses[i].answers, [field]: value },
+export async function reviewResponse(id, status, { note = '' } = {}) {
+  const by = await currentUserLabel();
+  const { data: cur, error: e1 } = await supabase.from('responses').select('history').eq('id', id).single();
+  fail(e1);
+  const history = [...(cur.history || []), { at: new Date().toISOString(), action: status, by, note }];
+  const { data, error } = await supabase.from('responses').update({
+    status, reviewed_by: by, reviewed_at: new Date().toISOString(), review_note: note, history,
+  }).eq('id', id).select().single();
+  fail(error);
+  return mapResponse(data);
+}
+
+export async function editResponseAnswer(id, field, value) {
+  const by = await currentUserLabel();
+  const { data: cur, error: e1 } = await supabase.from('responses').select('answers, history').eq('id', id).single();
+  fail(e1);
+  const before = cur.answers?.[field];
+  const { data, error } = await supabase.from('responses').update({
+    answers: { ...cur.answers, [field]: value },
     edited: true,
-    history: [
-      ...data.responses[i].history,
-      { at: now(), action: 'edited', by, field, before, after: value },
-    ],
-  };
-  write(data);
-  return settle(data.responses[i]);
+    history: [...(cur.history || []), {
+      at: new Date().toISOString(), action: 'edited', by, field, before, after: value,
+    }],
+  }).eq('id', id).select().single();
+  fail(error);
+  return mapResponse(data);
 }
 
 export async function deleteResponse(id) {
-  const data = read();
-  data.responses = data.responses.filter((r) => r.id !== id);
-  write(data);
-  return settle(true);
+  const { error } = await supabase.from('responses').delete().eq('id', id);
+  fail(error);
+  return true;
 }
 
-export async function bulkReview(ids, status, by = 'المشرف') {
-  const data = read();
+export async function bulkReview(ids, status) {
   for (const id of ids) {
-    const i = data.responses.findIndex((r) => r.id === id);
-    if (i === -1) continue;
-    data.responses[i] = {
-      ...data.responses[i],
-      status,
-      reviewedBy: by,
-      reviewedAt: now(),
-      history: [...data.responses[i].history, { at: now(), action: status, by }],
-    };
+    // eslint-disable-next-line no-await-in-loop
+    await reviewResponse(id, status);
   }
-  write(data);
-  return settle(true);
+  return true;
 }
 
 /* ---------- العرض العام ---------- */
 
-/* المشاريع المنشورة فقط، مع إجاباتها المعتمدة فقط */
 export async function listPublishedProjects() {
-  const data = read();
-  const projects = data.projects.filter((p) => p.published);
-  return settle(projects.map((p) => {
-    const surveys = data.surveys.filter((s) => s.projectId === p.id);
-    const ids = surveys.map((s) => s.id);
-    const responses = data.responses.filter(
-      (r) => ids.includes(r.surveyId) && r.status === 'approved',
-    );
-    return { ...p, surveys, responses };
-  }));
-}
-
-/* ---------- أدوات إدارية ---------- */
-
-export async function exportAll() {
-  return settle(read());
-}
-
-export async function importAll(payload) {
-  write({
-    projects: payload.projects || [],
-    surveys: payload.surveys || [],
-    responses: payload.responses || [],
-  });
-  return settle(true);
-}
-
-export async function clearAll() {
-  write({ projects: [], surveys: [], responses: [] });
-  return settle(true);
+  const { data, error } = await supabase.rpc('list_published');
+  fail(error);
+  return data || [];
 }

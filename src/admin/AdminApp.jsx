@@ -137,10 +137,19 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged }) {
     store.listResponses({ surveyId: activeSurvey }).then(setResponses);
   }, [activeSurvey, surveys]);
 
-  const refreshResponses = async () => {
+  const refreshResponses = useCallback(async () => {
+    if (!activeSurvey) return;
     setResponses(await store.listResponses({ surveyId: activeSurvey }));
     onChanged?.();
-  };
+  }, [activeSurvey, onChanged]);
+
+  /*
+    الإجابات تصل من أجهزة الباحثين في أي وقت، فنعيد جلبها عند كل فتح
+    لتبويب النتائج أو التقرير — وإلا عرضت الشاشة صورة قديمة مضلّلة.
+  */
+  useEffect(() => {
+    if (tab === 'results' || tab === 'report') refreshResponses();
+  }, [tab, refreshResponses]);
 
   const addSurvey = async () => {
     const s = await store.createSurvey(projectId);
@@ -236,6 +245,11 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged }) {
                 )}
               </button>
             ))}
+            {(tab === 'results' || tab === 'report') && (
+              <button type="button" className="q-btn q-btn--sm pedit__refresh" onClick={refreshResponses}>
+                تحديث
+              </button>
+            )}
           </div>
 
           {tab === 'build' && draft && (

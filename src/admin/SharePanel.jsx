@@ -10,8 +10,9 @@ import Icon from '../components/Icon';
 
 export default function SharePanel({ survey, onUpdate }) {
   const [copied, setCopied] = useState(false);
-  const [pw, setPw] = useState(survey.password || '');
+  const [pw, setPw] = useState('');
   const [showPw, setShowPw] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const url = `${window.location.origin}${window.location.pathname}#/s/${survey.id}`;
 
@@ -27,9 +28,20 @@ export default function SharePanel({ survey, onUpdate }) {
     setTimeout(() => setCopied(false), 1800);
   };
 
-  const toggleOpen = () => onUpdate({ open: !survey.open, password: pw, closesAt: survey.closesAt || '' });
-  const savePw = () => onUpdate({ open: survey.open, password: pw, closesAt: survey.closesAt || '' });
-  const setClose = (closesAt) => onUpdate({ open: survey.open, password: pw, closesAt });
+  const run = async (cfg) => {
+    setBusy(true);
+    try { await onUpdate(cfg); } finally { setBusy(false); }
+  };
+
+  const toggleOpen = () => run({ open: !survey.open, closesAt: survey.closesAt || '' });
+  const setClose = (closesAt) => run({ open: survey.open, closesAt });
+  /* كلمة المرور تُرسل للخادم ليخزّن بصمتها، ولا تُقرأ بعدها أبداً */
+  const savePw = async () => {
+    if (!pw) return;
+    await run({ open: survey.open, closesAt: survey.closesAt || '', password: pw });
+    setPw('');
+  };
+  const clearPw = () => run({ open: survey.open, closesAt: survey.closesAt || '', password: '' });
 
   const expired = survey.closesAt && new Date(survey.closesAt) < new Date();
 
@@ -48,6 +60,7 @@ export default function SharePanel({ survey, onUpdate }) {
           type="button"
           className={`share__switch${survey.open ? ' is-on' : ''}`}
           onClick={toggleOpen}
+          disabled={busy}
           role="switch"
           aria-checked={survey.open}
         >
@@ -84,25 +97,32 @@ export default function SharePanel({ survey, onUpdate }) {
           <span className="bf__label">
             <Icon name="lock" className="share__labelicon" />
             كلمة مرور
+            {survey.hasPassword && <span className="tag tag--approved">مفعّلة</span>}
           </span>
           <div className="share__row">
             <input
               className="q-input bf__input"
               type={showPw ? 'text' : 'password'}
               value={pw}
-              placeholder="اتركها فارغة ليفتح بلا كلمة مرور"
+              autoComplete="new-password"
+              placeholder={survey.hasPassword ? 'اكتب كلمة جديدة لتغييرها' : 'اكتب كلمة مرور لحماية الرابط'}
               onChange={(e) => setPw(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && savePw()}
             />
             <button type="button" className="q-btn q-btn--sm" onClick={() => setShowPw(!showPw)}>
               {showPw ? 'إخفاء' : 'إظهار'}
             </button>
-            <button type="button" className="q-btn q-btn--sm" onClick={savePw}
-              disabled={pw === (survey.password || '')}>
-              حفظ
+            <button type="button" className="q-btn q-btn--sm" onClick={savePw} disabled={!pw || busy}>
+              {survey.hasPassword ? 'تغيير' : 'تفعيل'}
             </button>
+            {survey.hasPassword && (
+              <button type="button" className="q-btn q-btn--sm q-btn--danger" onClick={clearPw} disabled={busy}>
+                إزالة
+              </button>
+            )}
           </div>
           <span className="bf__hint">
-            تُطلب قبل عرض الأسئلة. حاجز تنظيمي يمنع التعبئة العرضية، لا حماية تشفيرية.
+            تُخزَّن مشفّرة ولا يمكن استرجاعها — احفظها قبل إرسالها للباحثين.
           </span>
         </div>
 

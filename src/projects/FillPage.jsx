@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getPublicSurvey, verifySurveyPassword, createResponse } from './store';
+import { getPublicSurvey, unlockSurvey, createResponse } from './store';
 import SurveyPage from '../survey/SurveyPage';
 import Icon from '../components/Icon';
 
@@ -26,14 +26,22 @@ function Message({ icon, title, body }) {
 
 export default function FillPage({ surveyId }) {
   const [state, setState] = useState({ status: 'loading' });
-  const [unlocked, setUnlocked] = useState(false);
+  const [definition, setDefinition] = useState(null);
   const [attempt, setAttempt] = useState('');
+  const [password, setPassword] = useState(null);
   const [wrong, setWrong] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [done, setDone] = useState(false);
+  const [sendError, setSendError] = useState('');
 
   useEffect(() => {
     let alive = true;
-    getPublicSurvey(surveyId).then((res) => { if (alive) setState(res); });
+    getPublicSurvey(surveyId).then((res) => {
+      if (!alive) return;
+      setState(res);
+      /* غير المحمي يأتي بتعريفه مباشرة؛ المحمي لا يُكشف قبل كلمة المرور */
+      if (res.status === 'ok' && !res.needsPassword) setDefinition(res.survey);
+    });
     return () => { alive = false; };
   }, [surveyId]);
 
@@ -69,10 +77,14 @@ export default function FillPage({ surveyId }) {
     );
   }
 
-  if (state.needsPassword && !unlocked) {
+  if (state.needsPassword && !definition) {
+    /* التحقق على الخادم — المتصفح لا يرى الأسئلة قبل كلمة مرور صحيحة */
     const submit = async () => {
-      const ok = await verifySurveyPassword(surveyId, attempt);
-      if (ok) { setUnlocked(true); setWrong(false); }
+      if (!attempt) return;
+      setChecking(true);
+      const def = await unlockSurvey(surveyId, attempt);
+      setChecking(false);
+      if (def) { setDefinition(def); setPassword(attempt); setWrong(false); }
       else { setWrong(true); }
     };
 
@@ -92,14 +104,19 @@ export default function FillPage({ surveyId }) {
               onChange={(e) => { setAttempt(e.target.value); setWrong(false); }}
               onKeyDown={(e) => e.key === 'Enter' && submit()}
             />
-            <button type="button" className="survey__navbtn survey__navbtn--primary" onClick={submit}>
-              دخول
+            <button type="button" className="survey__navbtn survey__navbtn--primary"
+              onClick={submit} disabled={checking}>
+              {checking ? 'جارٍ التحقق…' : 'دخول'}
             </button>
           </div>
           {wrong && <p className="gate__err">كلمة المرور غير صحيحة. تحقق منها وحاول مجدداً.</p>}
         </div>
       </Shell>
     );
+  }
+
+  if (!definition) {
+    return <Message title="جارٍ التحميل" body="لحظة من فضلك." />;
   }
 
   if (done) {
@@ -128,13 +145,23 @@ export default function FillPage({ surveyId }) {
           <div className="shell">{state.projectName}</div>
         </div>
       )}
+      {sendError && (
+        <div className="shell"><p className="share__warn">{sendError}</p></div>
+      )}
       <SurveyPage
-        definition={state.survey}
+        definition={definition}
         submitLabel="إرسال الإجابة"
         onSubmit={async (answers) => {
-          await createResponse(surveyId, answers, { source: 'link' });
-          setDone(true);
-          window.scrollTo(0, 0);
+          setSendError('');
+          try {
+            await createResponse(surveyId, answers, { source: 'link', password });
+            setDone(true);
+            window.scrollTo(0, 0);
+          } catch (err) {
+            setSendError(`${err.message}. إجاباتك ما زالت هنا — حاول الإرسال مجدداً.`);
+            window.scrollTo(0, 0);
+            throw err;
+          }
         }}
         hideReview
       />

@@ -10,6 +10,7 @@ import useTheme from './hooks/useTheme';
 import ProjectsTab from './projects/ProjectsTab';
 import AdminApp from './admin/AdminApp';
 import FillPage from './projects/FillPage';
+import AuthGate from './admin/AuthGate';
 
 const PROJECTS_TAB = '__projects__';
 
@@ -92,19 +93,29 @@ export default function App() {
     );
   }
 
-  /* مساحة العمل الإدارية على مسار منفصل */
+  /* مساحة العمل الإدارية — خلف تسجيل الدخول */
   if (hash.startsWith('#/admin')) {
     return (
       <div className="layout">
         <Masthead theme={theme} onToggleTheme={toggleTheme} />
-        <div className="adminbar">
-          <div className="shell adminbar__inner">
-            <span className="adminbar__label">مساحة العمل — إدارة المشاريع</span>
-            <a className="adminbar__exit" href="#/">عرض الموقع العام</a>
-          </div>
-        </div>
         <main>
-          <AdminApp basemap={base.basemap} />
+          <AuthGate>
+            {({ user, signOut }) => (
+              <>
+                <div className="adminbar">
+                  <div className="shell adminbar__inner">
+                    <span className="adminbar__label">مساحة العمل</span>
+                    <span className="adminbar__user">
+                      <span dir="ltr">{user.email}</span>
+                      <button type="button" className="adminbar__exit" onClick={signOut}>خروج</button>
+                      <a className="adminbar__exit" href="#/">الموقع العام</a>
+                    </span>
+                  </div>
+                </div>
+                <AdminApp basemap={base.basemap} />
+              </>
+            )}
+          </AuthGate>
         </main>
         <Footer />
       </div>

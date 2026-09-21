@@ -53,7 +53,8 @@ export default function SurveyPage({ definition, onSubmit, submitLabel, hideRevi
     if (onSubmit) {
       Promise.resolve(onSubmit(data))
         .then(() => { if (!hideReview) setSubmitted(data); })
-        .catch((err) => window.alert(err.message));
+        /* الإجابات تبقى في الحالة عند الفشل فلا تضيع؛ الصفحة الأم تعرض الخطأ */
+        .catch((err) => { if (!hideReview) window.alert(err.message); });
       return;
     }
     setSubmitted(data);
