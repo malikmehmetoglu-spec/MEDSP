@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import Masthead from './components/Masthead';
-import CategoryTabs from './components/CategoryTabs';
+import MainNav from './components/MainNav';
 import ReportShell from './components/ReportShell';
 import Home from './components/Home';
 import Footer from './components/Footer';
@@ -8,27 +8,19 @@ import { categories } from './data/categories';
 import { REPORT_VIEWS } from './data/reportViews';
 import useTheme from './hooks/useTheme';
 import ProjectsTab from './projects/ProjectsTab';
+import ProjectReport from './projects/ProjectReport';
+import { listPublishedProjects } from './projects/store';
+import useRoute, { href } from './hooks/useRoute';
 import AdminApp from './admin/AdminApp';
 import FillPage from './projects/FillPage';
 import AuthGate from './admin/AuthGate';
 
-const PROJECTS_TAB = '__projects__';
-
-/* توجيه بسيط بالمسار المجزّأ: #/admin يفتح مساحة العمل الإدارية */
-function useHashRoute() {
-  const [hash, setHash] = useState(() => window.location.hash);
-  useEffect(() => {
-    const on = () => setHash(window.location.hash);
-    window.addEventListener('hashchange', on);
-    return () => window.removeEventListener('hashchange', on);
-  }, []);
-  return hash;
-}
-
 export default function App() {
   const { theme, toggle: toggleTheme } = useTheme();
-  const hash = useHashRoute();
-  const [activeId, setActiveId] = useState('overview');
+  const route = useRoute();
+  /* التقرير الظاهر يُشتق من الرابط */
+  const activeId = route.page === 'ops' ? route.id : 'overview';
+  const [projects, setProjects] = useState({ status: 'loading', list: [] });
   const [base, setBase] = useState({ status: 'loading' });
   /* تُحمّل بيانات كل تقرير عند فتحه أول مرة فقط، ثم تُحفظ */
   const [reports, setReports] = useState({});
@@ -43,8 +35,17 @@ export default function App() {
       .catch(() => setBase({ status: 'error' }));
   }, []);
 
+  /* المشاريع المنشورة — لقائمة التنقل ولصفحات المشاريع */
   useEffect(() => {
-    if (activeId === PROJECTS_TAB || reports[activeId]) return;
+    listPublishedProjects()
+      .then((list) => setProjects({ status: 'ready', list }))
+      .catch(() => setProjects({ status: 'error', list: [] }));
+  }, []);
+
+  useEffect(() => {
+    if (route.page !== 'overview' && route.page !== 'ops') return;
+    if (route.page === 'ops' && !categories.some((c) => c.id === activeId)) return;
+    if (reports[activeId]) return;
     let cancelled = false;
 
     fetch(`data/${activeId}.json`)
@@ -59,10 +60,10 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [activeId, reports]);
+  }, [activeId, reports, route.page]);
 
-  const isHome = activeId === 'overview';
-  const isProjects = activeId === PROJECTS_TAB;
+  const isHome = route.page === 'overview';
+  const unknownOp = route.page === 'ops' && !categories.some((c) => c.id === route.id);
   const active = isHome
     ? {
         id: 'overview',
@@ -81,20 +82,44 @@ export default function App() {
   const loading = base.status === 'loading' || (!report && error !== activeId);
   const failed = base.status === 'error' || error === activeId;
 
+  /* بنود قائمة العمليات: أيقونة كل تقرير وعدد عملياته */
+  const ops = categories.map((c) => ({
+    id: c.id,
+    name: c.name,
+    icon: REPORT_VIEWS[c.id]?.icon || 't_textarea',
+    count: base.status === 'ready'
+      ? base.overview.byOperation.find((o) => o.label === c.op)?.value ?? 0
+      : null,
+  }));
+
+  const currentProject = route.page === 'project'
+    ? projects.list.find((p) => p.id === route.id)
+    : null;
+
+  /* عنوان تبويب المتصفح — يظهر عند مشاركة الرابط */
+  useEffect(() => {
+    const site = 'منصة مديرية التخطيط والإحصاء';
+    let page = '';
+    if (route.page === 'ops' && !unknownOp) page = `تقرير ${active.name}`;
+    else if (route.page === 'projects') page = 'المشاريع الإحصائية';
+    else if (route.page === 'project' && currentProject) page = currentProject.name;
+    else if (route.page === 'admin') page = 'مساحة العمل';
+    document.title = page ? `${page} — ${site}` : `${site} — وزارة الطوارئ وإدارة الكوارث`;
+  }, [route, active.name, currentProject, unknownOp]);
+
   /* رابط تعبئة عام: #/s/<id> — صفحة مستقلة بلا تبويبات ولا بيانات إدارية */
-  const fillMatch = hash.match(/^#\/s\/([\w-]+)/);
-  if (fillMatch) {
+  if (route.page === 'fill') {
     return (
       <div className="layout">
         <Masthead theme={theme} onToggleTheme={toggleTheme} />
-        <main><FillPage surveyId={fillMatch[1]} /></main>
+        <main><FillPage surveyId={route.id} /></main>
         <Footer />
       </div>
     );
   }
 
   /* مساحة العمل الإدارية — خلف تسجيل الدخول */
-  if (hash.startsWith('#/admin')) {
+  if (route.page === 'admin') {
     return (
       <div className="layout">
         <Masthead theme={theme} onToggleTheme={toggleTheme} />
@@ -125,25 +150,50 @@ export default function App() {
   return (
     <div className="layout">
       <Masthead theme={theme} onToggleTheme={toggleTheme} showLogin />
-      <CategoryTabs
-        items={[
-          { id: 'overview', name: 'النظرة العامة' },
-          ...categories,
-        ]}
-        activeId={activeId}
-        onSelect={setActiveId}
-      />
+      <MainNav route={route} ops={ops} projects={projects.list} projectsStatus={projects.status} />
 
       <main>
-        {isProjects ? (
+        {route.page === 'projects' && (
           <section className="shell">
             <div className="report__head"><h1>المشاريع الإحصائية</h1></div>
-            <p className="report__summary">
-              تقارير تفاعلية مبنية على بيانات ميدانية معتمدة.
-            </p>
-            <ProjectsTab basemap={base.basemap} />
+            <p className="report__summary">تقارير تفاعلية مبنية على بيانات ميدانية معتمدة.</p>
+            <ProjectsTab projects={projects.list} status={projects.status} />
           </section>
-        ) : (
+        )}
+
+        {route.page === 'project' && (
+          <section className="shell">
+            {projects.status === 'loading' && <div className="pending"><p>جارٍ التحميل…</p></div>}
+            {projects.status !== 'loading' && !currentProject && (
+              <div className="pending">
+                <h3>المشروع غير متاح</h3>
+                <p>ربما أُلغي نشره أو أن الرابط غير صحيح.</p>
+                <a className="q-btn" href={href.projects()}>كل المشاريع</a>
+              </div>
+            )}
+            {currentProject && (
+              <>
+                <div className="report__head"><h1>{currentProject.name}</h1></div>
+                {currentProject.description && (
+                  <p className="report__summary">{currentProject.description}</p>
+                )}
+                <ProjectReport project={currentProject} basemap={base.basemap} />
+              </>
+            )}
+          </section>
+        )}
+
+        {unknownOp && (
+          <section className="shell">
+            <div className="pending">
+              <h3>التقرير غير موجود</h3>
+              <p>تحقق من الرابط، أو اختر تقريراً من قائمة العمليات.</p>
+              <a className="q-btn" href={href.overview()}>النظرة العامة</a>
+            </div>
+          </section>
+        )}
+
+        {(route.page === 'overview' || (route.page === 'ops' && !unknownOp)) && (
         <article className="shell">
           <div className="report__head">
             <h1>{isHome ? 'النظرة العامة' : `تقرير ${active.name}`}</h1>
@@ -164,7 +214,7 @@ export default function App() {
           )}
 
           {!loading && !failed && report && isHome && (
-            <Home report={report} basemap={base.basemap} onOpen={setActiveId} />
+            <Home report={report} basemap={base.basemap} onOpen={(id) => { window.location.hash = href.ops(id); }} />
           )}
 
           {!loading && !failed && report && !isHome && count === 0 && (

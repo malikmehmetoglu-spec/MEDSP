@@ -1,0 +1,52 @@
+import { useEffect, useState } from 'react';
+
+/*
+  التوجيه بالمسار المجزّأ (#). الرابط هو مصدر الحقيقة:
+  كل صفحة لها رابط يُنسخ ويُرسل فيفتح المكان نفسه، وزر الرجوع
+  في المتصفح يعمل تلقائياً.
+
+    #/                 النظرة العامة
+    #/ops/<id>         تقرير عملية
+    #/projects         كل المشاريع المنشورة
+    #/projects/<uuid>  تقرير مشروع
+    #/s/<uuid>         تعبئة استبيان (صفحة مستقلة)
+    #/admin            مساحة العمل
+*/
+
+export function parseRoute(hash) {
+  const path = (hash || '').replace(/^#/, '') || '/';
+  let m;
+  if ((m = path.match(/^\/s\/([\w-]+)/))) return { page: 'fill', id: m[1] };
+  if (path.startsWith('/admin')) return { page: 'admin' };
+  if ((m = path.match(/^\/ops\/([\w-]+)/))) return { page: 'ops', id: m[1] };
+  if ((m = path.match(/^\/projects\/([\w-]+)/))) return { page: 'project', id: m[1] };
+  if (path.startsWith('/projects')) return { page: 'projects' };
+  return { page: 'overview' };
+}
+
+export const href = {
+  overview: () => '#/',
+  ops: (id) => `#/ops/${id}`,
+  projects: () => '#/projects',
+  project: (id) => `#/projects/${id}`,
+};
+
+export function navigate(to) {
+  if (window.location.hash !== to) window.location.hash = to;
+}
+
+export default function useRoute() {
+  const [route, setRoute] = useState(() => parseRoute(window.location.hash));
+
+  useEffect(() => {
+    const on = () => {
+      setRoute(parseRoute(window.location.hash));
+      /* صفحة جديدة تبدأ من أعلى — كما يتوقع المستخدم من رابط */
+      window.scrollTo({ top: 0 });
+    };
+    window.addEventListener('hashchange', on);
+    return () => window.removeEventListener('hashchange', on);
+  }, []);
+
+  return route;
+}
