@@ -124,13 +124,11 @@ export default function App() {
 
   return (
     <div className="layout">
-      <Masthead theme={theme} onToggleTheme={toggleTheme} />
+      <Masthead theme={theme} onToggleTheme={toggleTheme} showLogin />
       <CategoryTabs
         items={[
           { id: 'overview', name: 'النظرة العامة' },
           ...categories,
-          /* المشاريع الإحصائية — مؤقت لعرض محرك الاستبيانات */
-          { id: PROJECTS_TAB, name: 'المشاريع الإحصائية', apart: true },
         ]}
         activeId={activeId}
         onSelect={setActiveId}

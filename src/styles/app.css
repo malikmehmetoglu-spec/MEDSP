@@ -134,9 +134,24 @@
 
 .categories__list {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-wrap: nowrap;
+  gap: 2px;
   padding: 12px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* تلاشٍ عند الحافة يدل على وجود المزيد حين لا يتسع السطر */
+  mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
+}
+
+.categories__list::-webkit-scrollbar { display: none; }
+
+/* حين يتسع السطر كاملاً لا حاجة للتلاشي */
+@media (min-width: 1180px) {
+  .categories__list {
+    justify-content: space-between;
+    mask-image: none;
+    overflow: visible;
+  }
 }
 
 .categories__list::-webkit-scrollbar {
@@ -148,7 +163,7 @@
   background: transparent;
   border: 1px solid transparent;
   border-radius: 999px;
-  padding: 8px 17px;
+  padding: 8px clamp(9px, 1.05vw, 16px);
   color: var(--ink-soft);
   font-weight: 500;
   font-size: 0.92rem;
@@ -1143,4 +1158,43 @@ button.opcard:hover {
   .categories__item--apart {
     margin-inline-start: 0;
   }
+}
+
+/* ===== أدوات الترويسة: الدخول والثيم ===== */
+
+.masthead__tools {
+  margin-inline-start: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.masthead__login {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--edge-strong);
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+
+.masthead__login:hover {
+  border-color: var(--golden-wheat);
+  background: var(--glass-strong);
+}
+
+:root[data-theme='light'] .masthead__login:hover { border-color: var(--forest); }
+
+.masthead__loginicon {
+  width: 15px;
+  height: 15px;
+  color: var(--accent-text);
 }
