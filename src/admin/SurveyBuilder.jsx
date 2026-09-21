@@ -1,496 +1,724 @@
-import { useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { QUESTION_TYPES } from '../survey/schema';
 import { checkExpression } from '../survey/expression';
+import {
+  OPS, opsFor, compileLogic, describeLogic, isRuleComplete, LOGIC_SOURCE_TYPES,
+} from '../survey/logic';
 import Icon from '../components/Icon';
 
 /*
   باني الاستبيان.
-  ينتج نفس تعريف الاستبيان الذي يفهمه المحرك — فما يُبنى هنا
-  يُعرض هناك بلا أي تحويل.
+
+  - لوحة أنواع ثابتة على الجانب: الضغط يضيف السؤال بعد المحدد مباشرة.
+  - سؤال واحد مفتوح في كل مرة؛ الباقي مطوي ومقروء.
+  - الخيارات سطراً سطراً.
+  - الشرط يُركَّب من قوائم ويُخزَّن بنيةً (logic)، ويُحوَّل تلقائياً
+    إلى تعبير relevant يفهمه المحرك — فلا يكتب المستخدم أي تعبير.
 */
 
-/* وصف قصير لكل نوع يشرح متى يُستخدم */
-const TYPE_INFO = {
-  text: 'اسم، رقم هاتف، إجابة من سطر',
-  textarea: 'وصف أو ملاحظة من عدة أسطر',
-  note: 'نص إرشادي للقارئ بلا إجابة',
-  integer: 'عدد صحيح: أشخاص، وحدات، أيام',
-  decimal: 'رقم بكسور: مساحة، نسبة، وزن',
-  range: 'تقييم بأزرار من ١ إلى ٥',
-  select_one: 'إجابة واحدة من قائمة',
-  select_multiple: 'أكثر من إجابة من قائمة',
-  rank: 'ترتيب الخيارات حسب الأولوية',
-  date: 'يوم وشهر وسنة',
-  time: 'ساعة ودقيقة',
-  datetime: 'تاريخ ووقت معاً',
-  admin_area: 'محافظة ثم ناحية من حدود سوريا',
-  geopoint: 'إحداثيات من مستشعر الجهاز',
-  image: 'التقاط صورة أو إرفاقها',
-  repeat: 'مجموعة أسئلة تتكرر بعدد مفتوح',
-};
+/* ---------------- الأنواع ---------------- */
 
-const GROUPS = [
+const PALETTE = [
   { label: 'نصوص', types: ['text', 'textarea', 'note'] },
   { label: 'أرقام', types: ['integer', 'decimal', 'range'] },
   { label: 'اختيارات', types: ['select_one', 'select_multiple', 'rank'] },
   { label: 'زمن', types: ['date', 'time', 'datetime'] },
   { label: 'مكان', types: ['admin_area', 'geopoint'] },
-  { label: 'مرفقات ومجموعات', types: ['image', 'repeat'] },
+  { label: 'أخرى', types: ['image', 'repeat'] },
 ];
 
-const HAS_CHOICES = (t) => QUESTION_TYPES[t]?.hasChoices;
+const TYPE_HINT = {
+  text: 'اسم، هاتف، سطر واحد',
+  textarea: 'وصف من عدة أسطر',
+  note: 'نص إرشادي بلا إجابة',
+  integer: 'أشخاص، وحدات، أيام',
+  decimal: 'مساحة، نسبة، وزن',
+  range: 'تقييم من ١ إلى ٥',
+  select_one: 'إجابة واحدة من قائمة',
+  select_multiple: 'عدة إجابات من قائمة',
+  rank: 'ترتيب حسب الأولوية',
+  date: 'يوم وشهر وسنة',
+  time: 'ساعة ودقيقة',
+  datetime: 'تاريخ ووقت',
+  admin_area: 'محافظة ثم ناحية',
+  geopoint: 'إحداثيات GPS',
+  image: 'التقاط صورة',
+  repeat: 'أسئلة تتكرر لكل فرد أو أسرة',
+};
 
-function makeName(existing, type) {
-  let i = 1;
-  let candidate = `${type}_${i}`;
-  while (existing.has(candidate)) {
-    i += 1;
-    candidate = `${type}_${i}`;
-  }
-  return candidate;
-}
+/* الأنواع التي يمكن التحويل بينها دون فقدان الإعدادات */
+const SWITCHABLE = [
+  ['select_one', 'select_multiple', 'rank'],
+  ['text', 'textarea'],
+  ['integer', 'decimal'],
+  ['date', 'datetime'],
+];
 
-function collectNames(pages) {
+const HAS_CHOICES = (t) => Boolean(QUESTION_TYPES[t]?.hasChoices);
+const NUMERIC = new Set(['integer', 'decimal', 'range']);
+
+/* ---------------- عمليات الشجرة ---------------- */
+
+const clone = (x) => JSON.parse(JSON.stringify(x));
+
+function allNames(pages) {
   const names = new Set();
-  const walk = (list) => {
-    for (const n of list || []) {
-      names.add(n.name);
-      if (n.children) walk(n.children);
-    }
-  };
+  const walk = (list) => list?.forEach((n) => { names.add(n.name); walk(n.children); });
   pages.forEach((p) => walk(p.children));
   return names;
 }
 
-/* ---------------- شبكة اختيار النوع ---------------- */
+function makeName(names, type) {
+  let i = 1;
+  while (names.has(`${type}_${i}`)) i += 1;
+  names.add(`${type}_${i}`);
+  return `${type}_${i}`;
+}
 
-function TypePicker({ onPick, onCancel, allowRepeat = true }) {
+/* يطبّق fn على القائمة التي تحوي العقدة المسماة */
+function withList(pages, name, fn) {
+  const next = clone(pages);
+  const visit = (list) => {
+    const i = list.findIndex((n) => n.name === name);
+    if (i !== -1) { fn(list, i); return true; }
+    return list.some((n) => n.children && visit(n.children));
+  };
+  next.some((p) => visit(p.children));
+  return next;
+}
+
+function newNode(type, names) {
+  const node = { name: makeName(names, type), type, label: '' };
+  if (HAS_CHOICES(type)) node.choices = [];
+  if (type === 'range') { node.min = 1; node.max = 5; }
+  if (type === 'repeat') { node.children = []; node.itemLabel = 'فرد'; }
+  return node;
+}
+
+/* ترتيب الأسئلة كما يراها المستجيب، مع نطاق كل سؤال (الجذر أو مجموعة متكررة) */
+function ordered(pages) {
+  const out = [];
+  pages.forEach((p, pi) => p.children.forEach((n) => {
+    out.push({ node: n, scope: null, page: pi });
+    if (n.type === 'repeat') n.children?.forEach((c) => out.push({ node: c, scope: n.name, page: pi }));
+  }));
+  return out;
+}
+
+/* ---------------- السياق ---------------- */
+
+const Ctx = createContext(null);
+const useB = () => useContext(Ctx);
+
+/* ---------------- الخيارات ---------------- */
+
+function ChoiceRows({ choices, onChange }) {
+  const list = choices || [];
+  const inputs = useRef([]);
+  const [focusIdx, setFocusIdx] = useState(null);
+
+  useEffect(() => {
+    if (focusIdx != null) { inputs.current[focusIdx]?.focus(); setFocusIdx(null); }
+  }, [focusIdx]);
+
+  const values = new Set();
+  const uniqueValue = (label) => {
+    const base = label.trim() || 'خيار';
+    let v = base; let k = 2;
+    list.forEach((c) => values.add(String(c.value)));
+    while (values.has(v)) { v = `${base} ${k}`; k += 1; }
+    return v;
+  };
+
+  /*
+    القيمة المخزّنة تتبع النص للخيارات الجديدة (بيانات مقروءة).
+    لكن الخيار الذي قيمته تختلف أصلاً عن نصه (مثل school ← «مدرسة»)
+    تبقى قيمته ثابتة، وإلا انقطع عن الإجابات والشروط السابقة.
+  */
+  const set = (i, label) => {
+    const next = list.map((c, j) => {
+      if (j !== i) return c;
+      const fixed = c.fixed ?? (c.label !== '' && String(c.value) !== c.label);
+      return { ...c, label, fixed, value: fixed ? c.value : (label.trim() || c.value) };
+    });
+    onChange(next);
+  };
+  const add = (after = list.length - 1) => {
+    const next = [...list];
+    next.splice(after + 1, 0, { label: '', value: uniqueValue('') });
+    onChange(next);
+    setFocusIdx(after + 1);
+  };
+  const remove = (i) => onChange(list.filter((_, j) => j !== i));
+  const move = (i, d) => {
+    const j = i + d;
+    if (j < 0 || j >= list.length) return;
+    const next = [...list];
+    [next[i], next[j]] = [next[j], next[i]];
+    onChange(next);
+  };
+
+  const dup = list.map((c) => c.label.trim()).filter((l, i, a) => l && a.indexOf(l) !== i);
+
   return (
-    <div className="tpick">
-      <div className="tpick__head">
-        <h4>أي نوع من الأسئلة تريد؟</h4>
-        <button type="button" className="tpick__close" onClick={onCancel} aria-label="إغلاق">✕</button>
-      </div>
-
-      {GROUPS.map((g) => {
-        const types = g.types.filter((t) => allowRepeat || t !== 'repeat');
-        if (!types.length) return null;
-        return (
-          <div className="tpick__group" key={g.label}>
-            <span className="tpick__grouplabel">{g.label}</span>
-            <div className="tpick__grid">
-              {types.map((t) => (
-                <button key={t} type="button" className="tpick__card" onClick={() => onPick(t)}>
-                  <Icon name={`t_${t}`} className="tpick__icon" />
-                  <span className="tpick__name">{QUESTION_TYPES[t].label}</span>
-                  <span className="tpick__desc">{TYPE_INFO[t]}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        );
-      })}
+    <div className="bx-choices">
+      {list.map((c, i) => (
+        <div className="bx-choice" key={i}>
+          <span className="bx-choice__dot" aria-hidden="true" />
+          <input
+            ref={(el) => { inputs.current[i] = el; }}
+            className="bx-input bx-choice__input"
+            value={c.label}
+            placeholder={`الخيار ${i + 1}`}
+            onChange={(e) => set(i, e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); add(i); }
+              if (e.key === 'Backspace' && c.label === '' && list.length > 1) {
+                e.preventDefault(); remove(i); setFocusIdx(Math.max(0, i - 1));
+              }
+            }}
+          />
+          <span className="bx-choice__tools">
+            <button type="button" className="bx-mini" onClick={() => move(i, -1)} disabled={i === 0} aria-label="أعلى">↑</button>
+            <button type="button" className="bx-mini" onClick={() => move(i, 1)} disabled={i === list.length - 1} aria-label="أسفل">↓</button>
+            <button type="button" className="bx-mini bx-mini--del" onClick={() => remove(i)} aria-label="حذف الخيار">✕</button>
+          </span>
+        </div>
+      ))}
+      <button type="button" className="bx-addchoice" onClick={() => add()}>
+        + إضافة خيار
+        <span>أو اضغط Enter بعد كتابة الخيار</span>
+      </button>
+      {dup.length > 0 && <p className="bx-warn">خيارات مكررة: {[...new Set(dup)].join('، ')}</p>}
     </div>
   );
 }
 
-/* ---------------- محرر الخيارات ---------------- */
+/* ---------------- الشرط المرئي ---------------- */
 
-function ChoicesEditor({ choices = [], onChange }) {
-  const [text, setText] = useState(
-    choices.map((c) => (c.label === c.value ? c.label : `${c.label} | ${c.value}`)).join('\n'),
-  );
-
-  const apply = (raw) => {
-    setText(raw);
-    onChange(
-      raw.split('\n').map((l) => l.trim()).filter(Boolean).map((line) => {
-        const [label, value] = line.split('|').map((s) => s.trim());
-        return { label, value: value || label };
-      }),
+function RuleValue({ source, rule, onChange }) {
+  if (!OPS[rule.op]?.needsValue) return null;
+  if (source?.choices?.length) {
+    return (
+      <select className="bx-input bx-select" value={rule.value ?? ''} onChange={(e) => onChange(e.target.value)}>
+        <option value="">اختر…</option>
+        {source.choices.map((c) => <option key={c.value} value={c.value}>{c.label || c.value}</option>)}
+      </select>
     );
-  };
-
-  const count = text.split('\n').filter((l) => l.trim()).length;
-
+  }
+  if (source?.type === 'date') {
+    return <input className="bx-input" type="date" value={rule.value ?? ''} onChange={(e) => onChange(e.target.value)} />;
+  }
   return (
-    <label className="bf">
-      <span className="bf__label">الخيارات<span className="bf__count">{count}</span></span>
-      <textarea
-        className="q-input q-input--area bf__input"
-        rows={Math.min(Math.max(count + 1, 3), 9)}
-        value={text}
-        placeholder="اكتب خياراً في كل سطر"
-        onChange={(e) => apply(e.target.value)}
-      />
-      <span className="bf__hint">
-        خيار في كل سطر. لتخزين قيمة مختلفة عن النص المعروض اكتب: النص | القيمة
-      </span>
-    </label>
+    <input className="bx-input bx-rule__value" value={rule.value ?? ''}
+      inputMode={NUMERIC.has(source?.type) ? 'decimal' : undefined}
+      placeholder={NUMERIC.has(source?.type) ? 'رقم' : 'القيمة'}
+      onChange={(e) => onChange(e.target.value)} />
   );
 }
 
-/* ---------------- محرر التعبير ---------------- */
+function LogicEditor({ node, prior, set }) {
+  const { nodeOf } = useB();
+  const logic = node.logic || { mode: 'all', rules: [] };
+  const priorNames = new Set(prior.map((p) => p.name));
 
-function ExpressionField({ label, icon, hint, example, value, onChange, fields }) {
-  const [open, setOpen] = useState(Boolean(value));
-  const check = value ? checkExpression(value) : { valid: true };
+  const commit = (next) => {
+    const typeOf = (f) => nodeOf(f)?.type;
+    set({ logic: next, relevant: compileLogic(next, typeOf) || undefined });
+  };
 
-  if (!open) {
+  /* شرط قديم مكتوب يدوياً ولا بنية له */
+  if (node.relevant && !node.logic) {
     return (
-      <button type="button" className="bf__add" onClick={() => setOpen(true)}>
-        <Icon name={icon} className="bf__addicon" />
-        {label}
+      <div className="bx-logic bx-logic--legacy">
+        <p>لهذا السؤال شرط مكتوب بصيغة متقدمة:</p>
+        <code dir="ltr">{node.relevant}</code>
+        <button type="button" className="bx-link" onClick={() => set({ relevant: undefined })}>
+          حذفه وبناء شرط جديد
+        </button>
+      </div>
+    );
+  }
+
+  if (logic.rules.length === 0) {
+    return prior.length === 0 ? (
+      <p className="bx-hint">لإظهار هذا السؤال بشرط، أضف قبله سؤالاً يُبنى عليه الشرط.</p>
+    ) : (
+      <button type="button" className="bx-addlogic"
+        onClick={() => commit({ mode: 'all', rules: [{ field: prior[prior.length - 1].name, op: opsFor(prior[prior.length - 1].type)[0], value: '' }] })}>
+        <Icon name="t_select_one" />
+        إظهار هذا السؤال بشرط فقط
       </button>
     );
   }
 
+  const setRule = (i, patch) => {
+    const rules = logic.rules.map((r, j) => (j === i ? { ...r, ...patch } : r));
+    commit({ ...logic, rules });
+  };
+
   return (
-    <div className="bf bf--expr">
-      <span className="bf__label">{label}</span>
-      <input
-        className={`q-input bf__input bf__input--code${!check.valid ? ' is-bad' : ''}`}
-        value={value || ''}
-        placeholder={example}
-        dir="ltr"
-        onChange={(e) => onChange(e.target.value)}
-      />
-      {!check.valid ? <span className="bf__err">{check.error}</span>
-        : <span className="bf__hint">{hint}</span>}
-      {fields.length > 0 && (
-        <div className="bf__fields">
-          <span>أدرج حقلاً:</span>
-          {fields.map((f) => (
-            <button key={f} type="button" className="bf__chip"
-              onClick={() => onChange(`${value || ''}\${${f}}`)}>{f}</button>
-          ))}
-        </div>
-      )}
-      <button type="button" className="bf__remove"
-        onClick={() => { onChange(''); setOpen(false); }}>إزالة</button>
+    <div className="bx-logic">
+      <div className="bx-logic__head">
+        <strong>يظهر هذا السؤال فقط إذا</strong>
+        {logic.rules.length > 1 && (
+          <span className="bx-seg" role="radiogroup" aria-label="طريقة الجمع">
+            <button type="button" role="radio" aria-checked={logic.mode !== 'any'}
+              className={logic.mode !== 'any' ? 'is-on' : ''} onClick={() => commit({ ...logic, mode: 'all' })}>
+              تحققت كل الشروط
+            </button>
+            <button type="button" role="radio" aria-checked={logic.mode === 'any'}
+              className={logic.mode === 'any' ? 'is-on' : ''} onClick={() => commit({ ...logic, mode: 'any' })}>
+              تحقق أي شرط
+            </button>
+          </span>
+        )}
+      </div>
+
+      {logic.rules.map((r, i) => {
+        const source = nodeOf(r.field);
+        const broken = !priorNames.has(r.field);
+        return (
+          <div className={`bx-rule${broken ? ' is-broken' : ''}`} key={i}>
+            {i > 0 && <span className="bx-rule__join">{logic.mode === 'any' ? 'أو' : 'و'}</span>}
+            <select className="bx-input bx-select bx-rule__field" value={broken ? '' : r.field}
+              onChange={(e) => {
+                const src = prior.find((p) => p.name === e.target.value);
+                setRule(i, { field: e.target.value, op: opsFor(src?.type)[0], value: '' });
+              }}>
+              {broken && <option value="">⚠ سؤال محذوف أو نُقل بعد هذا السؤال</option>}
+              {prior.map((p) => (
+                <option key={p.name} value={p.name}>{p.label || `(سؤال بلا نص — ${QUESTION_TYPES[p.type]?.label})`}</option>
+              ))}
+            </select>
+            <select className="bx-input bx-select bx-rule__op" value={r.op}
+              onChange={(e) => setRule(i, { op: e.target.value, value: OPS[e.target.value].needsValue ? r.value : '' })}>
+              {opsFor(source?.type).map((op) => <option key={op} value={op}>{OPS[op].label}</option>)}
+            </select>
+            <RuleValue source={source} rule={r} onChange={(value) => setRule(i, { value })} />
+            <button type="button" className="bx-mini bx-mini--del" aria-label="حذف الشرط"
+              onClick={() => commit({ ...logic, rules: logic.rules.filter((_, j) => j !== i) })}>✕</button>
+          </div>
+        );
+      })}
+
+      <button type="button" className="bx-link"
+        onClick={() => commit({ ...logic, rules: [...logic.rules, { field: prior[prior.length - 1].name, op: opsFor(prior[prior.length - 1].type)[0], value: '' }] })}>
+        + شرط آخر
+      </button>
     </div>
   );
 }
 
-/* ---------------- بطاقة سؤال ---------------- */
+/* ---------------- بطاقة السؤال ---------------- */
 
-function QuestionCard({
-  node, index, onChange, onDelete, onMove, fields, isFirst, isLast, depth = 0,
-}) {
-  const [open, setOpen] = useState(!node.label);
-  const set = (patch) => onChange({ ...node, ...patch });
+function QuestionCard({ node, index, prior, isFirst, isLast }) {
+  const b = useB();
+  /* المجموعة المتكررة تبقى مفتوحة ما دام أحد أسئلتها محدداً — وإلا اختفى السؤال المضاف للتو */
+  const self = b.selected === node.name;
+  const open = self || (node.type === 'repeat' && (node.children || []).some((c) => c.name === b.selected));
+  const ref = useRef(null);
+  const set = (patch) => b.update(node.name, patch);
 
-  const badExpr = [node.relevant, node.constraint]
-    .filter(Boolean).some((e) => !checkExpression(e).valid);
+  useEffect(() => {
+    if (self && b.justAdded === node.name) {
+      ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [self, b.justAdded, node.name]);
+
+  const summary = describeLogic(node.logic, b.nodeOf);
+  const broken = (node.logic?.rules || []).some((r) => isRuleComplete(r) && !prior.some((p) => p.name === r.field));
+  const incompleteLogic = (node.logic?.rules || []).some((r) => !isRuleComplete(r));
+  const switchGroup = SWITCHABLE.find((g) => g.includes(node.type));
+  const noChoices = HAS_CHOICES(node.type) && (node.choices || []).filter((c) => c.label.trim()).length < 2;
 
   return (
-    <div className={`bq${open ? ' is-open' : ''}${badExpr ? ' is-bad' : ''}`}>
-      <div className="bq__bar">
-        <span className="bq__index">{index}</span>
-        <span className="bq__icon"><Icon name={`t_${node.type}`} /></span>
-
-        <button type="button" className="bq__toggle" onClick={() => setOpen(!open)}>
-          <span className="bq__title">
-            {node.label || <em className="bq__untitled">اكتب نص السؤال</em>}
+    <div ref={ref} className={`bx-card${open ? ' is-open' : ''}${open && !self ? ' is-parent' : ''}`}>
+      <div className="bx-card__bar" role="button" tabIndex={0}
+        onClick={() => b.select(self ? null : node.name)}
+        onKeyDown={(e) => { if (e.key === 'Enter' && e.target === e.currentTarget) b.select(self ? null : node.name); }}>
+        <span className="bx-card__n">{index}</span>
+        <span className="bx-card__icon"><Icon name={`t_${node.type}`} /></span>
+        <span className="bx-card__text">
+          <span className={`bx-card__title${node.label ? '' : ' is-empty'}`}>
+            {node.label || 'سؤال بلا نص'}
           </span>
-          <span className="bq__sub">
+          <span className="bx-card__meta">
             <span>{QUESTION_TYPES[node.type]?.label}</span>
-            {node.required && <span className="bq__flag bq__flag--req">مطلوب</span>}
-            {node.relevant && <span className="bq__flag bq__flag--cond">يظهر بشرط</span>}
-            {node.constraint && <span className="bq__flag">مقيّد</span>}
-            {HAS_CHOICES(node.type) && (
-              <span className="bq__flag">{(node.choices || []).length} خيارات</span>
-            )}
+            {node.required && <span className="bx-chip bx-chip--req">مطلوب</span>}
+            {HAS_CHOICES(node.type) && <span className="bx-chip">{(node.choices || []).length} خيارات</span>}
+            {node.type === 'repeat' && <span className="bx-chip">{(node.children || []).length} أسئلة</span>}
+            {noChoices && <span className="bx-chip bx-chip--warn">يحتاج خيارين على الأقل</span>}
+            {(broken || incompleteLogic) && <span className="bx-chip bx-chip--warn">الشرط غير مكتمل</span>}
           </span>
-        </button>
-
-        <div className="bq__tools">
-          <button type="button" className="bq__tool" disabled={isFirst}
-            onClick={() => onMove(-1)} aria-label="نقل لأعلى">↑</button>
-          <button type="button" className="bq__tool" disabled={isLast}
-            onClick={() => onMove(1)} aria-label="نقل لأسفل">↓</button>
-          <button type="button" className="bq__tool bq__tool--del"
-            onClick={onDelete} aria-label="حذف السؤال">✕</button>
-        </div>
+          {summary && !broken && <span className="bx-card__logic">يظهر إذا: {summary}</span>}
+        </span>
+        <span className="bx-card__tools" onClick={(e) => e.stopPropagation()}>
+          <button type="button" className="bx-mini" disabled={isFirst} onClick={() => b.move(node.name, -1)} aria-label="نقل لأعلى" title="أعلى">↑</button>
+          <button type="button" className="bx-mini" disabled={isLast} onClick={() => b.move(node.name, 1)} aria-label="نقل لأسفل" title="أسفل">↓</button>
+          <button type="button" className="bx-mini" onClick={() => b.duplicate(node.name)} aria-label="نسخ السؤال" title="نسخ">⧉</button>
+          <button type="button" className="bx-mini bx-mini--del" onClick={() => b.remove(node.name)} aria-label="حذف السؤال" title="حذف">✕</button>
+        </span>
       </div>
 
       {open && (
-        <div className="bq__body">
-          <label className="bf">
-            <span className="bf__label">نص السؤال</span>
-            <input className="q-input bf__input" value={node.label || ''}
-              placeholder="ما الذي تريد سؤاله؟" autoFocus={!node.label}
+        <div className="bx-card__body">
+          <div className="bx-block">
+            <input className="bx-input bx-input--title" value={node.label || ''} autoFocus={!node.label}
+              placeholder={node.type === 'note' ? 'النص الذي سيقرؤه المستجيب' : 'اكتب السؤال هنا'}
               onChange={(e) => set({ label: e.target.value })} />
-          </label>
-
-          {node.type !== 'note' && (
-            <label className="bf">
-              <span className="bf__label">تلميح تحت السؤال</span>
-              <input className="q-input bf__input" value={node.hint || ''}
-                placeholder="اختياري — يوضّح كيف يُجاب"
-                onChange={(e) => set({ hint: e.target.value })} />
-            </label>
-          )}
-
-          {HAS_CHOICES(node.type) && (
-            <ChoicesEditor choices={node.choices} onChange={(choices) => set({ choices })} />
-          )}
-
-          {(node.type === 'integer' || node.type === 'decimal' || node.type === 'range') && (
-            <div className="bf__row">
-              <label className="bf">
-                <span className="bf__label">أقل قيمة</span>
-                <input className="q-input bf__input" type="number" value={node.min ?? ''}
-                  onChange={(e) => set({ min: e.target.value === '' ? undefined : Number(e.target.value) })} />
-              </label>
-              <label className="bf">
-                <span className="bf__label">أكبر قيمة</span>
-                <input className="q-input bf__input" type="number" value={node.max ?? ''}
-                  onChange={(e) => set({ max: e.target.value === '' ? undefined : Number(e.target.value) })} />
-              </label>
-              {node.type !== 'range' && (
-                <label className="bf">
-                  <span className="bf__label">الوحدة</span>
-                  <input className="q-input bf__input" value={node.unit || ''} placeholder="شخص، متر…"
-                    onChange={(e) => set({ unit: e.target.value })} />
-                </label>
-              )}
-            </div>
-          )}
-
-          {node.type === 'range' && (
-            <div className="bf__row">
-              <label className="bf">
-                <span className="bf__label">وصف أدنى درجة</span>
-                <input className="q-input bf__input" value={node.minLabel || ''} placeholder="ضعيف"
-                  onChange={(e) => set({ minLabel: e.target.value })} />
-              </label>
-              <label className="bf">
-                <span className="bf__label">وصف أعلى درجة</span>
-                <input className="q-input bf__input" value={node.maxLabel || ''} placeholder="ممتاز"
-                  onChange={(e) => set({ maxLabel: e.target.value })} />
-              </label>
-            </div>
-          )}
-
-          {node.type === 'image' && (
-            <label className="bf bf--switch">
-              <input type="checkbox" checked={Boolean(node.capture)}
-                onChange={(e) => set({ capture: e.target.checked })} />
-              <span>فتح الكاميرا مباشرة
-                <small>مناسب للعمل الميداني بدل الاختيار من المعرض</small></span>
-            </label>
-          )}
-
-          {node.type !== 'note' && (
-            <label className="bf bf--switch">
-              <input type="checkbox" checked={Boolean(node.required)}
-                onChange={(e) => set({ required: e.target.checked })} />
-              <span>إجابة مطلوبة
-                <small>لا يمكن المتابعة قبل الإجابة</small></span>
-            </label>
-          )}
-
-          <div className="bf__adds">
-            <ExpressionField
-              label="إظهار السؤال بشرط" icon="t_select_one" example="${age} >= 18"
-              hint="يظهر السؤال فقط عندما يتحقق الشرط."
-              value={node.relevant} fields={fields}
-              onChange={(relevant) => set({ relevant })} />
             {node.type !== 'note' && (
-              <ExpressionField
-                label="قيد على الإجابة" icon="check" example="${children} <= ${members}"
-                hint="تُرفض الإجابة إذا لم يتحقق القيد."
-                value={node.constraint} fields={fields}
-                onChange={(constraint) => set({ constraint })} />
+              <input className="bx-input bx-input--hint" value={node.hint || ''}
+                placeholder="توضيح تحت السؤال (اختياري)"
+                onChange={(e) => set({ hint: e.target.value })} />
             )}
           </div>
 
-          {node.constraint && (
-            <label className="bf">
-              <span className="bf__label">رسالة الخطأ</span>
-              <input className="q-input bf__input" value={node.constraintMessage || ''}
-                placeholder="تظهر للمستجيب عند مخالفة القيد"
-                onChange={(e) => set({ constraintMessage: e.target.value })} />
-            </label>
-          )}
-
-          {node.type === 'repeat' && depth === 0 && (
-            <div className="bq__nested">
-              <div className="bf__row">
-                <label className="bf">
-                  <span className="bf__label">اسم المدخل الواحد</span>
-                  <input className="q-input bf__input" value={node.itemLabel || ''} placeholder="أسرة، فرد…"
-                    onChange={(e) => set({ itemLabel: e.target.value })} />
-                </label>
-                <label className="bf">
-                  <span className="bf__label">أقل عدد</span>
-                  <input className="q-input bf__input" type="number" value={node.minCount ?? ''}
-                    onChange={(e) => set({ minCount: e.target.value === '' ? undefined : Number(e.target.value) })} />
-                </label>
-                <label className="bf">
-                  <span className="bf__label">أكبر عدد</span>
-                  <input className="q-input bf__input" type="number" value={node.maxCount ?? ''}
-                    onChange={(e) => set({ maxCount: e.target.value === '' ? undefined : Number(e.target.value) })} />
-                </label>
-              </div>
-              <NodeList nodes={node.children || []} fields={fields} depth={1}
-                title="الأسئلة التي تتكرر"
-                onChange={(children) => set({ children })} />
+          {switchGroup && (
+            <div className="bx-types" role="radiogroup" aria-label="نوع السؤال">
+              {switchGroup.map((t) => (
+                <button key={t} type="button" role="radio" aria-checked={node.type === t}
+                  className={`bx-type${node.type === t ? ' is-on' : ''}`}
+                  onClick={() => set({ type: t })}>
+                  <Icon name={`t_${t}`} />
+                  {QUESTION_TYPES[t].label}
+                </button>
+              ))}
             </div>
           )}
 
-          <p className="bf__name">المعرّف في البيانات: <code>{node.name}</code></p>
+          {HAS_CHOICES(node.type) && (
+            <section className="bx-block">
+              <h5 className="bx-h">الخيارات</h5>
+              <ChoiceRows choices={node.choices} onChange={(choices) => set({ choices })} />
+            </section>
+          )}
+
+          {NUMERIC.has(node.type) && (
+            <section className="bx-block">
+              <h5 className="bx-h">{node.type === 'range' ? 'المقياس' : 'حدود القيمة'}</h5>
+              <div className="bx-row">
+                <label className="bx-field"><span>{node.type === 'range' ? 'من' : 'أقل قيمة'}</span>
+                  <input className="bx-input" type="number" value={node.min ?? ''}
+                    onChange={(e) => set({ min: e.target.value === '' ? undefined : Number(e.target.value) })} />
+                </label>
+                <label className="bx-field"><span>{node.type === 'range' ? 'إلى' : 'أكبر قيمة'}</span>
+                  <input className="bx-input" type="number" value={node.max ?? ''}
+                    onChange={(e) => set({ max: e.target.value === '' ? undefined : Number(e.target.value) })} />
+                </label>
+                {node.type !== 'range' ? (
+                  <label className="bx-field"><span>الوحدة</span>
+                    <input className="bx-input" value={node.unit || ''} placeholder="شخص، متر"
+                      onChange={(e) => set({ unit: e.target.value })} />
+                  </label>
+                ) : null}
+              </div>
+              {node.type === 'range' && (
+                <div className="bx-row">
+                  <label className="bx-field"><span>وصف أدنى درجة</span>
+                    <input className="bx-input" value={node.minLabel || ''} placeholder="ضعيف"
+                      onChange={(e) => set({ minLabel: e.target.value })} />
+                  </label>
+                  <label className="bx-field"><span>وصف أعلى درجة</span>
+                    <input className="bx-input" value={node.maxLabel || ''} placeholder="ممتاز"
+                      onChange={(e) => set({ maxLabel: e.target.value })} />
+                  </label>
+                </div>
+              )}
+            </section>
+          )}
+
+          {node.type === 'repeat' && (
+            <section className="bx-block">
+              <h5 className="bx-h">ما الذي يتكرر؟</h5>
+              <div className="bx-row">
+                <label className="bx-field"><span>اسم المدخل الواحد</span>
+                  <input className="bx-input" value={node.itemLabel || ''} placeholder="فرد، أسرة، منشأة"
+                    onChange={(e) => set({ itemLabel: e.target.value })} />
+                </label>
+                <label className="bx-field"><span>أقل عدد</span>
+                  <input className="bx-input" type="number" min="0" value={node.minCount ?? ''}
+                    onChange={(e) => set({ minCount: e.target.value === '' ? undefined : Number(e.target.value) })} />
+                </label>
+                <label className="bx-field"><span>أكبر عدد</span>
+                  <input className="bx-input" type="number" min="1" value={node.maxCount ?? ''}
+                    onChange={(e) => set({ maxCount: e.target.value === '' ? undefined : Number(e.target.value) })} />
+                </label>
+              </div>
+              <p className="bx-hint">
+                الأسئلة التالية تُطرح مرة لكل {node.itemLabel || 'مدخل'}. اختر أحدها ثم أضف من اللوحة الجانبية لتُضاف داخل المجموعة.
+              </p>
+              <NodeList list={node.children || []} scope={node.name} />
+            </section>
+          )}
+
+          <section className="bx-block bx-block--rules">
+            {node.type !== 'note' && (
+              <label className="bx-switch">
+                <input type="checkbox" checked={Boolean(node.required)}
+                  onChange={(e) => set({ required: e.target.checked })} />
+                <span className="bx-switch__track" aria-hidden="true"><span /></span>
+                <span className="bx-switch__text">إجابة إلزامية</span>
+              </label>
+            )}
+            {node.type === 'date' && (
+              <label className="bx-switch">
+                <input type="checkbox" checked={node.constraint === '${' + node.name + '} <= today()'}
+                  onChange={(e) => set(e.target.checked
+                    ? { constraint: `\${${node.name}} <= today()`, constraintMessage: 'لا يمكن اختيار تاريخ في المستقبل' }
+                    : { constraint: undefined, constraintMessage: undefined })} />
+                <span className="bx-switch__track" aria-hidden="true"><span /></span>
+                <span className="bx-switch__text">منع التواريخ المستقبلية</span>
+              </label>
+            )}
+            {node.type === 'image' && (
+              <label className="bx-switch">
+                <input type="checkbox" checked={Boolean(node.capture)}
+                  onChange={(e) => set({ capture: e.target.checked })} />
+                <span className="bx-switch__track" aria-hidden="true"><span /></span>
+                <span className="bx-switch__text">فتح الكاميرا مباشرة</span>
+              </label>
+            )}
+            <LogicEditor node={node} prior={prior} set={set} />
+          </section>
+
+          <details className="bx-adv">
+            <summary>خيارات متقدمة</summary>
+            <div className="bx-adv__body">
+              <label className="bx-field">
+                <span>قيد على الإجابة (تعبير)</span>
+                <input className={`bx-input bx-code${node.constraint && !checkExpression(node.constraint).valid ? ' is-bad' : ''}`}
+                  dir="ltr" value={node.constraint || ''} placeholder="${children} <= ${members}"
+                  onChange={(e) => set({ constraint: e.target.value || undefined })} />
+              </label>
+              {node.constraint && (
+                <label className="bx-field"><span>رسالة تظهر عند مخالفة القيد</span>
+                  <input className="bx-input" value={node.constraintMessage || ''}
+                    onChange={(e) => set({ constraintMessage: e.target.value })} />
+                </label>
+              )}
+              <p className="bx-hint">المعرّف في البيانات: <code dir="ltr">{node.name}</code></p>
+            </div>
+          </details>
         </div>
       )}
     </div>
   );
 }
 
-/* ---------------- قائمة الأسئلة ---------------- */
+/* ---------------- قائمة ---------------- */
 
-function NodeList({ nodes, onChange, fields, depth = 0, title }) {
-  const [picking, setPicking] = useState(false);
-
-  const add = (type) => {
-    const names = new Set(nodes.map((n) => n.name));
-    const node = { name: makeName(names, type), type, label: '' };
-    if (HAS_CHOICES(type)) node.choices = [];
-    if (type === 'range') { node.min = 1; node.max = 5; }
-    if (type === 'repeat') { node.children = []; node.itemLabel = 'مدخل'; }
-    onChange([...nodes, node]);
-    setPicking(false);
-  };
-
-  const update = (i, node) => onChange(nodes.map((n, j) => (j === i ? node : n)));
-  const remove = (i) => onChange(nodes.filter((_, j) => j !== i));
-  const move = (i, dir) => {
-    const j = i + dir;
-    if (j < 0 || j >= nodes.length) return;
-    const copy = [...nodes];
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-    onChange(copy);
-  };
-
+function NodeList({ list, scope = null }) {
+  const b = useB();
+  if (list.length === 0) {
+    return (
+      <div className="bx-empty">
+        {scope ? 'لا أسئلة داخل المجموعة بعد.' : 'لا أسئلة في هذا القسم. اختر نوعاً من اللوحة الجانبية لإضافة أول سؤال.'}
+      </div>
+    );
+  }
   return (
-    <div className={`bl${depth ? ' bl--nested' : ''}`}>
-      {title && <h4 className="bl__title">{title}</h4>}
-
-      {nodes.length === 0 && !picking && (
-        <div className="bl__empty">
-          <Icon name="t_textarea" className="bl__emptyicon" />
-          <p>لا أسئلة بعد. أضف أول سؤال لتبدأ.</p>
-        </div>
-      )}
-
-      {nodes.map((node, i) => (
-        <QuestionCard
-          key={node.name}
-          node={node}
-          index={i + 1}
-          depth={depth}
-          fields={fields.filter((f) => f !== node.name)}
-          isFirst={i === 0}
-          isLast={i === nodes.length - 1}
-          onChange={(n) => update(i, n)}
-          onDelete={() => remove(i)}
-          onMove={(d) => move(i, d)}
-        />
+    <div className={`bx-list${scope ? ' bx-list--nested' : ''}`}>
+      {list.map((node, i) => (
+        <QuestionCard key={node.name} node={node} index={b.numberOf(node.name)}
+          prior={b.priorFor(node.name)} isFirst={i === 0} isLast={i === list.length - 1} />
       ))}
+    </div>
+  );
+}
 
-      {picking ? (
-        <TypePicker onPick={add} onCancel={() => setPicking(false)} allowRepeat={depth === 0} />
-      ) : (
-        <button type="button" className="bl__add" onClick={() => setPicking(true)}>
-          <span className="bl__addplus">+</span>
-          إضافة سؤال
-        </button>
-      )}
+/* ---------------- لوحة الأنواع ---------------- */
+
+function Palette({ onPick, target }) {
+  return (
+    <div className="bx-pal">
+      <div className="bx-pal__head">
+        <strong>أضف سؤالاً</strong>
+        <span>{target ? `يُضاف بعد: ${target}` : 'يُضاف في آخر الاستبيان'}</span>
+      </div>
+      {PALETTE.map((g) => (
+        <div className="bx-pal__group" key={g.label}>
+          <span className="bx-pal__label">{g.label}</span>
+          {g.types.map((t) => (
+            <button key={t} type="button" className="bx-pal__item" onClick={() => onPick(t)}>
+              <Icon name={`t_${t}`} className="bx-pal__icon" />
+              <span className="bx-pal__name">{QUESTION_TYPES[t].label}</span>
+              <span className="bx-pal__hint">{TYPE_HINT[t]}</span>
+            </button>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
 
 /* ---------------- الباني ---------------- */
 
-export default function SurveyBuilder({ survey, onChange }) {
-  const pages = survey.pages || [];
-  const fields = [...collectNames(pages)];
-  const total = pages.reduce((n, p) => n + (p.children?.length || 0), 0);
+export default function SurveyBuilder({ survey, onChange, actions }) {
+  const pages = survey.pages?.length ? survey.pages : [{ name: 'main', title: 'القسم الأول', children: [] }];
+  const [selected, setSelected] = useState(null);
+  const [justAdded, setJustAdded] = useState(null);
+  const [sheet, setSheet] = useState(false);
 
-  const setPage = (i, patch) =>
-    onChange({ ...survey, pages: pages.map((p, j) => (j === i ? { ...p, ...patch } : p)) });
+  const setPages = (next) => onChange({ ...survey, pages: next });
 
-  const addPage = () =>
-    onChange({
-      ...survey,
-      pages: [...pages, {
-        name: `page_${Date.now().toString(36)}`,
-        title: `القسم ${pages.length + 1}`,
-        children: [],
-      }],
-    });
+  const order = useMemo(() => ordered(pages), [pages]);
+  const byName = useMemo(() => new Map(order.map((o) => [o.node.name, o])), [order]);
+  const nodeOf = (name) => byName.get(name)?.node;
 
-  const removePage = (i) => {
-    if (pages.length === 1) return;
-    onChange({ ...survey, pages: pages.filter((_, j) => j !== i) });
+  /* الأسئلة السابقة التي يمكن بناء شرط عليها */
+  const priorFor = (name) => {
+    const idx = order.findIndex((o) => o.node.name === name);
+    const me = order[idx];
+    return order.slice(0, idx)
+      .filter((o) => o.scope === null || o.scope === me?.scope)
+      .map((o) => o.node)
+      .filter((n) => LOGIC_SOURCE_TYPES.has(n.type) && n.type !== 'repeat' && n.type !== 'note');
   };
 
-  const movePage = (i, dir) => {
-    const j = i + dir;
-    if (j < 0 || j >= pages.length) return;
-    const copy = [...pages];
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-    onChange({ ...survey, pages: copy });
+  /* ترقيم متصل عبر الأقسام، والأسئلة داخل المجموعة ترقيم فرعي */
+  const numbers = useMemo(() => {
+    const map = new Map();
+    let n = 0;
+    pages.forEach((p) => p.children.forEach((node) => {
+      n += 1;
+      map.set(node.name, n);
+      node.children?.forEach((c, j) => map.set(c.name, `${n}.${j + 1}`));
+    }));
+    return map;
+  }, [pages]);
+
+  const total = order.filter((o) => o.node.type !== 'note' && o.node.type !== 'repeat').length;
+
+  const api = {
+    selected,
+    justAdded,
+    nodeOf,
+    priorFor,
+    numberOf: (name) => numbers.get(name),
+    select: (name) => { setSelected(name); setJustAdded(null); },
+    update: (name, patch) => setPages(withList(pages, name, (list, i) => {
+      list[i] = { ...list[i], ...patch };
+      Object.keys(list[i]).forEach((k) => list[i][k] === undefined && delete list[i][k]);
+    })),
+    remove: (name) => {
+      const n = nodeOf(name);
+      if (n?.label && !window.confirm(`حذف السؤال «${n.label}»؟`)) return;
+      setPages(withList(pages, name, (list, i) => list.splice(i, 1)));
+      if (selected === name) setSelected(null);
+    },
+    move: (name, d) => setPages(withList(pages, name, (list, i) => {
+      const j = i + d;
+      if (j < 0 || j >= list.length) return;
+      [list[i], list[j]] = [list[j], list[i]];
+    })),
+    duplicate: (name) => {
+      const names = allNames(pages);
+      let copyName = null;
+      setPages(withList(pages, name, (list, i) => {
+        const copy = clone(list[i]);
+        const rename = (n) => { n.name = makeName(names, n.type); n.children?.forEach(rename); };
+        rename(copy);
+        copy.label = copy.label ? `${copy.label} (نسخة)` : '';
+        copyName = copy.name;
+        list.splice(i + 1, 0, copy);
+      }));
+      setSelected(copyName); setJustAdded(copyName);
+    },
   };
+
+  /* الإضافة: بعد السؤال المحدد، وداخل المجموعة المتكررة إن كان المحدد فيها أو كانت هي المحددة */
+  const add = (type) => {
+    const names = allNames(pages);
+    const node = newNode(type, names);
+    const sel = selected ? byName.get(selected) : null;
+    let next;
+    if (sel && sel.node.type === 'repeat' && type !== 'repeat') {
+      next = withList(pages, sel.node.name, (list, i) => { list[i].children = [...(list[i].children || []), node]; });
+    } else if (sel && !(sel.scope && type === 'repeat')) {
+      next = withList(pages, sel.node.name, (list, i) => list.splice(i + 1, 0, node));
+    } else if (sel && sel.scope && type === 'repeat') {
+      next = withList(pages, sel.scope, (list, i) => list.splice(i + 1, 0, node));
+    } else {
+      next = clone(pages);
+      next[next.length - 1].children.push(node);
+    }
+    setPages(next);
+    setSelected(node.name);
+    setJustAdded(node.name);
+    setSheet(false);
+  };
+
+  const targetLabel = selected ? (nodeOf(selected)?.label || 'السؤال المحدد') : null;
+
+  const setPage = (i, patch) => setPages(pages.map((p, j) => (j === i ? { ...p, ...patch } : p)));
 
   return (
-    <div className="builder">
-      <div className="builder__meta">
-        <label className="bf bf--grow">
-          <span className="bf__label">عنوان الاستبيان</span>
-          <input className="q-input bf__input bf__input--lg" value={survey.title || ''}
-            placeholder="مثال: تقييم أضرار المنشآت"
-            onChange={(e) => onChange({ ...survey, title: e.target.value })} />
-        </label>
-        <label className="bf bf--grow">
-          <span className="bf__label">وصف يظهر للمستجيب</span>
-          <input className="q-input bf__input" value={survey.description || ''}
-            placeholder="اختياري — جملة تشرح الغرض"
-            onChange={(e) => onChange({ ...survey, description: e.target.value })} />
-        </label>
-        <div className="builder__count">
-          <strong>{total}</strong>
-          <span>{total === 1 ? 'سؤال' : 'أسئلة'}</span>
-        </div>
-      </div>
+    <Ctx.Provider value={api}>
+      <div className="bx">
+        <header className="bx-top">
+          <div className="bx-top__titles">
+            <input className="bx-top__title" value={survey.title || ''} placeholder="عنوان الاستبيان"
+              onChange={(e) => onChange({ ...survey, title: e.target.value })} />
+            <input className="bx-top__desc" value={survey.description || ''}
+              placeholder="وصف قصير يظهر للمستجيب (اختياري)"
+              onChange={(e) => onChange({ ...survey, description: e.target.value })} />
+          </div>
+          <div className="bx-top__side">
+            <span className="bx-top__count"><strong>{total}</strong> {total === 1 ? 'سؤال' : 'أسئلة'}</span>
+            {actions}
+          </div>
+        </header>
 
-      {pages.map((page, i) => (
-        <section className="bp" key={page.name}>
-          <div className="bp__head">
-            <span className="bp__badge">{i + 1}</span>
-            <input className="bp__title" value={page.title} placeholder="اسم القسم"
-              onChange={(e) => setPage(i, { title: e.target.value })} />
-            <span className="bp__n">{page.children?.length || 0}</span>
-            <div className="bq__tools">
-              <button type="button" className="bq__tool" disabled={i === 0}
-                onClick={() => movePage(i, -1)} aria-label="نقل القسم لأعلى">↑</button>
-              <button type="button" className="bq__tool" disabled={i === pages.length - 1}
-                onClick={() => movePage(i, 1)} aria-label="نقل القسم لأسفل">↓</button>
-              {pages.length > 1 && (
-                <button type="button" className="bq__tool bq__tool--del"
-                  onClick={() => removePage(i)} aria-label="حذف القسم">✕</button>
-              )}
+        <div className="bx-body">
+          <aside className="bx-side">
+            <Palette onPick={add} target={targetLabel} />
+          </aside>
+
+          <div className="bx-main" onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}>
+            {pages.map((page, pi) => (
+              <section className="bx-page" key={page.name}>
+                <div className="bx-page__head">
+                  <span className="bx-page__badge">القسم {pi + 1}</span>
+                  <input className="bx-page__title" value={page.title} placeholder="اسم القسم"
+                    onChange={(e) => setPage(pi, { title: e.target.value })} />
+                  {pages.length > 1 && (
+                    <span className="bx-card__tools bx-page__tools">
+                      <button type="button" className="bx-mini" disabled={pi === 0} aria-label="نقل القسم لأعلى"
+                        onClick={() => { const n = [...pages]; [n[pi - 1], n[pi]] = [n[pi], n[pi - 1]]; setPages(n); }}>↑</button>
+                      <button type="button" className="bx-mini" disabled={pi === pages.length - 1} aria-label="نقل القسم لأسفل"
+                        onClick={() => { const n = [...pages]; [n[pi + 1], n[pi]] = [n[pi], n[pi + 1]]; setPages(n); }}>↓</button>
+                      <button type="button" className="bx-mini bx-mini--del" aria-label="حذف القسم"
+                        onClick={() => {
+                          if (page.children.length && !window.confirm(`حذف «${page.title}» مع ${page.children.length} أسئلة؟`)) return;
+                          setPages(pages.filter((_, j) => j !== pi));
+                        }}>✕</button>
+                    </span>
+                  )}
+                </div>
+                <NodeList list={page.children} />
+              </section>
+            ))}
+
+            <button type="button" className="bx-addpage"
+              onClick={() => setPages([...pages, { name: `page_${Date.now().toString(36)}`, title: `القسم ${pages.length + 1}`, children: [] }])}>
+              + قسم جديد
+              <span>يظهر للمستجيب كصفحة مستقلة</span>
+            </button>
+          </div>
+        </div>
+
+        {/* الهاتف: اللوحة الجانبية تصير زراً ولوحة منبثقة */}
+        <button type="button" className="bx-fab" onClick={() => setSheet(true)}>+ إضافة سؤال</button>
+        {sheet && (
+          <div className="bx-sheet" role="dialog" aria-label="أضف سؤالاً">
+            <button type="button" className="bx-sheet__scrim" aria-label="إغلاق" onClick={() => setSheet(false)} />
+            <div className="bx-sheet__panel">
+              <Palette onPick={add} target={targetLabel} />
             </div>
           </div>
-          <NodeList nodes={page.children} fields={fields}
-            onChange={(children) => setPage(i, { children })} />
-        </section>
-      ))}
-
-      <button type="button" className="bl__add bl__add--page" onClick={addPage}>
-        <span className="bl__addplus">+</span>
-        إضافة قسم جديد
-      </button>
-    </div>
+        )}
+      </div>
+    </Ctx.Provider>
   );
 }

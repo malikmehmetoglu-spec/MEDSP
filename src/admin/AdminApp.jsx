@@ -259,24 +259,19 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged }) {
               <SurveyBuilder
                 survey={draft}
                 onChange={(next) => { setDraft(next); setSaved(false); }}
+                actions={(
+                  <>
+                    <button type="button" className="bx-save" onClick={saveSurvey} disabled={saved}>
+                      {saved ? 'محفوظ' : 'حفظ التغييرات'}
+                    </button>
+                    <button type="button" className="bx-mini bx-mini--del bx-delsurvey" title="حذف الاستبيان"
+                      aria-label="حذف الاستبيان"
+                      onClick={() => { if (window.confirm('حذف الاستبيان مع كل إجاباته نهائياً؟')) removeSurvey(activeSurvey); }}>
+                      ✕
+                    </button>
+                  </>
+                )}
               />
-              <div className="pedit__save">
-                <button
-                  type="button"
-                  className="survey__navbtn survey__navbtn--primary"
-                  onClick={saveSurvey}
-                  disabled={saved}
-                >
-                  {saved ? 'محفوظ' : 'حفظ الاستبيان'}
-                </button>
-                <button
-                  type="button"
-                  className="q-btn q-btn--danger"
-                  onClick={() => removeSurvey(activeSurvey)}
-                >
-                  حذف الاستبيان
-                </button>
-              </div>
             </>
           )}
 
