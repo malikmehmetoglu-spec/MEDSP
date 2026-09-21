@@ -100,19 +100,19 @@ export default function App() {
         <Masthead theme={theme} onToggleTheme={toggleTheme} />
         <main>
           <AuthGate>
-            {({ user, signOut }) => (
+            {({ me, signOut }) => (
               <>
                 <div className="adminbar">
                   <div className="shell adminbar__inner">
                     <span className="adminbar__label">مساحة العمل</span>
                     <span className="adminbar__user">
-                      <span dir="ltr">{user.email}</span>
+                      <span>{me.displayName}</span>
                       <button type="button" className="adminbar__exit" onClick={signOut}>خروج</button>
                       <a className="adminbar__exit" href="#/">الموقع العام</a>
                     </span>
                   </div>
                 </div>
-                <AdminApp basemap={base.basemap} />
+                <AdminApp basemap={base.basemap} me={me} />
               </>
             )}
           </AuthGate>

@@ -933,3 +933,85 @@
 
 button.adminbar__exit { background: none; border: 0; border-bottom: 1px solid var(--edge-strong); padding: 0; font: inherit; }
 .pedit__refresh { margin-inline-start: auto; }
+
+/* ---------- أقسام مساحة العمل ---------- */
+
+.asec {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  background: var(--glass);
+  justify-self: start;
+}
+
+.asec__item {
+  padding: 8px 20px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  transition: background 0.16s, color 0.16s;
+}
+
+.asec__item:hover { color: var(--ink); }
+.asec__item.is-on { background: var(--golden-wheat); color: var(--emerald-shadow); font-weight: 700; }
+:root[data-theme='light'] .asec__item.is-on { background: var(--forest); color: var(--ivory-mist); }
+
+/* ---------- الحسابات ---------- */
+
+.accounts { display: grid; gap: 16px; }
+.accounts h2 { font-size: var(--h2); color: var(--ink); }
+.accounts__lede { font-size: var(--caption); color: var(--ink-faint); margin-top: 4px; }
+
+.accounts__form {
+  display: grid; gap: 13px;
+  padding: 18px;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--glass);
+}
+
+.accounts__you {
+  margin-inline-start: 7px;
+  font-size: 0.7rem;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--edge-strong);
+  color: var(--accent-text);
+}
+
+.accounts__acts { display: inline-flex; gap: 5px; }
+
+.cred {
+  display: grid; gap: 11px;
+  padding: 20px;
+  border: 1px solid var(--golden-wheat);
+  border-radius: var(--radius);
+  background: var(--glass-strong);
+}
+
+:root[data-theme='light'] .cred { border-color: var(--forest); }
+.cred__title { font-size: 1rem; color: var(--ink); }
+.cred__lede { font-size: var(--caption); color: var(--ink-soft); }
+
+.cred__pair {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 18px;
+  margin: 0;
+  padding: 13px 15px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-input);
+  border: 1px solid var(--edge);
+}
+
+.cred__pair dt { font-size: var(--caption); color: var(--ink-faint); }
+.cred__pair dd { margin: 0; font-weight: 700; color: var(--ink); font-family: ui-monospace, monospace; }
+.me__pair dd { font-family: inherit; }
+.me__h { font-size: 0.98rem; color: var(--ink); }
+.cred__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.auth__note { font-size: 0.76rem; color: var(--ink-faint); text-align: center; }

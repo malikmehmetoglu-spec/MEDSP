@@ -75,42 +75,79 @@ export async function getSession() {
   return data.session;
 }
 
-export async function signIn(email, password) {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+/*
+  الدخول باسم مستخدم. البريد داخلي بنطاق .invalid المحجوز
+  (لا يستقبل رسائل أبداً) — لا تحقق عبر البريد ولا تسجيل ذاتي.
+*/
+const DOMAIN = '@medsp.invalid';
+const toEmail = (username) => `${String(username).trim().toLowerCase()}${DOMAIN}`;
+
+export async function signIn(username, password) {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: toEmail(username), password,
+  });
   if (error) {
     throw new Error(
       error.message?.includes('Invalid login')
-        ? 'البريد أو كلمة المرور غير صحيحة'
-        : error.message?.includes('Email not confirmed')
-          ? 'لم يُؤكَّد البريد بعد. افتح رسالة التأكيد في بريدك أولاً.'
-          : 'تعذّر تسجيل الدخول',
+        ? 'اسم المستخدم أو كلمة المرور غير صحيحة'
+        : 'تعذّر تسجيل الدخول — تحقق من الاتصال',
     );
   }
   return data.session;
 }
 
-export async function signUp(email, password) {
-  const { data, error } = await supabase.auth.signUp({ email, password });
+export async function changeOwnPassword(password) {
+  if (!password || password.length < 8) throw new Error('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+  const { error } = await supabase.auth.updateUser({ password });
   if (error) {
-    throw new Error(
-      error.message?.includes('already registered')
-        ? 'هذا البريد مسجّل مسبقاً — سجّل الدخول بدلاً من ذلك'
-        : error.message?.includes('Password')
-          ? 'كلمة المرور ضعيفة — استخدم 8 أحرف على الأقل'
-          : 'تعذّر إنشاء الحساب',
-    );
+    throw new Error(error.message?.includes('different')
+      ? 'كلمة المرور الجديدة يجب أن تختلف عن الحالية'
+      : 'تعذّر تغيير كلمة المرور');
   }
-  return data;
 }
 
 export async function signOut() {
   await supabase.auth.signOut();
 }
 
-export async function checkAdmin() {
-  const { data, error } = await supabase.rpc('is_admin');
-  if (error) return false;
-  return Boolean(data);
+/* الدور: { role: 'super_admin' | 'admin', username, displayName } أو null */
+export async function getMyRole() {
+  const { data, error } = await supabase.rpc('my_role');
+  if (error) return null;
+  return data || null;
+}
+
+/* ---------- الحسابات (للسوبر أدمن) ---------- */
+
+export async function listAccounts() {
+  const { data, error } = await supabase.rpc('list_accounts');
+  fail(error);
+  return data.map((r) => ({
+    id: r.user_id,
+    username: r.username,
+    displayName: r.display_name,
+    role: r.role,
+    createdAt: r.created_at,
+    lastSignIn: r.last_sign_in_at,
+  }));
+}
+
+export async function createAccount({ username, password, displayName }) {
+  const { data, error } = await supabase.rpc('create_account', {
+    p_username: username, p_password: password, p_display: displayName,
+  });
+  fail(error, 'تعذّر إنشاء الحساب');
+  return data;
+}
+
+export async function resetAccountPassword(id, password) {
+  const { error } = await supabase.rpc('reset_account_password', { p_user: id, p_password: password });
+  fail(error, 'تعذّر تغيير كلمة المرور');
+}
+
+export async function deleteAccount(id) {
+  const { error } = await supabase.rpc('delete_account', { p_user: id });
+  fail(error, 'تعذّر حذف الحساب');
 }
 
 export function onAuthChange(cb) {
@@ -278,7 +315,7 @@ export async function createResponse(surveyId, answers, meta = {}) {
 
 async function currentUserLabel() {
   const { data } = await supabase.auth.getUser();
-  return data.user?.email || 'مشرف';
+  return data.user?.email?.replace(DOMAIN, '') || 'مشرف';
 }
 
 export async function reviewResponse(id, status, { note = '' } = {}) {

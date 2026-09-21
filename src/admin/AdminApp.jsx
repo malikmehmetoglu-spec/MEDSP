@@ -3,6 +3,8 @@ import * as store from '../projects/store';
 import SurveyBuilder from './SurveyBuilder';
 import ResponsesTable from './ResponsesTable';
 import SharePanel from './SharePanel';
+import AccountsPanel from './AccountsPanel';
+import MyAccount from './MyAccount';
 import ProjectReport from '../projects/ProjectReport';
 import SurveyPage from '../survey/SurveyPage';
 
@@ -338,7 +340,8 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged }) {
 
 /* ---------------- الجذر ---------------- */
 
-export default function AdminApp({ basemap }) {
+export default function AdminApp({ basemap, me }) {
+  const [section, setSection] = useState('projects');
   const [projects, setProjects] = useState([]);
   const [counts, setCounts] = useState({});
   const [open, setOpen] = useState(null);
@@ -347,11 +350,13 @@ export default function AdminApp({ basemap }) {
     const list = await store.listProjects();
     setProjects(list);
     const map = {};
+    const all = await store.listResponses();
+    const surveys = await store.listSurveys();
     for (const p of list) {
-      const surveys = await store.listSurveys(p.id);
-      const rows = await store.listResponses({ projectId: p.id });
+      const ids = new Set(surveys.filter((s) => s.projectId === p.id).map((s) => s.id));
+      const rows = all.filter((r) => ids.has(r.surveyId));
       map[p.id] = {
-        surveys: surveys.length,
+        surveys: ids.size,
         pending: rows.filter((r) => r.status === 'pending').length,
         approved: rows.filter((r) => r.status === 'approved').length,
       };
@@ -361,9 +366,27 @@ export default function AdminApp({ basemap }) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  const sections = [
+    { id: 'projects', label: 'المشاريع' },
+    ...(me.role === 'super_admin' ? [{ id: 'accounts', label: 'الحسابات' }] : []),
+    { id: 'me', label: 'حسابي' },
+  ];
+
   return (
     <section className="shell admin">
-      {open ? (
+      <nav className="asec" aria-label="أقسام مساحة العمل">
+        {sections.map((s) => (
+          <button key={s.id} type="button"
+            className={`asec__item${section === s.id ? ' is-on' : ''}`}
+            onClick={() => { setSection(s.id); setOpen(null); }}>
+            {s.label}
+          </button>
+        ))}
+      </nav>
+
+      {section === 'accounts' && me.role === 'super_admin' && <AccountsPanel me={me} />}
+      {section === 'me' && <MyAccount me={me} />}
+      {section === 'projects' && (open ? (
         <ProjectEditor
           projectId={open}
           basemap={basemap}
@@ -376,9 +399,12 @@ export default function AdminApp({ basemap }) {
           counts={counts}
           onOpen={setOpen}
           onCreate={async (input) => { await store.createProject(input); refresh(); }}
-          onDelete={async (id) => { await store.deleteProject(id); refresh(); }}
+          onDelete={async (id) => {
+            if (!window.confirm('حذف المشروع مع كل استبياناته وإجاباته نهائياً؟')) return;
+            await store.deleteProject(id); refresh();
+          }}
         />
-      )}
+      ))}
     </section>
   );
 }
