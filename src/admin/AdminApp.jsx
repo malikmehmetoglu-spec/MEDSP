@@ -120,6 +120,8 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged }) {
   const [draft, setDraft] = useState(null);
   const [saved, setSaved] = useState(true);
   const [notice, setNotice] = useState('');
+  /* إرشاد يبقى حتى يُغلق — للخطوات التي تحتاج فعلاً من المستخدم */
+  const [guide, setGuide] = useState(null);
 
   const load = useCallback(async () => {
     const p = await store.getProject(projectId);
@@ -176,8 +178,31 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged }) {
   };
 
   const togglePublish = async () => {
+    const next = !project.published;
+
+    /*
+      قبل النشر نفحص حالة المشروع كله ونشرح الخطوة التالية بدقة —
+      القاعدة نفسها تفرضها قاعدة البيانات، هذا للإرشاد فقط.
+    */
+    if (next) {
+      const all = await store.listResponses({ projectId });
+      const approvedN = all.filter((r) => r.status === 'approved').length;
+      const pendingN = all.filter((r) => r.status === 'pending').length;
+      if (approvedN === 0) {
+        setGuide(pendingN > 0
+          ? {
+            text: `لديك ${pendingN} ${pendingN === 1 ? 'استمارة' : 'استمارات'} بانتظار المراجعة. اعتمد واحدة على الأقل ثم انشر — التقرير المنشور يعرض المعتمد فقط.`,
+            action: { label: 'اذهب للمراجعة', go: () => setTab('results') },
+          }
+          : {
+            text: 'لم تصل أي استمارة بعد، فلا يوجد ما يُعرض في التقرير. اجمع إجابات وأرسل رابط الاستبيان للباحثين، أو جرّب بنفسك من «معاينة التعبئة»، ثم اعتمدها من «النتائج».',
+            action: { label: 'افتح المشاركة', go: () => setTab('share') },
+          });
+        return;
+      }
+    }
+
     try {
-      const next = !project.published;
       await store.publishProject(projectId, next);
       await load();
       onChanged?.();
@@ -212,6 +237,22 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged }) {
       </div>
 
       {notice && <p className="pedit__notice">{notice}</p>}
+
+      {guide && (
+        <div className="pguide" role="status">
+          <strong>لا يمكن النشر بعد</strong>
+          <p>{guide.text}</p>
+          <div className="pguide__actions">
+            {guide.action && (
+              <button type="button" className="survey__navbtn survey__navbtn--primary"
+                onClick={() => { guide.action.go(); setGuide(null); }}>
+                {guide.action.label}
+              </button>
+            )}
+            <button type="button" className="q-btn" onClick={() => setGuide(null)}>حسناً</button>
+          </div>
+        </div>
+      )}
 
       <div className="pedit__surveys">
         {surveys.map((s) => (

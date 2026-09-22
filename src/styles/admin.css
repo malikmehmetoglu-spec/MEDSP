@@ -1303,3 +1303,19 @@ button.adminbar__exit { background: none; border: 0; border-bottom: 1px solid va
   .hero__side--1 { grid-template-columns: 1fr; }
   .hero__side--2 { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* إرشاد يبقى حتى يُغلق */
+.pguide {
+  display: grid;
+  gap: 8px;
+  padding: 16px 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--golden-wheat);
+  border-inline-start-width: 4px;
+  background: var(--glass-strong);
+}
+
+:root[data-theme='light'] .pguide { border-color: var(--forest); }
+.pguide strong { font-size: 0.98rem; color: var(--ink); }
+.pguide p { margin: 0; font-size: 0.9rem; color: var(--ink-soft); line-height: 1.7; }
+.pguide__actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
