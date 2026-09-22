@@ -128,13 +128,30 @@ export const REPORT_VIEWS = {
   services: {
     icon: 'area',
     eyebrow: 'إجمالي الأعمال الخدمية',
-    stats: (d) => [etaStat(d), durationStat(d), crewStat(d)],
+    /*
+      الصف الأول: الأنقاض المرحّلة بالأعمال الاعتيادية (رقم يُطلب كثيراً في
+      التقارير)، ثم قطاع الخدمة بعرض بطاقتين.
+    */
+    stats: (d) => {
+      const ops = d.metrics.rubbleOps.sum;
+      const other = d.metrics.rubbleOther.sum;
+      return [{
+        icon: 'area',
+        tone: 'gold',
+        label: 'الأنقاض المرحّلة بالأعمال الاعتيادية',
+        value: Math.round(d.metrics.rubble.sum * 10) / 10,
+        unit: 'م³',
+        note: `من ${fmt(ops)} عملية إزالة وتدوير أنقاض، خارج مشاريع الترحيل`
+          + (other ? `. استُبعدت ${fmt(other)} مسجّلة بغير المتر المكعب` : ''),
+      }];
+    },
+    sidePanel: { dim: 'sector', tone: 'teal' },
     panels: [
       { dim: 'kind', tone: 'gold', max: 12, span: 'wide' },
-      { dim: 'sector', tone: 'teal' },
-      { dim: 'unit', tone: 'teal', max: 10, span: 'wide' },
       { dim: 'status', tone: 'gold' },
     ],
+    /* بعد «التوزّع حسب المحافظة» ليكمل صفه */
+    tail: [{ dim: 'target', tone: 'teal', max: 10 }],
   },
 
   traffic: {

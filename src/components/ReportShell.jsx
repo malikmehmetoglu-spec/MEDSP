@@ -147,10 +147,16 @@ export default function ReportShell({ report, basemap, view }) {
               </span>
             </div>
 
-            <div className="hero__side">
+            <div className={`hero__side${view.sidePanel ? ' hero__side--panel' : ''}`}>
               {view.stats(data).map((stat) => (
                 <Stat key={stat.label} {...stat} />
               ))}
+              {/* لوحة في الصف الأول بعرض بطاقتين (قطاع الخدمة) */}
+              {view.sidePanel && (
+                <div className="hero__panel">
+                  <DimPanel dim={data.dims[view.sidePanel.dim]} tone={view.sidePanel.tone} max={view.sidePanel.max} />
+                </div>
+              )}
             </div>
           </section>
 
@@ -182,6 +188,10 @@ export default function ReportShell({ report, basemap, view }) {
             <Panel title="التوزّع حسب المحافظة" note="مرتّبة تنازلياً" span="wide">
               <BarChart data={data.byGovernorate} showShare />
             </Panel>
+
+            {view.tail?.map((panel) => (
+              <DimPanel key={panel.dim} dim={data.dims[panel.dim]} tone={panel.tone} max={panel.max} span={panel.span} />
+            ))}
           </div>
         </>
       )}

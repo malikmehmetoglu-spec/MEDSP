@@ -207,7 +207,9 @@ function buildReport(rows, places, { operation, dims, metrics }) {
 
     dims.forEach((dim, i) => record.push(dimIndex[i].id(row[dim.column])));
     metrics.forEach((metric, i) => {
-      const value = metric.columns.reduce((sum, col) => sum + num(row[col]), 0);
+      /* مقياس بشرط: يُحتسب فقط للسجلات التي تحقق when */
+      if (metric.when && !metric.when(row)) { record.push(0); return; }
+      const value = metric.constant ?? metric.columns.reduce((sum, col) => sum + num(row[col]), 0);
       /*
         قيم مستحيلة تدخل أحياناً بالخطأ (مثل مئات الملايين من الكوادر).
         تُستبعد بدل أن تُجمع، ويُحصى عددها لإظهاره في التقرير.
@@ -216,7 +218,8 @@ function buildReport(rows, places, { operation, dims, metrics }) {
         anomalies[i] += 1;
         record.push(0);
       } else {
-        record.push(Math.round(value));
+        const k = 10 ** (metric.decimals || 0);
+        record.push(Math.round(value * k) / k);
       }
     });
 
@@ -298,18 +301,29 @@ const AMBULANCE = {
   ],
 };
 
+/*
+  الأنقاض المرحّلة بالأعمال الاعتيادية (خارج مشاريع الترحيل):
+  عمليات «ازالة أنقاض» و«إعادة تدوير الأنقاض» — والكمية بالمتر المكعب فقط.
+  بعض عمليات التدوير مسجّلة بالمتر المربع أو الطولي؛ جمعها مع المكعب
+  يعطي رقماً بلا معنى، فتُستبعد وتُحصى لتُذكر تحت الرقم.
+*/
+const normAr = (v) => clean(v).replace(/[إأآ]/g, 'ا');
+const RUBBLE_OPS = new Set(['ازالة انقاض', 'اعادة تدوير الانقاض']);
+const isRubble = (row) => RUBBLE_OPS.has(normAr(row['نوع العملية']));
+const isCubic = (row) => clean(row['الواحدة']) === 'متر مكعب';
+
 const SERVICES = {
   operation: 'أعمال خدمية',
   dims: [
     { key: 'sector', title: 'قطاع الخدمة', column: 'اسم القطاع(خدمات)' },
     { key: 'kind', title: 'نوع العمل المنفَّذ', column: 'نوع العملية' },
-    { key: 'unit', title: 'وحدة القياس', column: 'الواحدة' },
+    { key: 'target', title: 'المكان المستهدف', column: 'المكان المستهدف' },
     { key: 'status', title: 'حالة النشاط', column: 'حالة النشاط' },
   ],
   metrics: [
-    { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'], cap: 1440 },
-    { key: 'duration', title: 'الوقت المستغرق', columns: ['الوقت المستغرق'], cap: 10080 },
-    { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'], cap: 500 },
+    { key: 'rubble', title: 'الأنقاض المرحّلة', columns: ['الكمية'], when: (r) => isRubble(r) && isCubic(r), decimals: 1 },
+    { key: 'rubbleOps', title: 'عمليات الأنقاض', constant: 1, when: (r) => isRubble(r) && isCubic(r) },
+    { key: 'rubbleOther', title: 'أنقاض بوحدات أخرى', constant: 1, when: (r) => isRubble(r) && !isCubic(r) },
   ],
 };
 

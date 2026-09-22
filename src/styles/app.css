@@ -1527,3 +1527,10 @@ button.opcard:hover {
   }
   .donut__ring { max-width: 240px; }
 }
+
+/* لوحة داخل الصف الأول تأخذ عرض بطاقتين (قطاع الخدمة في تقرير الأعمال الخدمية) */
+.hero__panel { display: grid; min-width: 0; }
+.hero__panel > .panel { height: 100%; margin: 0; }
+@media (min-width: 620px) {
+  .hero__side--panel .hero__panel { grid-column: span 2; }
+}
