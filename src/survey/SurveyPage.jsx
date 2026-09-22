@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import useSurvey from './runtime';
 import SurveyForm from './SurveyForm';
 
@@ -37,6 +37,14 @@ export default function SurveyPage({ definition, onSubmit, submitLabel, hideRevi
   const survey = useSurvey(definition, { round });
   const [submitted, setSubmitted] = useState(null);
 
+  /*
+    البيانات الوصفية: لحظة فتح الاستمارة ولحظة إرسالها والمدة.
+    تكشف للمشرف الاستمارات المعبّأة بسرعة غير معقولة.
+    تبدأ من جديد مع كل استمارة جديدة.
+  */
+  const startedAt = useRef(new Date());
+  useEffect(() => { startedAt.current = new Date(); }, [round]);
+
   const isLast = survey.page === survey.pages.length - 1;
 
   const submit = () => {
@@ -50,8 +58,14 @@ export default function SurveyPage({ definition, onSubmit, submitLabel, hideRevi
       return;
     }
     const data = survey.collect();
+    const ended = new Date();
+    const meta = {
+      startedAt: startedAt.current.toISOString(),
+      endedAt: ended.toISOString(),
+      durationSec: Math.max(0, Math.round((ended - startedAt.current) / 1000)),
+    };
     if (onSubmit) {
-      Promise.resolve(onSubmit(data))
+      Promise.resolve(onSubmit(data, meta))
         .then(() => { if (!hideReview) setSubmitted(data); })
         /* الإجابات تبقى في الحالة عند الفشل فلا تضيع؛ الصفحة الأم تعرض الخطأ */
         .catch((err) => { if (!hideReview) window.alert(err.message); });

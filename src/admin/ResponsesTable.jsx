@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { flattenQuestions } from '../survey/schema';
 import { RESPONSE_STATUS } from '../projects/store';
 import Icon from '../components/Icon';
+import { durationInfo } from './durations';
 
 /*
   النتائج والمراجعة.
@@ -125,6 +126,25 @@ function ReviewDrawer({
           <button type="button" className="tpick__close" onClick={onClose} aria-label="إغلاق">✕</button>
         </header>
 
+        {(() => {
+          const d = durationInfo(response);
+          const m = response.meta || {};
+          const t = (iso) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+          return (d.sec !== null || m.device || m.offline) ? (
+            <div className={`drawer__timing${d.suspicious ? ' is-fast' : ''}`}>
+              {d.sec !== null && (
+                <span>
+                  <b>{d.label}</b> للتعبئة
+                  {m.startedAt && m.endedAt && <> ، من <bdi dir="ltr">{t(m.startedAt)}</bdi> إلى <bdi dir="ltr">{t(m.endedAt)}</bdi></>}
+                </span>
+              )}
+              {d.suspicious && <span className="drawer__warn">أسرع من المتوقع لعدد الأسئلة المُجابة — تحقق منها قبل الاعتماد</span>}
+              {m.device && <span>{m.device}</span>}
+              {m.offline && <span>حُفظت على الجهاز بلا اتصال وأُرسلت لاحقاً</span>}
+            </div>
+          ) : null;
+        })()}
+
         <div className="drawer__meta">
           <span>أُرسلت {new Date(response.submittedAt).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
           <span>{answered} من {questions.length} سؤالاً مُجاب</span>
@@ -235,6 +255,7 @@ export default function ResponsesTable({
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(new Set());
   const [openId, setOpenId] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   const questions = useMemo(
     () => flattenQuestions(survey.pages.flatMap((p) => p.children)).filter((q) => q.type !== 'note'),
@@ -243,6 +264,7 @@ export default function ResponsesTable({
   const columns = questions.filter((q) => q.type !== 'image' && q.type !== 'repeat').slice(0, 4);
 
   const counts = useMemo(() => ({
+    fast: responses.filter((r) => durationInfo(r).suspicious).length,
     all: responses.length,
     pending: responses.filter((r) => r.status === 'pending').length,
     approved: responses.filter((r) => r.status === 'approved').length,
@@ -255,7 +277,9 @@ export default function ResponsesTable({
   }, [counts.pending, counts.all, filter]);
 
   const rows = useMemo(() => {
-    let list = filter === 'all' ? responses : responses.filter((r) => r.status === filter);
+    let list = filter === 'all' ? responses
+      : filter === 'fast' ? responses.filter((r) => durationInfo(r).suspicious)
+        : responses.filter((r) => r.status === filter);
     const q = query.trim();
     if (q) {
       list = list.filter((r) => questions.some((node) => display(r.answers[node.name], node, areas).includes(q)));
@@ -303,8 +327,8 @@ export default function ResponsesTable({
 
   return (
     <div className="results">
-      <div className="rsum">
-        {FILTERS.map((f) => (
+      <div className={`rsum${counts.fast ? ' rsum--5' : ''}`}>
+        {[...FILTERS, ...(counts.fast ? [{ key: 'fast', label: 'سريعة بشكل مريب' }] : [])].map((f) => (
           <button key={f.key} type="button"
             className={`rsum__card rsum__card--${f.key}${filter === f.key ? ' is-on' : ''}`}
             onClick={() => { setFilter(f.key); setSelected(new Set()); }}>
@@ -335,9 +359,20 @@ export default function ResponsesTable({
                 ابدأ المراجعة
               </button>
             )}
-            <button type="button" className="q-btn" title="تصدير الظاهر في الجدول"
+            <button type="button" className="q-btn" disabled={exporting}
+              title="ورقة للاستمارات، وورقة لكل مجموعة متكررة، وقاموس للأسئلة — للظاهر في الجدول"
+              onClick={async () => {
+                setExporting(true);
+                try {
+                  const { exportXlsx } = await import('./exportXlsx');
+                  await exportXlsx({ survey, responses: rows, areas, filename: `${survey.title || 'استبيان'}.xlsx` });
+                } finally { setExporting(false); }
+              }}>
+              {exporting ? 'جارٍ التجهيز…' : 'تصدير Excel'}
+            </button>
+            <button type="button" className="q-btn q-btn--sm" title="ملف CSV مسطّح — بلا تفاصيل المجموعات المتكررة"
               onClick={() => exportCsv(rows, questions, areas, `${survey.title || 'استبيان'}-${filter}.csv`)}>
-              تصدير CSV
+              CSV
             </button>
           </div>
         )}
@@ -357,6 +392,7 @@ export default function ResponsesTable({
                 </th>
                 <th>الحالة</th>
                 <th>الإرسال</th>
+                <th>المدة</th>
                 {columns.map((q) => <th key={q.name}>{q.label || q.name}</th>)}
               </tr>
             </thead>
@@ -372,6 +408,18 @@ export default function ResponsesTable({
                   <td className="results__date">
                     {new Date(r.submittedAt).toLocaleDateString('en-GB')}
                     {r.edited && <span className="rtable__edited" title="عُدّلت بعد الإرسال">●</span>}
+                  </td>
+                  <td className="results__date">
+                    {(() => {
+                      const d = durationInfo(r);
+                      if (d.sec === null) return <span className="rtable__nil">—</span>;
+                      return (
+                        <span className={d.suspicious ? 'dur dur--fast' : 'dur'}
+                          title={d.suspicious ? `أسرع من ${d.floor} ثانية المتوقعة لعدد الأسئلة المُجابة` : undefined}>
+                          {d.label}{d.suspicious && ' ⚠'}
+                        </span>
+                      );
+                    })()}
                   </td>
                   {columns.map((q) => (
                     <td key={q.name} className="rtable__cell">{display(r.answers[q.name], q, areas) || <span className="rtable__nil">—</span>}</td>

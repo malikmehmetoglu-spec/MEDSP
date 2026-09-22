@@ -27,6 +27,7 @@ const BY_TYPE = {
   integer: ['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'answered', 'empty'],
   decimal: ['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'answered', 'empty'],
   range: ['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'answered'],
+  calculate: ['eq', 'ne', 'gt', 'gte', 'lt', 'lte'],
   date: ['eq', 'gt', 'lt', 'answered', 'empty'],
   text: ['eq', 'ne', 'answered', 'empty'],
   textarea: ['answered', 'empty'],
@@ -40,7 +41,7 @@ export function opsFor(type) {
   return BY_TYPE[type] || ['answered', 'empty'];
 }
 
-const NUMERIC = new Set(['integer', 'decimal', 'range']);
+const NUMERIC = new Set(['integer', 'decimal', 'range', 'calculate']);
 
 /* المحرك لا يدعم الهروب داخل النص، فنزيل علامات الاقتباس من القيم */
 const clean = (v) => String(v ?? '').replace(/['"]/g, '');

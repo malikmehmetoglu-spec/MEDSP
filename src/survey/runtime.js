@@ -32,6 +32,51 @@ function buildContext(answers, scope) {
   return { ...answers, ...scope };
 }
 
+/* ---------------- الحقول المحسوبة ---------------- */
+
+/*
+  تُحسب بترتيب ظهورها، فيمكن لحقل محسوب أن يعتمد على آخر قبله.
+  الحقول المحسوبة داخل مجموعة متكررة تُحسب لكل صف في سياقه.
+  لا تُخزَّن في الحالة — تُشتق من الإجابات في كل مرة، فلا تتقادم أبداً.
+*/
+export function applyCalculations(nodes, answers, onError) {
+  const out = { ...answers };
+  const walk = (list, target, scope) => {
+    for (const node of list || []) {
+      if (node.type === 'group') { walk(node.children, target, scope); continue; }
+      if (node.type === 'calculate' && node.calculation) {
+        const ctx = scope ? { ...out, ...target } : target;
+        const v = evaluateExpression(node.calculation, ctx, '', onError);
+        target[node.name] = typeof v === 'number' && !Number.isFinite(v) ? '' : v;
+      }
+      if (node.type === 'repeat' && Array.isArray(target[node.name])
+          && (node.children || []).some((c) => c.type === 'calculate')) {
+        target[node.name] = target[node.name].map((row) => {
+          const r = { ...row };
+          walk(node.children, r, true);
+          return r;
+        });
+      }
+    }
+  };
+  walk(nodes, out, false);
+  return out;
+}
+
+/* ---------------- القوائم المتتالية ---------------- */
+
+/*
+  سؤال اختيار مربوط بسؤال سابق (cascadeFrom): كل خيار فيه
+  showWhen = قيمة السؤال الأب التي يظهر عندها. خيار بلا showWhen يظهر دائماً.
+*/
+export function filterChoices(node, context) {
+  if (!node.cascadeFrom || !Array.isArray(node.choices)) return node.choices;
+  const parent = context[node.cascadeFrom];
+  if (parent === undefined || parent === '' || parent === null) return [];
+  const pv = Array.isArray(parent) ? parent.map(String) : [String(parent)];
+  return node.choices.filter((c) => !c.showWhen || pv.includes(String(c.showWhen)));
+}
+
 /* ---------------- المشي على الشجرة ---------------- */
 
 /*
@@ -55,6 +100,8 @@ export function resolveVisible(nodes, answers, scope = null, onError) {
       out.push({ node, kind: 'group-end', scope });
     } else if (node.type === 'repeat') {
       out.push({ node, kind: 'repeat', scope });
+    } else if (node.type === 'calculate') {
+      out.push({ node, kind: 'calculate', scope });
     } else {
       out.push({ node, kind: 'question', scope });
     }
@@ -115,6 +162,11 @@ function checkType(node, value) {
 
 export function validateNode(node, value, answers, scope, onError) {
   const ctx = buildContext(answers, scope);
+  if (node.cascadeFrom && value !== '' && value != null) {
+    const allowed = new Set((filterChoices(node, ctx) || []).map((c) => String(c.value)));
+    const picked = Array.isArray(value) ? value : [value];
+    if (picked.some((v) => !allowed.has(String(v)))) return 'الاختيار لم يعد متاحاً بعد تغيير إجابة سابقة — اختر من جديد';
+  }
   return checkRequired(node, value, ctx, onError)
     || checkType(node, value)
     || checkConstraint(node, value, ctx, onError);
@@ -237,16 +289,22 @@ export default function useSurvey(definition, options = {}) {
     if (!exprErrors.includes(msg)) exprErrors.push(msg);
   }, [exprErrors]);
 
+  /* الإجابات مع الحقول المحسوبة — هي ما تراه الشروط والتحقق والناتج */
+  const answers = useMemo(
+    () => applyCalculations(allNodes, state.answers, onExprError),
+    [allNodes, state.answers, onExprError],
+  );
+
   /* العقد الظاهرة في الصفحة الحالية */
   const visible = useMemo(
-    () => resolveVisible(pages[state.page]?.children, state.answers, null, onExprError),
-    [pages, state.page, state.answers, onExprError],
+    () => resolveVisible(pages[state.page]?.children, answers, null, onExprError),
+    [pages, state.page, answers, onExprError],
   );
 
   /* كل العقد الظاهرة في الاستبيان كله — للتحقق النهائي وللتقدّم */
   const visibleAll = useMemo(
-    () => pages.flatMap((p) => resolveVisible(p.children, state.answers, null, onExprError)),
-    [pages, state.answers, onExprError],
+    () => pages.flatMap((p) => resolveVisible(p.children, answers, null, onExprError)),
+    [pages, answers, onExprError],
   );
 
   /* أخطاء الصفحة الحالية */
@@ -254,25 +312,25 @@ export default function useSurvey(definition, options = {}) {
     const map = {};
     for (const item of visible) {
       if (item.kind === 'question') {
-        const err = validateNode(item.node, state.answers[item.node.name], state.answers, null, onExprError);
+        const err = validateNode(item.node, answers[item.node.name], answers, null, onExprError);
         if (err) map[item.node.name] = err;
       }
       if (item.kind === 'repeat') {
-        const rows = state.answers[item.node.name] || [];
+        const rows = answers[item.node.name] || [];
         if (item.node.minCount && rows.length < item.node.minCount) {
           map[item.node.name] = `أضف ${item.node.minCount} على الأقل`;
         }
         rows.forEach((row, i) => {
           for (const child of item.node.children) {
             if (NON_ANSWER_TYPES.has(child.type)) continue;
-            const err = validateNode(child, row[child.name], state.answers, row, onExprError);
+            const err = validateNode(child, row[child.name], answers, row, onExprError);
             if (err) map[`${item.node.name}.${i}.${child.name}`] = err;
           }
         });
       }
     }
     return map;
-  }, [visible, state.answers, onExprError]);
+  }, [visible, answers, onExprError]);
 
   const pageValid = Object.keys(errors).length === 0;
 
@@ -280,9 +338,9 @@ export default function useSurvey(definition, options = {}) {
   const progress = useMemo(() => {
     const questions = visibleAll.filter((i) => i.kind === 'question');
     if (questions.length === 0) return 0;
-    const done = questions.filter((i) => !isBlank(state.answers[i.node.name])).length;
+    const done = questions.filter((i) => !isBlank(answers[i.node.name])).length;
     return Math.round((done / questions.length) * 100);
-  }, [visibleAll, state.answers]);
+  }, [visibleAll, answers]);
 
   /*
     الناتج النهائي: الإجابات الظاهرة فقط.
@@ -291,33 +349,33 @@ export default function useSurvey(definition, options = {}) {
   */
   const collect = useCallback(() => {
     const visibleNames = new Set(
-      visibleAll.filter((i) => i.kind === 'question' || i.kind === 'repeat')
+      visibleAll.filter((i) => i.kind === 'question' || i.kind === 'repeat' || i.kind === 'calculate')
         .map((i) => i.node.name),
     );
     const out = {};
-    for (const [key, value] of Object.entries(state.answers)) {
+    for (const [key, value] of Object.entries(answers)) {
       if (!visibleNames.has(key)) continue;
       if (isBlank(value)) continue;
       out[key] = value;
     }
     return out;
-  }, [state.answers, visibleAll]);
+  }, [answers, visibleAll]);
 
   /* التحقق من الاستبيان كله قبل الإرسال */
   const validateAll = useCallback(() => {
     const map = {};
     for (const item of visibleAll) {
       if (item.kind === 'question') {
-        const err = validateNode(item.node, state.answers[item.node.name], state.answers, null, onExprError);
+        const err = validateNode(item.node, answers[item.node.name], answers, null, onExprError);
         if (err) map[item.node.name] = err;
       }
     }
     return map;
-  }, [visibleAll, state.answers, onExprError]);
+  }, [visibleAll, answers, onExprError]);
 
   return {
     /* الحالة */
-    answers: state.answers,
+    answers: answers,
     page: state.page,
     pages,
     visible,

@@ -113,7 +113,8 @@ export function buildReport(survey, responses) {
 
     switch (node.type) {
       case 'integer':
-      case 'decimal': {
+      case 'decimal':
+      case 'calculate': {
         const stats = numericSummary(responses, node);
         if (stats) blocks.push({ kind: 'stat', node, stats });
         break;

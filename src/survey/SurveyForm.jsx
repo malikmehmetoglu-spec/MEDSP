@@ -1,5 +1,5 @@
 import Field from './Field';
-import { validateNode, resolveVisible } from './runtime';
+import { validateNode, resolveVisible, filterChoices } from './runtime';
 import { NON_ANSWER_TYPES } from './schema';
 
 /* ---------------- غلاف السؤال ---------------- */
@@ -17,6 +17,9 @@ function Question({ node, value, error, showError, onChange, onBlur, index }) {
         </label>
       </div>
       {node.hint && <p className="q__hint">{node.hint}</p>}
+      {node.cascadeFrom && node.choices?.length === 0 ? (
+        <p className="q__hint q__hint--wait">تظهر الخيارات بعد الإجابة على السؤال السابق المرتبط به.</p>
+      ) : (
       <Field
         node={node}
         value={value}
@@ -24,7 +27,22 @@ function Question({ node, value, error, showError, onChange, onBlur, index }) {
         onBlur={onBlur}
         invalid={invalid}
       />
+      )}
       {invalid && <p className="q__error">{error}</p>}
+    </div>
+  );
+}
+
+/* ---------------- قيمة محسوبة (للعرض فقط) ---------------- */
+
+function Computed({ node, value }) {
+  if (!node.showResult) return null;
+  const shown = value === '' || value === null || value === undefined ? '—' : Number(value).toLocaleString('en-US');
+  return (
+    <div className="q-calc">
+      <span className="q-calc__label">{node.label}</span>
+      <strong className="q-calc__value" dir="ltr">{shown}</strong>
+      {node.unit && <span className="q-calc__unit">{node.unit}</span>}
     </div>
   );
 }
@@ -78,8 +96,11 @@ function Repeat({ node, rows, errors, showError, survey }) {
             </div>
 
             {visible.map((item) => {
+              if (item.kind === 'calculate') {
+                return <Computed key={item.node.name} node={item.node} value={row[item.node.name]} />;
+              }
               if (item.kind !== 'question') return null;
-              const child = item.node;
+              const child = { ...item.node, choices: filterChoices(item.node, { ...survey.answers, ...row }) };
               if (NON_ANSWER_TYPES.has(child.type)) return <Note key={child.name} node={child} />;
               const key = `${node.name}.${i}.${child.name}`;
               return (
@@ -179,13 +200,19 @@ export default function SurveyForm({ survey, definition }) {
           }
 
           if (node.type === 'note') return <Note key={node.name} node={node} />;
+          if (kind === 'calculate') {
+            return <Computed key={node.name} node={node} value={survey.answers[node.name]} />;
+          }
 
           counter += 1;
+          const shownNode = node.cascadeFrom
+            ? { ...node, choices: filterChoices(node, survey.answers) }
+            : node;
           return (
             <Question
               key={node.name}
               index={counter}
-              node={node}
+              node={shownNode}
               value={survey.answers[node.name]}
               error={survey.errors[node.name]}
               showError={showError}

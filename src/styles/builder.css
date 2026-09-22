@@ -109,7 +109,7 @@
 
 .bx-pal__head { display: grid; gap: 2px; padding: 0 6px 6px; border-bottom: 1px solid var(--bx-line); }
 .bx-pal__head strong { font-size: 0.98rem; color: var(--ink); }
-.bx-pal__head span { font-size: 0.74rem; color: var(--accent-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bx-pal__head > span { font-size: 0.74rem; color: var(--accent-text); min-width: 0; }
 
 .bx-pal__group { display: grid; gap: 2px; }
 .bx-pal__label { font-size: 0.7rem; font-weight: 700; color: var(--ink-faint); padding: 4px 6px 2px; }
@@ -636,3 +636,52 @@
 .bx-type .icon,
 .bx-addlogic .icon { color: inherit; }
 .bx-addlogic .icon { color: var(--accent-text); }
+
+/* ---------- الحقل المحسوب ---------- */
+.bx-calc { display: grid; gap: 12px; }
+.bx-calc__list { display: grid; gap: 6px; }
+.bx-calc__row { display: grid; grid-template-columns: 20px 1fr auto; gap: 8px; align-items: center; }
+.bx-calc__op { font-weight: 900; color: var(--accent-text); text-align: center; }
+
+.bx-calc__result {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 9px;
+  background: var(--bx-raised);
+  border: 1px solid var(--bx-accent);
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.bx-calc__result.is-empty { border-style: dashed; border-color: var(--bx-line-strong); color: var(--ink-faint); font-weight: 400; }
+
+.bx-card__calc {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  padding-inline-start: 10px;
+  border-inline-start: 2px solid var(--bx-line-strong);
+}
+
+.bx-card__calcwarn { justify-self: start; font-size: 0.72rem; }
+
+/* ---------- القوائم المتتالية ---------- */
+.bx-cascade { display: grid; gap: 10px; padding-bottom: 8px; border-bottom: 1px dashed var(--bx-line); }
+.bx-choice__when { flex: 0 0 180px; font-size: 0.8rem; padding-block: 7px; }
+@media (max-width: 900px) {
+  .bx-choice { flex-wrap: wrap; }
+  .bx-choice__when { flex: 1 1 100%; order: 3; margin-inline-start: 22px; }
+}
+
+.bx-pal__target { display: grid; gap: 4px; }
+.bx-pal__where { color: var(--accent-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bx-pal__clear {
+  justify-self: start;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  text-decoration: underline;
+}
+.bx-pal__clear:hover { color: var(--ink); }

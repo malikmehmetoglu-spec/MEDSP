@@ -1,37 +1,130 @@
-import { useEffect, useState } from 'react';
-import { getPublicSurvey, unlockSurvey, createResponse } from './store';
+import { useCallback, useEffect, useState } from 'react';
+import { getPublicSurvey, unlockSurvey, createResponse, cacheSurvey } from './store';
+import * as outbox from './outbox';
 import SurveyPage from '../survey/SurveyPage';
 import Icon from '../components/Icon';
 
 /*
   صفحة التعبئة العامة — ما يفتحه الباحث عبر الرابط المشترك.
-  لا تعرض أي شيء إداري: لا نتائج، ولا مشاريع أخرى، ولا أزرار نشر.
+
+  العمل بلا إنترنت:
+    - أول فتح وأنت متصل يحفظ الاستبيان على الجهاز
+    - بعدها يُفتح ويُعبّأ بلا شبكة
+    - الإرسال بلا شبكة يُحفظ في صندوق الصادر على الجهاز
+    - يُرسل تلقائياً عند عودة الشبكة وهذه الصفحة مفتوحة
 */
 
 function Shell({ children }) {
   return <section className="shell fillpage">{children}</section>;
 }
 
-function Message({ icon, title, body }) {
+function Message({ icon, title, body, children }) {
   return (
     <Shell>
       <div className="fillpage__msg">
         {icon && <Icon name={icon} className="fillpage__icon" />}
         <h1>{title}</h1>
         <p>{body}</p>
+        {children}
       </div>
     </Shell>
   );
 }
 
+const send = (item) => createResponse(item.surveyId, item.answers, {
+  password: item.password, source: 'link', meta: item.meta, clientId: item.clientId,
+});
+
+function useOnline() {
+  const [online, setOnline] = useState(() => navigator.onLine);
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
+  return online;
+}
+
+/* ---------------- صندوق الصادر ---------------- */
+
+function Outbox({ surveyId, online }) {
+  const [items, setItems] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [last, setLast] = useState(null);
+
+  const refresh = useCallback(() => outbox.list(surveyId).then(setItems).catch(() => setItems([])), [surveyId]);
+
+  const flushNow = useCallback(async () => {
+    setBusy(true);
+    try { setLast(await outbox.flush(send)); } finally { setBusy(false); refresh(); }
+  }, [refresh]);
+
+  useEffect(() => { refresh(); return outbox.subscribe(refresh); }, [refresh]);
+
+  /* إرسال تلقائي: عند فتح الصفحة، وعند عودة الشبكة، وكل نصف دقيقة ما دام هناك انتظار */
+  useEffect(() => { if (online) flushNow(); }, [online, flushNow]);
+  const pending = items.filter((i) => !i.rejected);
+  useEffect(() => {
+    if (!online || pending.length === 0) return undefined;
+    const t = setInterval(flushNow, 30000);
+    return () => clearInterval(t);
+  }, [online, pending.length, flushNow]);
+
+  const rejected = items.filter((i) => i.rejected);
+  if (items.length === 0) {
+    return last?.sent ? (
+      <div className="outbox outbox--ok" role="status">
+        <Icon name="check" className="outbox__icon" />
+        <span>أُرسلت {last.sent} {last.sent === 1 ? 'استمارة محفوظة' : 'استمارات محفوظة'} بنجاح.</span>
+      </div>
+    ) : null;
+  }
+
+  return (
+    <div className={`outbox${online ? '' : ' outbox--offline'}`} role="status">
+      {pending.length > 0 && (
+        <div className="outbox__row">
+          <span className="outbox__count">{pending.length}</span>
+          <span className="outbox__text">
+            <strong>{pending.length === 1 ? 'استمارة محفوظة' : 'استمارات محفوظة'} على هذا الجهاز بانتظار الإرسال</strong>
+            <span>{online
+              ? (busy ? 'جارٍ الإرسال…' : 'ستُرسل تلقائياً. أبقِ هذه الصفحة مفتوحة حتى تُرسل.')
+              : 'لا يوجد اتصال. تُرسل تلقائياً عند عودة الشبكة وهذه الصفحة مفتوحة.'}</span>
+          </span>
+          {online && (
+            <button type="button" className="q-btn q-btn--sm" onClick={flushNow} disabled={busy}>أرسل الآن</button>
+          )}
+        </div>
+      )}
+      {rejected.map((i) => (
+        <div className="outbox__row outbox__row--bad" key={i.clientId}>
+          <span className="outbox__text">
+            <strong>استمارة رفضها الخادم</strong>
+            <span>{i.lastError}. حُفظت في {new Date(i.queuedAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}.</span>
+          </span>
+          <button type="button" className="q-btn q-btn--sm q-btn--danger"
+            onClick={() => { if (window.confirm('حذف هذه الاستمارة من الجهاز نهائياً؟')) outbox.remove(i.clientId); }}>
+            حذف
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ---------------- الصفحة ---------------- */
+
 export default function FillPage({ surveyId }) {
+  const online = useOnline();
   const [state, setState] = useState({ status: 'loading' });
   const [definition, setDefinition] = useState(null);
   const [attempt, setAttempt] = useState('');
   const [password, setPassword] = useState(null);
   const [wrong, setWrong] = useState(false);
   const [checking, setChecking] = useState(false);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState(null);
   const [sendError, setSendError] = useState('');
 
   useEffect(() => {
@@ -39,53 +132,64 @@ export default function FillPage({ surveyId }) {
     getPublicSurvey(surveyId).then((res) => {
       if (!alive) return;
       setState(res);
-      /* غير المحمي يأتي بتعريفه مباشرة؛ المحمي لا يُكشف قبل كلمة المرور */
-      if (res.status === 'ok' && !res.needsPassword) setDefinition(res.survey);
+      if (res.fromCache && res.cached?.definition) {
+        /* بلا شبكة: من النسخة المحفوظة على الجهاز */
+        setDefinition(res.cached.definition);
+        setPassword(res.cached.password ?? null);
+      } else if (res.status === 'ok' && !res.needsPassword) {
+        setDefinition(res.survey);
+      }
     });
     return () => { alive = false; };
   }, [surveyId]);
 
-  if (state.status === 'loading') {
-    return <Message title="جارٍ التحميل" body="لحظة من فضلك." />;
+  if (state.status === 'loading') return <Message title="جارٍ التحميل" body="لحظة من فضلك." />;
+
+  if (state.status === 'offline') {
+    return (
+      <Message icon="lock" title="لا يوجد اتصال بالإنترنت"
+        body="هذا الاستبيان لم يُفتح على هذا الجهاز من قبل، فلا توجد نسخة محفوظة منه. افتح الرابط مرة واحدة وأنت متصل، وبعدها يعمل بلا إنترنت." />
+    );
   }
 
   if (state.status === 'missing') {
     return (
-      <Message
-        title="الرابط غير صحيح"
-        body="لا يوجد استبيان بهذا الرابط. تأكد من نسخه كاملاً، أو اطلب رابطاً جديداً ممن أرسله لك."
-      />
+      <Message title="الرابط غير صحيح"
+        body="لا يوجد استبيان بهذا الرابط. تأكد من نسخه كاملاً، أو اطلب رابطاً جديداً ممن أرسله لك." />
     );
   }
 
   if (state.status === 'closed') {
     return (
-      <Message
-        icon="lock"
-        title="الاستبيان مغلق"
-        body="هذا الاستبيان لا يستقبل إجابات حالياً. تواصل مع مديرية التخطيط والإحصاء إن كنت تظن أن هذا خطأ."
-      />
+      <Message icon="lock" title="الاستبيان مغلق"
+        body="هذا الاستبيان لا يستقبل إجابات حالياً. تواصل مع مديرية التخطيط والإحصاء إن كنت تظن أن هذا خطأ.">
+        <Outbox surveyId={surveyId} online={online} />
+      </Message>
     );
   }
 
   if (state.status === 'expired') {
     return (
-      <Message
-        title="انتهت مدة التعبئة"
-        body="أُغلق هذا الاستبيان في موعده المحدد ولم يعد يستقبل إجابات."
-      />
+      <Message title="انتهت مدة التعبئة"
+        body="أُغلق هذا الاستبيان في موعده المحدد ولم يعد يستقبل إجابات." />
     );
   }
 
   if (state.needsPassword && !definition) {
-    /* التحقق على الخادم — المتصفح لا يرى الأسئلة قبل كلمة مرور صحيحة */
     const submit = async () => {
       if (!attempt) return;
       setChecking(true);
       const def = await unlockSurvey(surveyId, attempt);
       setChecking(false);
-      if (def) { setDefinition(def); setPassword(attempt); setWrong(false); }
-      else { setWrong(true); }
+      if (def) {
+        setDefinition(def);
+        setPassword(attempt);
+        setWrong(false);
+        /* يُحفظ مع كلمة المرور ليعمل بلا شبكة لاحقاً — على هذا الجهاز وحده */
+        cacheSurvey(surveyId, { state, definition: def, password: attempt });
+      } else {
+        setWrong(true);
+      }
     };
 
     return (
@@ -95,15 +199,10 @@ export default function FillPage({ surveyId }) {
           <h1>{state.survey.title}</h1>
           <p className="gate__lede">هذا الاستبيان محمي. أدخل كلمة المرور التي وصلتك للمتابعة.</p>
           <div className="gate__row">
-            <input
-              className={`q-input gate__input${wrong ? ' is-bad' : ''}`}
-              type="password"
-              value={attempt}
-              autoFocus
-              placeholder="كلمة المرور"
+            <input className={`q-input gate__input${wrong ? ' is-bad' : ''}`} type="password"
+              value={attempt} autoFocus placeholder="كلمة المرور"
               onChange={(e) => { setAttempt(e.target.value); setWrong(false); }}
-              onKeyDown={(e) => e.key === 'Enter' && submit()}
-            />
+              onKeyDown={(e) => e.key === 'Enter' && submit()} />
             <button type="button" className="survey__navbtn survey__navbtn--primary"
               onClick={submit} disabled={checking}>
               {checking ? 'جارٍ التحقق…' : 'دخول'}
@@ -115,22 +214,23 @@ export default function FillPage({ surveyId }) {
     );
   }
 
-  if (!definition) {
-    return <Message title="جارٍ التحميل" body="لحظة من فضلك." />;
-  }
+  if (!definition) return <Message title="جارٍ التحميل" body="لحظة من فضلك." />;
 
   if (done) {
+    const queued = done === 'queued';
     return (
       <Shell>
         <div className="fillpage__msg">
-          <Icon name="check" className="fillpage__icon fillpage__icon--ok" />
-          <h1>وصلت إجابتك</h1>
-          <p>شكراً لك. ستُراجع البيانات قبل اعتمادها.</p>
-          <button
-            type="button"
-            className="survey__navbtn survey__navbtn--primary"
-            onClick={() => { setDone(false); window.scrollTo(0, 0); }}
-          >
+          <Icon name={queued ? 'lock' : 'check'} className={`fillpage__icon${queued ? '' : ' fillpage__icon--ok'}`} />
+          <h1>{queued ? 'حُفظت على هذا الجهاز' : 'وصلت إجابتك'}</h1>
+          <p>
+            {queued
+              ? 'لا يوجد اتصال الآن، فحُفظت الاستمارة على الهاتف. ستُرسل تلقائياً عند عودة الشبكة — افتح هذا الرابط حينها إن أغلقته.'
+              : 'شكراً لك. ستُراجع البيانات قبل اعتمادها.'}
+          </p>
+          <Outbox surveyId={surveyId} online={online} />
+          <button type="button" className="survey__navbtn survey__navbtn--primary"
+            onClick={() => { setDone(null); window.scrollTo(0, 0); }}>
             تعبئة استمارة أخرى
           </button>
         </div>
@@ -140,30 +240,40 @@ export default function FillPage({ surveyId }) {
 
   return (
     <div className="fillpage">
-      {state.projectName && (
-        <div className="fillpage__crumb">
-          <div className="shell">{state.projectName}</div>
-        </div>
-      )}
-      {sendError && (
-        <div className="shell"><p className="share__warn">{sendError}</p></div>
-      )}
+      <div className="shell fillpage__top">
+        {state.projectName && <span className="fillpage__crumb">{state.projectName}</span>}
+        <span className={`fillpage__net${online ? '' : ' is-off'}`}>
+          {online ? 'متصل' : 'بلا اتصال — تُحفظ الاستمارة على الجهاز'}
+        </span>
+      </div>
+      <div className="shell"><Outbox surveyId={surveyId} online={online} /></div>
+      {sendError && <div className="shell"><p className="share__warn">{sendError}</p></div>}
       <SurveyPage
         definition={definition}
         submitLabel="إرسال الإجابة"
-        onSubmit={async (answers) => {
-          setSendError('');
-          try {
-            await createResponse(surveyId, answers, { source: 'link', password });
-            setDone(true);
-            window.scrollTo(0, 0);
-          } catch (err) {
-            setSendError(`${err.message}. إجاباتك ما زالت هنا — حاول الإرسال مجدداً.`);
-            window.scrollTo(0, 0);
-            throw err;
-          }
-        }}
         hideReview
+        onSubmit={async (answers, timing) => {
+          setSendError('');
+          const clientId = outbox.newClientId();
+          const meta = { ...timing, device: outbox.deviceLabel() };
+          try {
+            await createResponse(surveyId, answers, { source: 'link', password, meta, clientId });
+            setDone('sent');
+          } catch (err) {
+            if (outbox.isNetworkError(err)) {
+              /* بلا شبكة: نحفظ على الجهاز بنفس المعرّف، فإعادة الإرسال لا تكرر */
+              await outbox.enqueue({
+                clientId, surveyId, answers, password,
+                meta: { ...meta, offline: true, queuedAt: new Date().toISOString() },
+              });
+              setDone('queued');
+            } else {
+              setSendError(`${err.message}. إجاباتك ما زالت هنا — حاول الإرسال مجدداً.`);
+              throw err;
+            }
+          }
+          window.scrollTo(0, 0);
+        }}
       />
     </div>
   );

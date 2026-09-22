@@ -4,6 +4,7 @@ import { checkExpression } from '../survey/expression';
 import {
   OPS, opsFor, compileLogic, describeLogic, isRuleComplete, LOGIC_SOURCE_TYPES,
 } from '../survey/logic';
+import { CALC_OPS, compileCalc, describeCalc } from '../survey/calc';
 import Icon from '../components/Icon';
 
 /*
@@ -24,7 +25,7 @@ const PALETTE = [
   { label: 'اختيارات', types: ['select_one', 'select_multiple', 'rank'] },
   { label: 'زمن', types: ['date', 'time', 'datetime'] },
   { label: 'مكان', types: ['admin_area', 'geopoint'] },
-  { label: 'أخرى', types: ['image', 'repeat'] },
+  { label: 'أخرى', types: ['image', 'repeat', 'calculate'] },
 ];
 
 const TYPE_HINT = {
@@ -44,6 +45,7 @@ const TYPE_HINT = {
   geopoint: 'إحداثيات GPS',
   image: 'التقاط صورة',
   repeat: 'أسئلة تتكرر لكل فرد أو أسرة',
+  calculate: 'مجموع، فرق، نسبة، عمر…',
 };
 
 /* الأنواع التي يمكن التحويل بينها دون فقدان الإعدادات */
@@ -55,7 +57,7 @@ const SWITCHABLE = [
 ];
 
 const HAS_CHOICES = (t) => Boolean(QUESTION_TYPES[t]?.hasChoices);
-const NUMERIC = new Set(['integer', 'decimal', 'range']);
+const NUMERIC = new Set(['integer', 'decimal', 'range', 'calculate']);
 
 /* ---------------- عمليات الشجرة ---------------- */
 
@@ -92,6 +94,7 @@ function newNode(type, names) {
   if (HAS_CHOICES(type)) node.choices = [];
   if (type === 'range') { node.min = 1; node.max = 5; }
   if (type === 'repeat') { node.children = []; node.itemLabel = 'فرد'; }
+  if (type === 'calculate') { node.calc = { op: 'sum', fields: [] }; node.showResult = true; }
   return node;
 }
 
@@ -112,7 +115,7 @@ const useB = () => useContext(Ctx);
 
 /* ---------------- الخيارات ---------------- */
 
-function ChoiceRows({ choices, onChange }) {
+function ChoiceRows({ choices, onChange, parent }) {
   const list = choices || [];
   const inputs = useRef([]);
   const [focusIdx, setFocusIdx] = useState(null);
@@ -178,6 +181,16 @@ function ChoiceRows({ choices, onChange }) {
               }
             }}
           />
+          {parent && (
+            <select className="bx-input bx-select bx-choice__when" value={c.showWhen ?? ''}
+              aria-label="يظهر عند"
+              onChange={(e) => onChange(list.map((x, j) => (j === i ? { ...x, showWhen: e.target.value || undefined } : x)))}>
+              <option value="">يظهر دائماً</option>
+              {(parent.choices || []).map((pc) => (
+                <option key={pc.value} value={pc.value}>عند: {pc.label || pc.value}</option>
+              ))}
+            </select>
+          )}
           <span className="bx-choice__tools">
             <button type="button" className="bx-mini" onClick={() => move(i, -1)} disabled={i === 0} aria-label="أعلى">↑</button>
             <button type="button" className="bx-mini" onClick={() => move(i, 1)} disabled={i === list.length - 1} aria-label="أسفل">↓</button>
@@ -310,6 +323,128 @@ function LogicEditor({ node, prior, set }) {
   );
 }
 
+/* ---------------- الحقل المحسوب ---------------- */
+
+function FieldSelect({ value, options, onChange, placeholder = 'اختر حقلاً…' }) {
+  return (
+    <select className="bx-input bx-select" value={value || ''} onChange={(e) => onChange(e.target.value)}>
+      <option value="">{placeholder}</option>
+      {options.map((o) => <option key={o.name} value={o.name}>{o.label || o.name}</option>)}
+    </select>
+  );
+}
+
+function CalcEditor({ node, candidates, set }) {
+  const { nodeOf } = useB();
+  const calc = node.calc || { op: 'sum', fields: [] };
+  const def = CALC_OPS[calc.op];
+  const commit = (next) => set({ calc: next, calculation: compileCalc(next) || undefined });
+
+  const ofTypes = (types) => candidates.filter((c) => types.includes(c.type) && c.name !== node.name);
+  const repeats = candidates.filter((c) => c.type === 'repeat');
+  const rep = calc.repeat ? nodeOf(calc.repeat) : null;
+  const repChildren = (rep?.children || []).filter((c) => c.type !== 'note');
+  const keyNode = repChildren.find((c) => c.name === calc.key);
+  const fields = calc.fields || [];
+  const setField = (i, v) => { const f = [...fields]; f[i] = v; commit({ ...calc, fields: f }); };
+
+  const summary = describeCalc(calc, nodeOf);
+
+  return (
+    <div className="bx-calc">
+      <label className="bx-field">
+        <span>طريقة الحساب</span>
+        <select className="bx-input bx-select" value={calc.op}
+          onChange={(e) => commit({ op: e.target.value, fields: [] })}>
+          {Object.entries(CALC_OPS).map(([k, o]) => <option key={k} value={k}>{o.label}</option>)}
+        </select>
+        <span className="bx-hint">{def?.hint}</span>
+      </label>
+
+      {(def.inputs === 'many') && (
+        <div className="bx-calc__list">
+          {[...fields, ''].slice(0, Math.max(fields.length + 1, 2)).map((v, i) => (
+            <div className="bx-calc__row" key={i}>
+              <span className="bx-calc__op">{i === 0 ? '' : '+'}</span>
+              <FieldSelect value={v} options={ofTypes(def.types)} onChange={(x) => setField(i, x)} />
+              {v && <button type="button" className="bx-mini bx-mini--del" aria-label="إزالة"
+                onClick={() => commit({ ...calc, fields: fields.filter((_, j) => j !== i) })}>✕</button>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {(def.inputs === 'two' || def.inputs === 'one') && (
+        <div className="bx-row">
+          <label className="bx-field"><span>{def.inputs === 'one' ? 'الحقل' : 'أ'}</span>
+            <FieldSelect value={fields[0]} options={ofTypes(def.types)} onChange={(x) => setField(0, x)} />
+          </label>
+          {def.inputs === 'two' && (
+            <label className="bx-field"><span>ب</span>
+              <FieldSelect value={fields[1]} options={ofTypes(def.types)} onChange={(x) => setField(1, x)} />
+            </label>
+          )}
+        </div>
+      )}
+
+      {def.inputs.startsWith('repeat') && (
+        <div className="bx-row">
+          <label className="bx-field"><span>المجموعة المتكررة</span>
+            <FieldSelect value={calc.repeat} options={repeats} placeholder="اختر مجموعة…"
+              onChange={(x) => commit({ ...calc, repeat: x, key: undefined, value: undefined })} />
+          </label>
+          {def.inputs !== 'repeat' && rep && (
+            <label className="bx-field"><span>{def.inputs === 'repeat-key' ? 'الحقل المراد جمعه' : 'الحقل'}</span>
+              <FieldSelect value={calc.key}
+                options={def.keyTypes ? repChildren.filter((c) => def.keyTypes.includes(c.type)) : repChildren}
+                onChange={(x) => commit({ ...calc, key: x, value: undefined })} />
+            </label>
+          )}
+          {def.inputs === 'repeat-where' && keyNode && (
+            <label className="bx-field"><span>يساوي</span>
+              {keyNode.choices?.length ? (
+                <select className="bx-input bx-select" value={calc.value ?? ''}
+                  onChange={(e) => commit({ ...calc, value: e.target.value })}>
+                  <option value="">اختر…</option>
+                  {keyNode.choices.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              ) : (
+                <input className="bx-input" value={calc.value ?? ''}
+                  onChange={(e) => commit({ ...calc, value: e.target.value })} />
+              )}
+            </label>
+          )}
+        </div>
+      )}
+
+      {def.inputs.startsWith('repeat') && repeats.length === 0 && (
+        <p className="bx-hint">أضف مجموعة متكررة قبل هذا الحقل ليُحسب منها.</p>
+      )}
+      {!def.inputs.startsWith('repeat') && candidates.length > 0
+        && ofTypes(def.types || []).length === 0 && (
+        <p className="bx-hint">لا توجد قبل هذا الحقل أسئلة من النوع المناسب لهذه العملية.</p>
+      )}
+
+      <p className={`bx-calc__result${summary ? '' : ' is-empty'}`}>
+        {summary ? <>النتيجة = {summary}</> : 'أكمل اختيار الحقول ليظهر الحساب.'}
+      </p>
+
+      <div className="bx-row">
+        <label className="bx-field"><span>الوحدة (اختياري)</span>
+          <input className="bx-input" value={node.unit || ''} placeholder="فرد، سنة، ٪"
+            onChange={(e) => set({ unit: e.target.value })} />
+        </label>
+      </div>
+      <label className="bx-switch">
+        <input type="checkbox" checked={Boolean(node.showResult)}
+          onChange={(e) => set({ showResult: e.target.checked })} />
+        <span className="bx-switch__track" aria-hidden="true"><span /></span>
+        <span className="bx-switch__text">إظهار النتيجة للمستجيب أثناء التعبئة</span>
+      </label>
+    </div>
+  );
+}
+
 /* ---------------- بطاقة السؤال ---------------- */
 
 function QuestionCard({ node, index, prior, isFirst, isLast }) {
@@ -351,6 +486,14 @@ function QuestionCard({ node, index, prior, isFirst, isLast }) {
             {noChoices && <span className="bx-chip bx-chip--warn">يحتاج خيارين على الأقل</span>}
             {(broken || incompleteLogic) && <span className="bx-chip bx-chip--warn">الشرط غير مكتمل</span>}
           </span>
+          {node.type === 'calculate' && (
+            node.calculation
+              ? <span className="bx-card__calc">= {describeCalc(node.calc, b.nodeOf)}</span>
+              : <span className="bx-chip bx-chip--warn bx-card__calcwarn">الحساب غير مكتمل</span>
+          )}
+          {node.cascadeFrom && (
+            <span className="bx-card__calc">خياراته حسب «{b.nodeOf(node.cascadeFrom)?.label || node.cascadeFrom}»</span>
+          )}
           {summary && !broken && <span className="bx-card__logic">يظهر إذا: {summary}</span>}
         </span>
         <span className="bx-card__tools" onClick={(e) => e.stopPropagation()}>
@@ -387,12 +530,42 @@ function QuestionCard({ node, index, prior, isFirst, isLast }) {
             </div>
           )}
 
-          {HAS_CHOICES(node.type) && (
+          {node.type === 'calculate' && (
             <section className="bx-block">
-              <h5 className="bx-h">الخيارات</h5>
-              <ChoiceRows choices={node.choices} onChange={(choices) => set({ choices })} />
+              <h5 className="bx-h">الحساب</h5>
+              <CalcEditor node={node} candidates={b.candidatesFor(node.name)} set={set} />
             </section>
           )}
+
+          {HAS_CHOICES(node.type) && (() => {
+            const parents = prior.filter((p) => (p.type === 'select_one' || p.type === 'select_multiple') && p.choices?.length);
+            const parent = node.cascadeFrom ? b.nodeOf(node.cascadeFrom) : null;
+            return (
+              <section className="bx-block">
+                <h5 className="bx-h">الخيارات</h5>
+                {parents.length > 0 && (
+                  <div className="bx-cascade">
+                    <label className="bx-switch">
+                      <input type="checkbox" checked={Boolean(node.cascadeFrom)}
+                        onChange={(e) => set(e.target.checked
+                          ? { cascadeFrom: parents[parents.length - 1].name }
+                          : { cascadeFrom: undefined, choices: (node.choices || []).map(({ showWhen, ...c }) => c) })} />
+                      <span className="bx-switch__track" aria-hidden="true"><span /></span>
+                      <span className="bx-switch__text">الخيارات تتغير حسب إجابة سابقة</span>
+                    </label>
+                    {node.cascadeFrom && (
+                      <label className="bx-field">
+                        <span>مرتبطة بالسؤال</span>
+                        <FieldSelect value={node.cascadeFrom} options={parents} onChange={(x) => set({ cascadeFrom: x || undefined })} />
+                        <span className="bx-hint">حدّد لكل خيار عند أي إجابة يظهر. مثال: المدينة تظهر حسب المحافظة المختارة.</span>
+                      </label>
+                    )}
+                  </div>
+                )}
+                <ChoiceRows choices={node.choices} parent={parent} onChange={(choices) => set({ choices })} />
+              </section>
+            );
+          })()}
 
           {NUMERIC.has(node.type) && (
             <section className="bx-block">
@@ -453,7 +626,7 @@ function QuestionCard({ node, index, prior, isFirst, isLast }) {
           )}
 
           <section className="bx-block bx-block--rules">
-            {node.type !== 'note' && (
+            {node.type !== 'note' && node.type !== 'calculate' && (
               <label className="bx-switch">
                 <input type="checkbox" checked={Boolean(node.required)}
                   onChange={(e) => set({ required: e.target.checked })} />
@@ -529,12 +702,20 @@ function NodeList({ list, scope = null }) {
 
 /* ---------------- لوحة الأنواع ---------------- */
 
-function Palette({ onPick, target }) {
+function Palette({ onPick, target, onClear }) {
   return (
     <div className="bx-pal">
       <div className="bx-pal__head">
         <strong>أضف سؤالاً</strong>
-        <span>{target ? `يُضاف بعد: ${target}` : 'يُضاف في آخر الاستبيان'}</span>
+        <span className="bx-pal__target">
+          {target ? (
+            <>
+              <span className="bx-pal__where">{target}</span>
+              <button type="button" className="bx-pal__clear" onClick={onClear}
+                title="إلغاء التحديد (Esc)">أضف في النهاية بدلاً من ذلك</button>
+            </>
+          ) : 'يُضاف في آخر الاستبيان'}
+        </span>
       </div>
       {PALETTE.map((g) => (
         <div className="bx-pal__group" key={g.label}>
@@ -576,6 +757,15 @@ export default function SurveyBuilder({ survey, onChange, actions }) {
       .filter((n) => LOGIC_SOURCE_TYPES.has(n.type) && n.type !== 'repeat' && n.type !== 'note');
   };
 
+  const candidatesFor = (name) => {
+    const idx = order.findIndex((o) => o.node.name === name);
+    const me = order[idx];
+    return order.slice(0, idx)
+      .filter((o) => o.scope === null || o.scope === me?.scope)
+      .map((o) => o.node)
+      .filter((n) => n.type !== 'note');
+  };
+
   /* ترقيم متصل عبر الأقسام، والأسئلة داخل المجموعة ترقيم فرعي */
   const numbers = useMemo(() => {
     const map = new Map();
@@ -588,13 +778,14 @@ export default function SurveyBuilder({ survey, onChange, actions }) {
     return map;
   }, [pages]);
 
-  const total = order.filter((o) => o.node.type !== 'note' && o.node.type !== 'repeat').length;
+  const total = order.filter((o) => !['note', 'repeat', 'calculate'].includes(o.node.type)).length;
 
   const api = {
     selected,
     justAdded,
     nodeOf,
     priorFor,
+    candidatesFor,
     numberOf: (name) => numbers.get(name),
     select: (name) => { setSelected(name); setJustAdded(null); },
     update: (name, patch) => setPages(withList(pages, name, (list, i) => {
@@ -649,7 +840,22 @@ export default function SurveyBuilder({ survey, onChange, actions }) {
     setSheet(false);
   };
 
-  const targetLabel = selected ? (nodeOf(selected)?.label || 'السؤال المحدد') : null;
+  const targetLabel = (() => {
+    if (!selected) return null;
+    const sel = byName.get(selected);
+    if (!sel) return null;
+    const name = sel.node.label || 'السؤال المحدد';
+    if (sel.node.type === 'repeat') return `داخل المجموعة «${name}»`;
+    if (sel.scope) return `داخل «${nodeOf(sel.scope)?.label || 'المجموعة'}»، بعد «${name}»`;
+    return `بعد «${name}»`;
+  })();
+
+  /* Esc يلغي التحديد فتُضاف الأسئلة في النهاية */
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape' && !sheet) setSelected(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [sheet]);
 
   const setPage = (i, patch) => setPages(pages.map((p, j) => (j === i ? { ...p, ...patch } : p)));
 
@@ -672,7 +878,7 @@ export default function SurveyBuilder({ survey, onChange, actions }) {
 
         <div className="bx-body">
           <aside className="bx-side">
-            <Palette onPick={add} target={targetLabel} />
+            <Palette onPick={add} target={targetLabel} onClear={() => setSelected(null)} />
           </aside>
 
           <div className="bx-main" onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}>
@@ -714,7 +920,7 @@ export default function SurveyBuilder({ survey, onChange, actions }) {
           <div className="bx-sheet" role="dialog" aria-label="أضف سؤالاً">
             <button type="button" className="bx-sheet__scrim" aria-label="إغلاق" onClick={() => setSheet(false)} />
             <div className="bx-sheet__panel">
-              <Palette onPick={add} target={targetLabel} />
+              <Palette onPick={add} target={targetLabel} onClear={() => setSelected(null)} />
             </div>
           </div>
         )}

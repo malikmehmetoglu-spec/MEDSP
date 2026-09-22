@@ -1319,3 +1319,74 @@ button.adminbar__exit { background: none; border: 0; border-bottom: 1px solid va
 .pguide strong { font-size: 0.98rem; color: var(--ink); }
 .pguide p { margin: 0; font-size: 0.9rem; color: var(--ink-soft); line-height: 1.7; }
 .pguide__actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+
+/* ---------- العمل بلا إنترنت ---------- */
+
+.fillpage__top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.fillpage__crumb { font-size: var(--caption); color: var(--ink-faint); }
+
+.fillpage__net {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 0.76rem; color: var(--ink-faint);
+}
+
+.fillpage__net::before {
+  content: ''; width: 8px; height: 8px; border-radius: 999px; background: var(--mountain-teal);
+}
+
+.fillpage__net.is-off { color: var(--accent-text); font-weight: 700; }
+.fillpage__net.is-off::before { background: var(--golden-wheat); box-shadow: 0 0 0 3px rgba(185,167,121,.2); }
+
+.outbox {
+  display: grid; gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--edge-strong);
+  background: var(--glass-strong);
+  text-align: start;
+  width: 100%;
+}
+
+.outbox--offline { border-color: var(--golden-wheat); }
+.outbox--ok { display: flex; align-items: center; gap: 9px; border-color: var(--mountain-teal); font-size: var(--caption); color: var(--ink); }
+.outbox__icon { width: 18px; height: 18px; color: var(--mountain-teal); }
+
+.outbox__row { display: flex; align-items: center; gap: 12px; }
+.outbox__row--bad { padding-top: 8px; border-top: 1px dashed var(--edge); }
+.outbox__row--bad strong { color: #e0705c; }
+
+.outbox__count {
+  flex: none;
+  display: grid; place-items: center;
+  min-width: 34px; height: 34px; padding: 0 8px;
+  border-radius: 10px;
+  background: var(--golden-wheat);
+  color: var(--emerald-shadow);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.outbox__text { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.outbox__text strong { font-size: 0.9rem; color: var(--ink); }
+.outbox__text span { font-size: 0.78rem; color: var(--ink-soft); line-height: 1.5; }
+
+/* ---------- المدة ---------- */
+.rsum--5 { grid-template-columns: repeat(5, 1fr); }
+.rsum__card--fast .rsum__n { color: #e0705c; }
+.dur { font-variant-numeric: tabular-nums; }
+.dur--fast { color: #e0705c; font-weight: 700; }
+
+.drawer__timing {
+  display: grid;
+  gap: 4px;
+  padding: 11px 20px;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  border-bottom: 1px solid var(--edge);
+}
+
+.drawer__timing b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.drawer__timing.is-fast { background: rgba(224, 112, 92, 0.08); }
+.drawer__warn { color: #e0705c; font-weight: 700; }
+
+@media (max-width: 720px) { .rsum--5 { grid-template-columns: repeat(2, 1fr); } }

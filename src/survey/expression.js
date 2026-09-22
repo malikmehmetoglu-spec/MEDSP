@@ -228,6 +228,16 @@ const FUNCTIONS = {
     if (m < 0 || (m === 0 && now.getDate() < d.getDate())) years -= 1;
     return years;
   },
+  /* مجموع حقل داخل مجموعة متكررة: repeat_sum(${household}, 'members') */
+  repeat_sum: (args) => asArray(args[0]).reduce((a, row) => a + asNumber(row?.[args[1]]), 0),
+  /* عدد صفوف مجموعة متكررة تحقق فيها حقل قيمة معينة */
+  repeat_count: (args) => asArray(args[0])
+    .filter((row) => args[1] === undefined || String(row?.[args[1]]) === String(args[2])).length,
+  /* قسمة آمنة كنسبة مئوية مقرّبة لخانة واحدة */
+  percent: (args) => {
+    const b = asNumber(args[1]);
+    return b === 0 ? 0 : Math.round((asNumber(args[0]) / b) * 1000) / 10;
+  },
   /* شرط ثلاثي */
   if: (args) => (truthy(args[0]) ? args[1] : args[2]),
   /* تطابق نصي جزئي */

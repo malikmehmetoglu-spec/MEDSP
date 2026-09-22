@@ -61,6 +61,7 @@ const mapResponse = (r) => r && ({
   reviewNote: r.review_note,
   edited: r.edited,
   history: r.history || [],
+  meta: r.meta || {},
 });
 
 /* بصمة كلمة المرور لا تُقرأ أبداً للواجهة — فقط هل هي موجودة */
@@ -269,10 +270,40 @@ export async function openSurveyLink(id, { open, closesAt, password }) {
 
 /* ---------- الوصول العام ---------- */
 
+/*
+  نسخة محلية من الاستبيان للعمل بلا إنترنت: بعد أول فتح ناجح يُحفظ
+  التعريف على الجهاز، فيُفتح لاحقاً بلا شبكة.
+  للمحمي تُحفظ كلمة المرور أيضاً لأنها مطلوبة عند الإرسال — على جهاز
+  الباحث وحده، وهو من أدخلها.
+*/
+const CACHE = (id) => `medsp-survey:${id}`;
+
+export function cacheSurvey(id, payload) {
+  try { localStorage.setItem(CACHE(id), JSON.stringify({ ...payload, cachedAt: new Date().toISOString() })); } catch { /* ممتلئ */ }
+}
+
+export function cachedSurvey(id) {
+  try { return JSON.parse(localStorage.getItem(CACHE(id)) || 'null'); } catch { return null; }
+}
+
+const looksOffline = (error) => (typeof navigator !== 'undefined' && navigator.onLine === false)
+  || /fetch|network|Load failed/i.test(error?.message || '');
+
 export async function getPublicSurvey(id) {
   if (!isValidId(id)) return { status: 'missing' };
-  const { data, error } = await supabase.rpc('get_public_survey', { p_survey: id });
-  if (error) return { status: 'missing' };
+  let data; let error;
+  try {
+    ({ data, error } = await supabase.rpc('get_public_survey', { p_survey: id }));
+  } catch (e) { error = e; }
+  if (error) {
+    if (looksOffline(error)) {
+      const cached = cachedSurvey(id);
+      return cached ? { ...cached.state, fromCache: true, cached } : { status: 'offline' };
+    }
+    return { status: 'missing' };
+  }
+  if (data?.status === 'ok' && !data.needsPassword) cacheSurvey(id, { state: data, definition: data.survey });
+  if (data?.status !== 'ok') { try { localStorage.removeItem(CACHE(id)); } catch { /* */ } }
   return data;
 }
 
@@ -302,13 +333,20 @@ export async function listResponses({ surveyId, projectId, status } = {}) {
   return data.map(mapResponse);
 }
 
-export async function createResponse(surveyId, answers, meta = {}) {
+export async function createResponse(surveyId, answers, opts = {}) {
   const { data, error } = await supabase.rpc('submit_response', {
     p_survey: surveyId,
     p_answers: answers,
-    p_password: meta.password ?? null,
-    p_source: meta.source || 'link',
+    p_password: opts.password ?? null,
+    p_source: opts.source || 'link',
+    p_meta: opts.meta || {},
+    p_client_id: opts.clientId ?? null,
   });
+  if (error && looksOffline(error)) {
+    const err = new Error('لا يوجد اتصال بالإنترنت');
+    err.cause = error;
+    throw err;
+  }
   fail(error, 'تعذّر إرسال الإجابة');
   return { id: data };
 }

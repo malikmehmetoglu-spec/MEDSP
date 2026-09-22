@@ -50,6 +50,9 @@ export const QUESTION_TYPES = {
   file: { label: 'ملف', valueType: 'file' },
   signature: { label: 'توقيع', valueType: 'file' },
 
+  /* ---------- محسوب ---------- */
+  calculate: { label: 'حقل محسوب', valueType: 'number' },
+
   /* ---------- بنيوية ---------- */
   group: { label: 'مجموعة أسئلة', valueType: 'none', isContainer: true },
   repeat: { label: 'مجموعة متكررة', valueType: 'array', isContainer: true },

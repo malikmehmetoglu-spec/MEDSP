@@ -361,8 +361,8 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged }) {
               <SurveyPage
                 key={JSON.stringify(draft.pages).length}
                 definition={draft}
-                onSubmit={async (answers) => {
-                  await store.createResponse(draft.id, answers, { source: 'preview' });
+                onSubmit={async (answers, meta) => {
+                  await store.createResponse(draft.id, answers, { source: 'preview', meta });
                   refreshResponses();
                 }}
               />

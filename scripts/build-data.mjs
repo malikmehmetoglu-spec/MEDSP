@@ -12,7 +12,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
+
+/*
+  xlsx 0.20 (من مصدر SheetJS الرسمي) لا يحمّل نظام الملفات تلقائياً في
+  وضع ESM، فنمرّره صراحةً. الترقية من 0.18.5 تُصلح ثغرتين معروفتين في
+  قراءة ملفات Excel تحديداً (CVE-2023-30533، CVE-2024-22363).
+*/
+XLSX.set_fs(fs);
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = path.join(root, '..', 'data');
