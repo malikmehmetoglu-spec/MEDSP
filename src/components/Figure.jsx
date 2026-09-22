@@ -12,7 +12,9 @@ export default function Figure({ value, className }) {
   const shown = useCountUp(value, seen);
 
   return (
-    <span ref={ref} className={className ? `num ${className}` : 'num'} dir="ltr">
+    <span ref={ref} className={className ? `num ${className}` : 'num'} dir="ltr"
+      /* عدد المحارف النهائي — يستخدمه ‎.hero__figure ليتقلّص فلا يُقص */
+      style={{ '--len': fmt(value).length }}>
       {fmt(shown)}
     </span>
   );

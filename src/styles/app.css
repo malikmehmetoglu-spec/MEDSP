@@ -250,6 +250,7 @@
 }
 
 .hero__primary {
+  container-type: inline-size;
   background:
     radial-gradient(120% 130% at 88% -10%, rgba(185, 167, 121, 0.22), transparent 58%),
     var(--hero-overlay);
@@ -282,7 +283,14 @@
 }
 
 .hero__figure {
-  font-size: clamp(3.2rem, 2rem + 4.6vw, 5rem);
+  /*
+    الحجم الأصلي، إلا إن كان الرقم أطول من أن يتسع في البطاقة: عندها
+    يتقلّص بحسب عدد محارفه وعرض البطاقة الفعلي (cqi) — فلا يُقص أبداً.
+  */
+  font-size: min(
+    clamp(3.2rem, 2rem + 4.6vw, 5rem),
+    calc((100cqi - 16px) / (var(--len, 6) * 0.6))
+  );
   font-weight: 900;
   line-height: 1.18;
   padding-block: 2px;
@@ -310,7 +318,7 @@
 
 @media (min-width: 620px) {
   .hero__side {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -435,12 +443,16 @@
   display: grid;
   gap: 14px;
   margin-top: 14px;
-  grid-template-columns: 1fr;
+  /*
+    minmax(0, 1fr) لا 1fr: الحد الأدنى لـ 1fr هو عرض أعرض محتوى، فجدول
+    عريض كان يمدّد العمود وكل اللوحات معه، والهاتف يوسّع الصفحة كلها.
+  */
+  grid-template-columns: minmax(0, 1fr);
 }
 
 @media (min-width: 960px) {
   .panels {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .panel--full {

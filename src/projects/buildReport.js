@@ -141,7 +141,45 @@ export function buildReport(survey, responses) {
     data.set(node.name, d);
   }
 
-  return { total: responses.length, data, questions };
+  /* نسب من مجموعين: مجموع البسط ÷ مجموع المقام — لا متوسط النسب */
+  const cfg = survey.report || {};
+  const sumOf = (list, name) => list.reduce((a, r) => a + num(r.answers?.[name]), 0);
+  const ratios = new Map((cfg.ratios || []).map((r) => {
+    const n = sumOf(responses, r.num);
+    const d = sumOf(responses, r.den);
+    return [r.id, { num: n, den: d, pct: d ? (n / d) * 100 : null }];
+  }));
+
+  /* مقارنات: مجموعا مقياسين لكل قيمة من فئة */
+  const keyOf = (node, v) => (node?.type === 'admin_area' ? v?.governorate : v);
+  const compares = new Map((cfg.compare || []).map((c) => {
+    const by = questions.find((q) => q.name === c.by) || flattenQuestions(survey.pages.flatMap((p) => p.children)).find((q) => q.name === c.by);
+    const groups = new Map();
+    for (const r of responses) {
+      const k = keyOf(by, r.answers?.[c.by]);
+      if (k === undefined || k === null || k === '') continue;
+      const g = groups.get(k) || { key: String(k), a: 0, b: 0, n: 0 };
+      g.a += num(r.answers?.[c.a]);
+      g.b += num(r.answers?.[c.b]);
+      g.n += 1;
+      groups.set(k, g);
+    }
+    const list = [...groups.values()].map((g) => ({
+      ...g,
+      label: by?.type === 'admin_area' ? g.key : labelOf(by || {}, g.key),
+      pct: g.a ? (g.b / g.a) * 100 : null,
+    }));
+    /* فئات لها ترتيب في الاستبيان (كالمراحل) تبقى بترتيبها؛ غيرها بالحجم */
+    if (by?.choices?.length) {
+      const order = new Map(by.choices.map((c, i) => [String(c.value), i]));
+      list.sort((x, y) => (order.get(x.key) ?? 99) - (order.get(y.key) ?? 99));
+    } else {
+      list.sort((x, y) => y.a - x.a);
+    }
+    return [c.id, list];
+  }));
+
+  return { total: responses.length, data, questions, ratios, compares, rows: responses };
 }
 
 export default buildReport;

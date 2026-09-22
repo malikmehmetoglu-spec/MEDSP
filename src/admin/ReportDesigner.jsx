@@ -90,6 +90,88 @@ function Row({ node, index, count, placement, onMove, onPatch }) {
   );
 }
 
+/* ---------------- أقسام إضافية ---------------- */
+
+function FieldSel({ value, options, onChange, placeholder }) {
+  return (
+    <select className="bx-input bx-select rd-sel" value={value || ''} onChange={(e) => onChange(e.target.value)}>
+      <option value="">{placeholder}</option>
+      {options.map((q) => <option key={q.name} value={q.name}>{q.label || q.name}</option>)}
+    </select>
+  );
+}
+
+const newId = () => Math.random().toString(36).slice(2, 8);
+
+function RatioSection({ ratios, nums, onChange }) {
+  const [draft, setDraft] = useState({ label: '', num: '', den: '' });
+  const ok = draft.num && draft.den && draft.num !== draft.den;
+  return (
+    <section className="rd-sec">
+      <h4>بطاقات النسبة <small>مجموع ÷ مجموع</small></h4>
+      {ratios.map((r) => (
+        <div className="rd-item" key={r.id}>
+          <span><strong>{r.label || 'نسبة'}</strong>
+            <small>{nums.find((q) => q.name === r.num)?.label} ÷ {nums.find((q) => q.name === r.den)?.label}</small></span>
+          <button type="button" className="bx-mini bx-mini--del" aria-label="حذف"
+            onClick={() => onChange(ratios.filter((x) => x.id !== r.id))}>✕</button>
+        </div>
+      ))}
+      <div className="rd-add">
+        <input className="bx-input rd-sel" placeholder="اسم البطاقة، مثلاً: نسبة الإنجاز"
+          value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} />
+        <div className="rd-add__row">
+          <FieldSel value={draft.num} options={nums} placeholder="البسط (المنفذ)" onChange={(num) => setDraft({ ...draft, num })} />
+          <span>÷</span>
+          <FieldSel value={draft.den} options={nums} placeholder="المقام (المخطط)" onChange={(den) => setDraft({ ...draft, den })} />
+        </div>
+        <button type="button" className="bx-link" disabled={!ok}
+          onClick={() => { onChange([...ratios, { id: newId(), ...draft, label: draft.label || 'نسبة' }]); setDraft({ label: '', num: '', den: '' }); }}>
+          + إضافة بطاقة نسبة
+        </button>
+        <p className="bx-hint">النسبة تُحسب من المجموعين لا من متوسط النسب — الأدق حين تختلف أحجام السجلات. أضفها بعدها للبطاقات الجانبية.</p>
+      </div>
+    </section>
+  );
+}
+
+function CompareSection({ compares, nums, cats, onChange }) {
+  const [draft, setDraft] = useState({ title: '', by: '', a: '', b: '' });
+  const ok = draft.by && draft.a && draft.b && draft.a !== draft.b;
+  const L = (list, n) => list.find((q) => q.name === n)?.label || n;
+  return (
+    <section className="rd-sec">
+      <h4>لوحات المقارنة <small>مخطط مقابل منفذ لكل فئة</small></h4>
+      {compares.map((c) => (
+        <div className="rd-item" key={c.id}>
+          <span><strong>{c.title || `${L(nums, c.b)} مقابل ${L(nums, c.a)}`}</strong>
+            <small>حسب {L(cats, c.by)}</small></span>
+          <button type="button" className="bx-mini bx-mini--del" aria-label="حذف"
+            onClick={() => onChange(compares.filter((x) => x.id !== c.id))}>✕</button>
+        </div>
+      ))}
+      {cats.length > 0 && nums.length > 1 ? (
+        <div className="rd-add">
+          <input className="bx-input rd-sel" placeholder="العنوان (اختياري)"
+            value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
+          <FieldSel value={draft.by} options={cats} placeholder="حسب… (محافظة، مرحلة)" onChange={(by) => setDraft({ ...draft, by })} />
+          <div className="rd-add__row">
+            <FieldSel value={draft.a} options={nums} placeholder="المرجع (المخطط)" onChange={(a) => setDraft({ ...draft, a })} />
+            <span>مقابل</span>
+            <FieldSel value={draft.b} options={nums} placeholder="المنجز (المنفذ)" onChange={(b) => setDraft({ ...draft, b })} />
+          </div>
+          <button type="button" className="bx-link" disabled={!ok}
+            onClick={() => { onChange([...compares, { id: newId(), ...draft }]); setDraft({ title: '', by: '', a: '', b: '' }); }}>
+            + إضافة لوحة مقارنة
+          </button>
+        </div>
+      ) : (
+        <p className="bx-hint">تحتاج سؤال فئة (اختيار أو محافظة) وحقلين رقميين.</p>
+      )}
+    </section>
+  );
+}
+
 export default function ReportDesigner({ project, survey, responses, basemap, onChange }) {
   const approved = responses.filter((r) => r.status === 'approved');
   const [scope, setScope] = useState(approved.length ? 'approved' : 'all');
@@ -128,6 +210,12 @@ export default function ReportDesigner({ project, survey, responses, basemap, on
     onChange({ ...survey, report: {}, pages: mapNodes(survey.pages, ({ report, ...n }) => n) });
   };
 
+  const cats = questions.filter((q) => ['select_one', 'select_multiple', 'admin_area'].includes(q.type));
+  const filters = Array.isArray(cfg.filters) ? cfg.filters : questions.filter((q) => q.type === 'admin_area').map((q) => q.name);
+  const ratios = cfg.ratios || [];
+  const tableCols = cfg.table?.columns || questions.filter((q) => !['repeat', 'image', 'note'].includes(q.type)).map((q) => q.name);
+  const toggleIn = (list, name) => (list.includes(name) ? list.filter((n) => n !== name) : [...list, name]);
+
   const placementOf = (q) => {
     if (hero === q.name) return 'الرقم الرئيسي';
     if (side.includes(q.name)) return 'بطاقة جانبية';
@@ -146,23 +234,73 @@ export default function ReportDesigner({ project, survey, responses, basemap, on
           </select>
         </section>
 
-        {nums.length > 0 && (
+        {(nums.length > 0 || ratios.length > 0) && (
           <section className="rd-sec">
             <h4>البطاقات الجانبية <small>حتى ثلاث</small></h4>
             <div className="rd-checks">
-              {nums.filter((q) => q.name !== hero).map((q) => {
-                const on = side.includes(q.name);
+              {[
+                ...nums.filter((q) => q.name !== hero).map((q) => ({ key: q.name, label: q.label || q.name })),
+                ...ratios.map((r) => ({ key: `ratio:${r.id}`, label: `${r.label} (نسبة)` })),
+              ].map((o) => {
+                const on = side.includes(o.key);
                 return (
-                  <label key={q.name} className={`rd-check${on ? ' is-on' : ''}`}>
+                  <label key={o.key} className={`rd-check${on ? ' is-on' : ''}`}>
                     <input type="checkbox" checked={on} disabled={!on && side.length >= 3}
-                      onChange={() => toggleSide(q.name)} />
-                    <span>{q.label || q.name}</span>
+                      onChange={() => toggleSide(o.key)} />
+                    <span>{o.label}</span>
                   </label>
                 );
               })}
             </div>
           </section>
         )}
+
+        <RatioSection ratios={ratios} nums={nums}
+          onChange={(next) => setCfg({ ratios: next, side: side.filter((k) => !k.startsWith('ratio:') || next.some((r) => `ratio:${r.id}` === k)) })} />
+
+        {cats.length > 0 && (
+          <section className="rd-sec">
+            <h4>الفلاتر <small>أعلى التقرير، للزوار أيضاً</small></h4>
+            <div className="rd-checks">
+              {cats.map((q) => {
+                const on = filters.includes(q.name);
+                return (
+                  <label key={q.name} className={`rd-check${on ? ' is-on' : ''}`}>
+                    <input type="checkbox" checked={on} onChange={() => setCfg({ filters: toggleIn(filters, q.name) })} />
+                    <span>{q.type === 'admin_area' ? `${q.label} (المحافظة)` : q.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        <CompareSection compares={cfg.compare || []} nums={nums} cats={cats}
+          onChange={(next) => setCfg({ compare: next })} />
+
+        <section className="rd-sec">
+          <h4>جدول التفاصيل <small>سطر لكل سجل مع صف إجمالي</small></h4>
+          <label className="bx-switch">
+            <input type="checkbox" checked={Boolean(cfg.table?.show)}
+              onChange={(e) => setCfg({ table: { columns: tableCols, ...cfg.table, show: e.target.checked } })} />
+            <span className="bx-switch__track" aria-hidden="true"><span /></span>
+            <span className="bx-switch__text">إظهار الجدول</span>
+          </label>
+          {cfg.table?.show && (
+            <div className="rd-checks">
+              {questions.filter((q) => !['repeat', 'image', 'note'].includes(q.type)).map((q) => {
+                const on = tableCols.includes(q.name);
+                return (
+                  <label key={q.name} className={`rd-check${on ? ' is-on' : ''}`}>
+                    <input type="checkbox" checked={on}
+                      onChange={() => setCfg({ table: { ...cfg.table, columns: toggleIn(tableCols, q.name) } })} />
+                    <span>{q.label || q.name}</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         <section className="rd-sec">
           <h4>اللوحات <small>الترتيب والرسم والعرض</small></h4>

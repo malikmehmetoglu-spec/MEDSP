@@ -1,6 +1,13 @@
 /*
   تخطيط التقرير.
 
+  إضافات على مستوى الاستبيان (survey.report):
+    filters  أسئلة تظهر كفلاتر أعلى التقرير
+    ratios   [{ id, label, num, den }] نسبة من مجموعين — تُختار كبطاقات جانبية
+             بالمعرّف 'ratio:<id>'
+    compare  [{ id, title, by, a, b }] مقارنة مجموعين حسب فئة (مخطط/منفذ)
+    table    { show, columns: [...] } جدول تفصيلي بكل استمارة
+
   الإعدادات:
     survey.report = { hero, side: [...], order: [...] }
       hero   'count' (عدد الاستمارات) أو اسم حقل رقمي
@@ -137,10 +144,17 @@ export function planReport(survey, report) {
   const sideNames = Array.isArray(cfg.side)
     ? cfg.side.filter((n) => nums.some((q) => q.name === n))
     : nums.filter((q) => q.name !== heroField?.name).slice(0, 3).map((q) => q.name);
-  const side = sideNames.slice(0, 3)
-    .map((n) => questions.find((q) => q.name === n))
-    .filter((q) => data.get(q.name)?.stats)
-    .map((q) => ({ node: q, settings: settingsOf(q), data: data.get(q.name) }));
+  const ratios = new Map((cfg.ratios || []).map((r) => [`ratio:${r.id}`, r]));
+  const sideSource = Array.isArray(cfg.side) ? cfg.side : sideNames;
+  const side = sideSource.slice(0, 3).map((n) => {
+    if (ratios.has(n)) {
+      const r = ratios.get(n);
+      return { kind: 'ratio', ratio: r, value: report.ratios?.get(r.id) };
+    }
+    const q = questions.find((x) => x.name === n);
+    if (!q || !data.get(q.name)?.stats || !nums.some((x) => x.name === n)) return null;
+    return { kind: 'field', node: q, settings: settingsOf(q), data: data.get(q.name) };
+  }).filter(Boolean);
 
   /* اللوحات */
   const items = [];
@@ -178,6 +192,15 @@ export function planReport(survey, report) {
     }
   }
 
+  for (const c of cfg.compare || []) {
+    const groups = report.compares?.get(c.id);
+    if (groups?.length) items.push({ key: `compare:${c.id}`, chart: 'compare', compare: c, groups, units: 3, auto: false });
+  }
+
+  if (cfg.table?.show && report.rows?.length) {
+    items.push({ key: 'table', chart: 'table', columns: cfg.table.columns || [], units: 3, auto: false });
+  }
+
   if (extraNumbers.length) {
     items.push({ key: '#numbers', chart: 'numbers', rows: extraNumbers, units: 3, auto: false });
   }
@@ -189,7 +212,10 @@ export function planReport(survey, report) {
     const pos = (it) => rank.get(it.group || it.node?.name || it.key) ?? 1e6;
     ordered = [...items].sort((a, b) => pos(a) - pos(b));
   } else {
-    ordered = defaultOrder(items);
+    const compares = items.filter((i) => i.chart === 'compare');
+    const table = items.filter((i) => i.chart === 'table');
+    const rest = items.filter((i) => i.chart !== 'compare' && i.chart !== 'table');
+    ordered = [...compares, ...defaultOrder(rest), ...table];
   }
 
   return { hero, side, panels: flow(ordered) };
