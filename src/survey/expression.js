@@ -233,10 +233,13 @@ const FUNCTIONS = {
   /* عدد صفوف مجموعة متكررة تحقق فيها حقل قيمة معينة */
   repeat_count: (args) => asArray(args[0])
     .filter((row) => args[1] === undefined || String(row?.[args[1]]) === String(args[2])).length,
-  /* قسمة آمنة كنسبة مئوية مقرّبة لخانة واحدة */
+  /*
+    نسبة مئوية مقرّبة لخانة واحدة. المقام صفر ← غير معرّفة (فارغة) لا صفر:
+    مشروع بلا كمية مخططة ليس «متعثراً بنسبة 0%».
+  */
   percent: (args) => {
     const b = asNumber(args[1]);
-    return b === 0 ? 0 : Math.round((asNumber(args[0]) / b) * 1000) / 10;
+    return b === 0 ? '' : Math.round((asNumber(args[0]) / b) * 1000) / 10;
   },
   /* شرط ثلاثي */
   if: (args) => (truthy(args[0]) ? args[1] : args[2]),

@@ -22,7 +22,8 @@ const cases = [
   [{ op: 'days', fields: ['d1', 'd2'] }, 10],
   /* قيم فارغة لا تكسر الحساب */
   [{ op: 'sum', fields: ['a', 'missing'] }, 10],
-  [{ op: 'percent', fields: ['a', 'missing'] }, 0],
+  /* مقام صفري: غير معرّفة لا صفر */
+  [{ op: 'percent', fields: ['a', 'missing'] }, ''],
 ];
 let pass = 0; const bad = [];
 for (const [calc, want] of cases) {

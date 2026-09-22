@@ -400,6 +400,30 @@ export async function bulkReview(ids, status) {
   return true;
 }
 
+/* ---------- الاستيراد من ملف ---------- */
+
+/* تطبيق دفعة واحدة على الخادم: إما كله أو لا شيء */
+export async function applyImport(surveyId, { file, updates, inserts, deletes, status, summary }) {
+  const { data, error } = await supabase.rpc('apply_import', {
+    p_survey: surveyId,
+    p_file: file,
+    p_updates: updates.map((u) => ({ id: u.id, answers: u.answers, changes: u.changes.map(({ field, before, after }) => ({ field, before, after })) })),
+    p_inserts: inserts.map((i) => i.answers),
+    p_deletes: deletes,
+    p_status: status,
+    p_summary: summary,
+  });
+  fail(error, 'تعذّر تطبيق الاستيراد');
+  return data;
+}
+
+export async function listImports(surveyId) {
+  const { data, error } = await supabase.from('imports').select('*')
+    .eq('survey_id', surveyId).order('imported_at', { ascending: false });
+  fail(error);
+  return data;
+}
+
 /* ---------- العرض العام ---------- */
 
 export async function listPublishedProjects() {

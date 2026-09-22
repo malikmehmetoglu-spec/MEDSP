@@ -37,7 +37,10 @@ function Question({ node, value, error, showError, onChange, onBlur, index }) {
 
 function Computed({ node, value }) {
   if (!node.showResult) return null;
-  const shown = value === '' || value === null || value === undefined ? '—' : Number(value).toLocaleString('en-US');
+  const blank = value === '' || value === null || value === undefined;
+  const shown = blank ? '—'
+    : node.choices ? (node.choices.find((c) => String(c.value) === String(value))?.label ?? String(value))
+      : Number(value).toLocaleString('en-US');
   return (
     <div className="q-calc">
       <span className="q-calc__label">{node.label}</span>

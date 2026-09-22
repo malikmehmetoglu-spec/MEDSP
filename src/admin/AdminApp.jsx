@@ -6,6 +6,7 @@ import SharePanel from './SharePanel';
 import AccountsPanel from './AccountsPanel';
 import MyAccount from './MyAccount';
 import ReportDesigner from './ReportDesigner';
+import ImportWizard from './importer/ImportWizard';
 import SurveyPage from '../survey/SurveyPage';
 
 /*
@@ -18,6 +19,7 @@ import SurveyPage from '../survey/SurveyPage';
 
 const TABS = [
   { id: 'build', label: 'بناء الاستبيان' },
+  { id: 'import', label: 'رفع ملف' },
   { id: 'share', label: 'المشاركة' },
   { id: 'results', label: 'النتائج' },
   { id: 'report', label: 'تصميم التقرير' },
@@ -41,9 +43,10 @@ function ProjectList({ projects, counts, onOpen, onCreate, onDelete }) {
   const [desc, setDesc] = useState('');
   const [adding, setAdding] = useState(false);
 
+  const [fromFile, setFromFile] = useState(false);
   const submit = async () => {
     if (!name.trim()) return;
-    await onCreate({ name, description: desc });
+    await onCreate({ name, description: desc, fromFile });
     setName('');
     setDesc('');
     setAdding(false);
@@ -70,8 +73,14 @@ function ProjectList({ projects, counts, onOpen, onCreate, onDelete }) {
             <input className="q-input bf__input" value={desc}
               onChange={(e) => setDesc(e.target.value)} />
           </label>
+          <div className="rd-chips" role="radiogroup" aria-label="طريقة البدء">
+            <button type="button" role="radio" aria-checked={!fromFile} className={`rd-chip${!fromFile ? ' is-on' : ''}`}
+              onClick={() => setFromFile(false)}>أبني استبياناً</button>
+            <button type="button" role="radio" aria-checked={fromFile} className={`rd-chip${fromFile ? ' is-on' : ''}`}
+              onClick={() => setFromFile(true)}>عندي ملف Excel جاهز</button>
+          </div>
           <button type="button" className="survey__navbtn survey__navbtn--primary" onClick={submit}>
-            إنشاء
+            {fromFile ? 'إنشاء ثم رفع الملف' : 'إنشاء'}
           </button>
         </div>
       )}
@@ -87,7 +96,9 @@ function ProjectList({ projects, counts, onOpen, onCreate, onDelete }) {
             <article className="pcard" key={p.id}>
               <div className="pcard__head">
                 <h3>{p.name}</h3>
-                {p.published && <span className="tag tag--approved">منشور</span>}
+                {p.published
+                  ? <span className="tag tag--approved">منشور</span>
+                  : <span className="tag">غير منشور</span>}
               </div>
               {p.description && <p className="pcard__desc">{p.description}</p>}
               <div className="pcard__stats">
@@ -95,6 +106,15 @@ function ProjectList({ projects, counts, onOpen, onCreate, onDelete }) {
                 <span>{c.approved} معتمد</span>
                 {c.pending > 0 && <span className="pcard__pending">{c.pending} بانتظار المراجعة</span>}
               </div>
+              {!p.published && (
+                <p className="pcard__why">
+                  {c.approved === 0
+                    ? (c.pending > 0
+                      ? `لا يظهر للعامة: اعتمد السجلات (${c.pending}) ثم انشر.`
+                      : 'لا يظهر للعامة: لا توجد سجلات بعد.')
+                    : 'لا يظهر للعامة: افتح المشروع واضغط «نشر على الصفحة الرئيسية».'}
+                </p>
+              )}
               <div className="pcard__actions">
                 <button type="button" className="q-btn" onClick={() => onOpen(p.id)}>فتح</button>
                 <button type="button" className="q-btn q-btn--danger q-btn--sm"
@@ -110,13 +130,13 @@ function ProjectList({ projects, counts, onOpen, onCreate, onDelete }) {
 
 /* ---------------- محرر المشروع ---------------- */
 
-function ProjectEditor({ projectId, basemap, onBack, onChanged }) {
+function ProjectEditor({ projectId, basemap, onBack, onChanged, initialTab = 'build' }) {
   const areas = useAreas(basemap);
   const [project, setProject] = useState(null);
   const [surveys, setSurveys] = useState([]);
   const [activeSurvey, setActiveSurvey] = useState(null);
   const [responses, setResponses] = useState([]);
-  const [tab, setTab] = useState('build');
+  const [tab, setTab] = useState(initialTab);
   const [draft, setDraft] = useState(null);
   const [saved, setSaved] = useState(true);
   const [notice, setNotice] = useState('');
@@ -152,7 +172,7 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged }) {
     لتبويب النتائج أو التقرير — وإلا عرضت الشاشة صورة قديمة مضلّلة.
   */
   useEffect(() => {
-    if (tab === 'results' || tab === 'report') refreshResponses();
+    if (tab === 'results' || tab === 'report' || tab === 'import') refreshResponses();
   }, [tab, refreshResponses]);
 
   const addSurvey = async () => {
@@ -316,6 +336,17 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged }) {
             </>
           )}
 
+          {tab === 'import' && draft && (
+            <ImportWizard
+              key={activeSurvey}
+              survey={surveys.find((x) => x.id === activeSurvey) || draft}
+              existing={responses}
+              basemap={basemap}
+              published={project.published}
+              onApplied={async () => { await load(); await refreshResponses(); }}
+            />
+          )}
+
           {tab === 'share' && (
             <SharePanel
               survey={surveys.find((s) => s.id === activeSurvey)}
@@ -386,6 +417,7 @@ export default function AdminApp({ basemap, me }) {
   const [projects, setProjects] = useState([]);
   const [counts, setCounts] = useState({});
   const [open, setOpen] = useState(null);
+  const [startTab, setStartTab] = useState('build');
 
   const refresh = useCallback(async () => {
     const list = await store.listProjects();
@@ -431,7 +463,8 @@ export default function AdminApp({ basemap, me }) {
         <ProjectEditor
           projectId={open}
           basemap={basemap}
-          onBack={() => { setOpen(null); refresh(); }}
+          initialTab={startTab}
+          onBack={() => { setOpen(null); setStartTab('build'); refresh(); }}
           onChanged={refresh}
         />
       ) : (
@@ -439,7 +472,15 @@ export default function AdminApp({ basemap, me }) {
           projects={projects}
           counts={counts}
           onOpen={setOpen}
-          onCreate={async (input) => { await store.createProject(input); refresh(); }}
+          onCreate={async (input) => {
+            const p = await store.createProject(input);
+            if (input.fromFile) {
+              await store.createSurvey(p.id, { title: input.name, pages: [{ name: 'p1', title: 'البيانات', children: [] }] });
+              setStartTab('import');
+              setOpen(p.id);
+            }
+            refresh();
+          }}
           onDelete={async (id) => {
             if (!window.confirm('حذف المشروع مع كل استبياناته وإجاباته نهائياً؟')) return;
             await store.deleteProject(id); refresh();

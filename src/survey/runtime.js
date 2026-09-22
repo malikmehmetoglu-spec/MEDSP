@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
-import { evaluateExpression, isTruthy } from './expression';
-import { QUESTION_TYPES, MULTI_VALUE_TYPES, NON_ANSWER_TYPES, emptyValue, isBlank } from './schema';
+import { evaluateExpression, isTruthy } from './expression.js';
+import { QUESTION_TYPES, MULTI_VALUE_TYPES, NON_ANSWER_TYPES, emptyValue, isBlank } from './schema.js';
 
 /*
   محرّك تشغيل الاستبيان.
@@ -44,9 +44,11 @@ export function applyCalculations(nodes, answers, onError) {
   const walk = (list, target, scope) => {
     for (const node of list || []) {
       if (node.type === 'group') { walk(node.children, target, scope); continue; }
-      if (node.type === 'calculate' && node.calculation) {
+      /* derive: قيمة تُشتق من غيرها لأي نوع سؤال (كالحالة من الكميات) */
+      const formula = node.type === 'calculate' ? node.calculation : node.derive;
+      if (formula) {
         const ctx = scope ? { ...out, ...target } : target;
-        const v = evaluateExpression(node.calculation, ctx, '', onError);
+        const v = evaluateExpression(formula, ctx, '', onError);
         target[node.name] = typeof v === 'number' && !Number.isFinite(v) ? '' : v;
       }
       if (node.type === 'repeat' && Array.isArray(target[node.name])
@@ -100,7 +102,7 @@ export function resolveVisible(nodes, answers, scope = null, onError) {
       out.push({ node, kind: 'group-end', scope });
     } else if (node.type === 'repeat') {
       out.push({ node, kind: 'repeat', scope });
-    } else if (node.type === 'calculate') {
+    } else if (node.type === 'calculate' || node.derive) {
       out.push({ node, kind: 'calculate', scope });
     } else {
       out.push({ node, kind: 'question', scope });
