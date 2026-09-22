@@ -249,7 +249,7 @@ const show = (node, v, names) => {
   return node?.choices?.find((c) => String(c.value) === String(v))?.label ?? String(v);
 };
 
-function DiffStep({ mode, survey, plan, existing, basemap, fileName, onBack, onDone }) {
+function DiffStep({ mode, survey, plan, existing, basemap, fileName, onBack, onDone, dataProject }) {
   const govIdx = useMemo(() => governorateIndex(basemap), [basemap]);
   const names = useMemo(() => new Map(basemap.governorates.map((g) => [g.code, g.name])), [basemap]);
 
@@ -392,10 +392,14 @@ function DiffStep({ mode, survey, plan, existing, basemap, fileName, onBack, onD
       )}
 
       {mode === 'create' && diff.inserts.length > 0 && (
-        <p className="rd-note">سيُنشأ الاستبيان بـ {built.survey.pages[0].children.length} أسئلة من أعمدة الملف، وتدخل {rowsText(diff.inserts.length)}. تستطيع تعديل الأسئلة وتصميم التقرير بعدها.</p>
+        <p className="rd-note">
+          {dataProject
+            ? <>سيُنشأ المشروع بـ {built.survey.pages[0].children.length} أعمدة، وتدخل {rowsText(diff.inserts.length)}. تصمم التقرير بعدها من تبويب «التقرير».</>
+            : <>سيُنشأ الاستبيان بـ {built.survey.pages[0].children.length} أسئلة من أعمدة الملف، وتدخل {rowsText(diff.inserts.length)}. تستطيع تعديل الأسئلة وتصميم التقرير بعدها.</>}
+        </p>
       )}
 
-      {!nothing && (
+      {!nothing && !dataProject && (
         <div className="imp-status">
           <label className="rd-check is-on">
             <input type="radio" checked={status === 'approved'} onChange={() => setStatus('approved')} />
@@ -422,7 +426,7 @@ function DiffStep({ mode, survey, plan, existing, basemap, fileName, onBack, onD
 
 /* ---------------- المعالج ---------------- */
 
-export default function ImportWizard({ survey, existing, basemap, onApplied, published }) {
+export default function ImportWizard({ survey, existing, basemap, onApplied, published, dataProject }) {
   const hasData = existing.length > 0;
   const hasQuestions = survey.pages.some((p) => p.children.length > 0);
   const mode = hasQuestions ? 'update' : 'create';
@@ -436,11 +440,11 @@ export default function ImportWizard({ survey, existing, basemap, onApplied, pub
   return (
     <div className="imp">
       <div className="imp-intro">
-        <h3>{mode === 'create' ? 'إنشاء الاستبيان من ملف Excel' : 'تحديث البيانات من ملف Excel'}</h3>
+        <h3>{mode === 'create' ? 'رفع ملف البيانات' : 'تحديث من ملف جديد'}</h3>
         <p>
           {mode === 'create'
-            ? 'ارفع الملف فتُبنى الأسئلة من أعمدته وتدخل صفوفه كسجلات.'
-            : `ارفع النسخة الأحدث من الملف. تُطابق صفوفه بالسجلات الـ ${fmt(existing.length)} الحالية، وترى ما تغيّر قبل أي تطبيق.`}
+            ? (dataProject ? 'ارفع ملف Excel، وتُبنى أعمدة المشروع منه.' : 'ارفع الملف فتُبنى الأسئلة من أعمدته وتدخل صفوفه كسجلات.')
+            : `ارفع النسخة الأحدث من الملف. سترى ما تغيّر عن البيانات الحالية قبل أي تطبيق.`}
         </p>
       </div>
       <Steps step={step} />
@@ -452,7 +456,7 @@ export default function ImportWizard({ survey, existing, basemap, onApplied, pub
           onNext={(p) => { setPlan(p); setStep(2); }} />
       )}
       {step === 2 && plan && (
-        <DiffStep mode={mode} survey={survey} plan={plan} existing={existing} basemap={basemap}
+        <DiffStep mode={mode} survey={survey} plan={plan} existing={existing} basemap={basemap} dataProject={dataProject}
           fileName={source.file} onBack={() => setStep(1)}
           onDone={(summary) => { setResult(summary); setStep(3); onApplied?.(); }} />
       )}

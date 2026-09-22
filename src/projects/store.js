@@ -31,6 +31,7 @@ const mapProject = (r) => r && ({
   description: r.description,
   owner: r.owner,
   status: r.status,
+  kind: r.kind || 'survey',
   published: r.published,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
@@ -183,6 +184,7 @@ export async function createProject(input) {
     name: input.name?.trim() || 'مشروع بلا اسم',
     description: input.description?.trim() || '',
     owner: input.owner?.trim() || '',
+    kind: input.kind === 'data' ? 'data' : 'survey',
   }).select().single();
   fail(error);
   return mapProject(data);

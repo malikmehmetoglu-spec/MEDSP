@@ -137,7 +137,7 @@ function Compare({ groups, unit, names, labelA, labelB }) {
 }
 
 /* جدول تفصيلي — قابل للترتيب بالضغط على العناوين */
-function DetailTable({ rows, columns, nodes, names }) {
+export function DetailTable({ rows, columns, nodes, names }) {
   const cols = columns.map((c) => nodes.get(c)).filter(Boolean);
   /* الترتيب الافتراضي: العمود الأول (كالمرحلة) تصاعدياً */
   const [sort, setSort] = useState({ by: columns[0] || null, dir: 1 });

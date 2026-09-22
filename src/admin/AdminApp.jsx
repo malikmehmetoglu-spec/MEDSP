@@ -7,6 +7,7 @@ import AccountsPanel from './AccountsPanel';
 import MyAccount from './MyAccount';
 import ReportDesigner from './ReportDesigner';
 import ImportWizard from './importer/ImportWizard';
+import DataView from './DataView';
 import SurveyPage from '../survey/SurveyPage';
 
 /*
@@ -17,13 +18,20 @@ import SurveyPage from '../survey/SurveyPage';
   لا تُدخَل بيانات حقيقية قبل بنائها.
 */
 
+/* استبيان ميداني */
 const TABS = [
   { id: 'build', label: 'بناء الاستبيان' },
-  { id: 'import', label: 'رفع ملف' },
   { id: 'share', label: 'المشاركة' },
   { id: 'results', label: 'النتائج' },
   { id: 'report', label: 'تصميم التقرير' },
   { id: 'preview', label: 'معاينة التعبئة' },
+];
+
+/* مشروع بيانات: من ملف Excel فقط — بلا استبيان ولا اعتماد */
+const DATA_TABS = [
+  { id: 'data', label: 'البيانات' },
+  { id: 'import', label: 'تحديث من ملف' },
+  { id: 'report', label: 'التقرير' },
 ];
 
 function useAreas(basemap) {
@@ -43,10 +51,10 @@ function ProjectList({ projects, counts, onOpen, onCreate, onDelete }) {
   const [desc, setDesc] = useState('');
   const [adding, setAdding] = useState(false);
 
-  const [fromFile, setFromFile] = useState(false);
+  const [kind, setKind] = useState('data');
   const submit = async () => {
     if (!name.trim()) return;
-    await onCreate({ name, description: desc, fromFile });
+    await onCreate({ name, description: desc, kind });
     setName('');
     setDesc('');
     setAdding(false);
@@ -73,14 +81,18 @@ function ProjectList({ projects, counts, onOpen, onCreate, onDelete }) {
             <input className="q-input bf__input" value={desc}
               onChange={(e) => setDesc(e.target.value)} />
           </label>
-          <div className="rd-chips" role="radiogroup" aria-label="طريقة البدء">
-            <button type="button" role="radio" aria-checked={!fromFile} className={`rd-chip${!fromFile ? ' is-on' : ''}`}
-              onClick={() => setFromFile(false)}>أبني استبياناً</button>
-            <button type="button" role="radio" aria-checked={fromFile} className={`rd-chip${fromFile ? ' is-on' : ''}`}
-              onClick={() => setFromFile(true)}>عندي ملف Excel جاهز</button>
+          <div className="kind">
+            <button type="button" className={`kind__opt${kind === 'data' ? ' is-on' : ''}`} onClick={() => setKind('data')}>
+              <strong>مشروع بيانات</strong>
+              <span>عندي ملف Excel جاهز. أرفعه، وأحدّثه بملف جديد متى شئت.</span>
+            </button>
+            <button type="button" className={`kind__opt${kind === 'survey' ? ' is-on' : ''}`} onClick={() => setKind('survey')}>
+              <strong>استبيان ميداني</strong>
+              <span>أبني استبياناً وأرسله للباحثين ليعبّئوه.</span>
+            </button>
           </div>
           <button type="button" className="survey__navbtn survey__navbtn--primary" onClick={submit}>
-            {fromFile ? 'إنشاء ثم رفع الملف' : 'إنشاء'}
+            {kind === 'data' ? 'إنشاء ثم رفع الملف' : 'إنشاء'}
           </button>
         </div>
       )}
@@ -102,13 +114,17 @@ function ProjectList({ projects, counts, onOpen, onCreate, onDelete }) {
               </div>
               {p.description && <p className="pcard__desc">{p.description}</p>}
               <div className="pcard__stats">
-                <span>{c.surveys} استبيان</span>
-                <span>{c.approved} معتمد</span>
+                <span className="pcard__kind">{p.kind === 'data' ? 'مشروع بيانات' : 'استبيان ميداني'}</span>
+                {p.kind === 'data'
+                  ? <span>{c.approved} سجلاً</span>
+                  : <><span>{c.surveys} استبيان</span><span>{c.approved} معتمد</span></>}
                 {c.pending > 0 && <span className="pcard__pending">{c.pending} بانتظار المراجعة</span>}
               </div>
               {!p.published && (
                 <p className="pcard__why">
-                  {c.approved === 0
+                  {p.kind === 'data' && c.approved === 0
+                    ? 'لا يظهر للعامة: ارفع ملف البيانات ثم انشر.'
+                    : c.approved === 0
                     ? (c.pending > 0
                       ? `لا يظهر للعامة: اعتمد السجلات (${c.pending}) ثم انشر.`
                       : 'لا يظهر للعامة: لا توجد سجلات بعد.')
@@ -145,13 +161,23 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged, initialTab = 'bu
 
   const load = useCallback(async () => {
     const p = await store.getProject(projectId);
-    const s = await store.listSurveys(projectId);
+    let s = await store.listSurveys(projectId);
+    /* مشروع البيانات يحمل جدولاً واحداً داخلياً — يُنشأ إن لم يوجد */
+    if (p?.kind === 'data' && s.length === 0) {
+      await store.createSurvey(projectId, { title: p.name, pages: [{ name: 'p1', title: 'البيانات', children: [] }] });
+      s = await store.listSurveys(projectId);
+    }
     setProject(p);
     setSurveys(s);
     setActiveSurvey((prev) => prev && s.some((x) => x.id === prev) ? prev : s[0]?.id ?? null);
   }, [projectId]);
 
   useEffect(() => { load(); }, [load]);
+
+  /* مشروع البيانات لا يملك تبويبات الاستبيان — يفتح على «البيانات» */
+  useEffect(() => {
+    if (project?.kind === 'data' && !DATA_TABS.some((t) => t.id === tab)) setTab('data');
+  }, [project, tab]);
 
   useEffect(() => {
     if (!activeSurvey) { setDraft(null); setResponses([]); return; }
@@ -172,7 +198,7 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged, initialTab = 'bu
     لتبويب النتائج أو التقرير — وإلا عرضت الشاشة صورة قديمة مضلّلة.
   */
   useEffect(() => {
-    if (tab === 'results' || tab === 'report' || tab === 'import') refreshResponses();
+    if (['results', 'report', 'import', 'data'].includes(tab)) refreshResponses();
   }, [tab, refreshResponses]);
 
   const addSurvey = async () => {
@@ -208,6 +234,13 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged, initialTab = 'bu
       const all = await store.listResponses({ projectId });
       const approvedN = all.filter((r) => r.status === 'approved').length;
       const pendingN = all.filter((r) => r.status === 'pending').length;
+      if (approvedN === 0 && project.kind === 'data') {
+        setGuide({
+          text: 'لا توجد بيانات بعد. ارفع ملف Excel أولاً، ثم انشر.',
+          action: { label: 'رفع الملف', go: () => setTab('import') },
+        });
+        return;
+      }
       if (approvedN === 0) {
         setGuide(pendingN > 0
           ? {
@@ -236,14 +269,15 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged, initialTab = 'bu
 
   if (!project) return <p className="results__empty">جارٍ التحميل…</p>;
 
-  const approved = responses.filter((r) => r.status === 'approved');
-  const pending = responses.filter((r) => r.status === 'pending').length;
+  const isData = project.kind === 'data';
+  const pending = isData ? 0 : responses.filter((r) => r.status === 'pending').length;
 
   return (
     <div className="pedit">
       <div className="pedit__top">
         <button type="button" className="q-btn" onClick={onBack}>← المشاريع</button>
         <h2>{project.name}</h2>
+        <span className="tag">{isData ? 'مشروع بيانات' : 'استبيان ميداني'}</span>
         <div className="pedit__topright">
           {pending > 0 && <span className="tag tag--pending">{pending} بانتظار المراجعة</span>}
           <button
@@ -274,7 +308,7 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged, initialTab = 'bu
         </div>
       )}
 
-      <div className="pedit__surveys">
+      {!isData && <div className="pedit__surveys">
         {surveys.map((s) => (
           <button
             key={s.id}
@@ -288,14 +322,14 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged, initialTab = 'bu
         <button type="button" className="q-btn q-btn--add q-btn--sm" onClick={addSurvey}>
           + استبيان
         </button>
-      </div>
+      </div>}
 
       {!activeSurvey ? (
         <p className="results__empty">أضف استبياناً للبدء.</p>
       ) : (
         <>
           <div className="pedit__tabs">
-            {TABS.map((t) => (
+            {(isData ? DATA_TABS : TABS).map((t) => (
               <button
                 key={t.id}
                 type="button"
@@ -336,8 +370,14 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged, initialTab = 'bu
             </>
           )}
 
+          {tab === 'data' && draft && (
+            <DataView survey={surveys.find((x) => x.id === activeSurvey) || draft}
+              rows={responses} basemap={basemap} onUpload={() => setTab('import')} />
+          )}
+
           {tab === 'import' && draft && (
             <ImportWizard
+              dataProject={isData}
               key={activeSurvey}
               survey={surveys.find((x) => x.id === activeSurvey) || draft}
               existing={responses}
@@ -474,7 +514,7 @@ export default function AdminApp({ basemap, me }) {
           onOpen={setOpen}
           onCreate={async (input) => {
             const p = await store.createProject(input);
-            if (input.fromFile) {
+            if (input.kind === 'data') {
               await store.createSurvey(p.id, { title: input.name, pages: [{ name: 'p1', title: 'البيانات', children: [] }] });
               setStartTab('import');
               setOpen(p.id);

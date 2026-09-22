@@ -1674,3 +1674,32 @@ button.adminbar__exit { background: none; border: 0; border-bottom: 1px solid va
 .imp-done { justify-items: center; text-align: center; padding: 30px 0; }
 .imp-done h3 { margin: 0; color: var(--ink); }
 .imp-done p { margin: 0; color: var(--ink-soft); }
+
+/* ---------- تبويب البيانات ---------- */
+.dview { display: grid; gap: 14px; }
+.dview__bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 14px 18px; border-radius: var(--radius); border: 1px solid var(--edge); background: var(--glass);
+}
+.dview__bar > div { display: grid; gap: 3px; }
+.dview__bar strong { font-size: 1.05rem; color: var(--ink); }
+.dview__bar span { font-size: 0.8rem; color: var(--ink-faint); }
+.dview__log { font-size: 0.82rem; color: var(--ink-soft); }
+.dview__log summary { cursor: pointer; color: var(--ink-faint); }
+.dview__log ul { margin: 8px 0 0; padding-inline-start: 18px; display: grid; gap: 4px; }
+.dview__log b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.rempty .bx-save { margin-top: 6px; }
+
+/* اختيار نوع المشروع */
+.kind { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; width: 100%; }
+.kind__opt {
+  display: grid; gap: 4px; text-align: start; padding: 14px 16px;
+  border-radius: 12px; border: 1px solid var(--edge-strong); background: var(--glass);
+  font: inherit; cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease;
+}
+.kind__opt strong { font-size: 0.95rem; color: var(--ink); }
+.kind__opt span { font-size: 0.8rem; color: var(--ink-faint); line-height: 1.6; }
+.kind__opt:hover { border-color: var(--golden-wheat); }
+.kind__opt.is-on { border-color: var(--golden-wheat); background: var(--glass-strong); box-shadow: inset 0 0 0 1px var(--golden-wheat); }
+:root[data-theme='light'] .kind__opt.is-on { border-color: var(--forest); box-shadow: inset 0 0 0 1px var(--forest); }
+.pcard__kind { color: var(--accent-text); font-weight: 700; }
