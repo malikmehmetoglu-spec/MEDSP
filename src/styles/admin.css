@@ -1390,3 +1390,39 @@ button.adminbar__exit { background: none; border: 0; border-bottom: 1px solid va
 .drawer__warn { color: #e0705c; font-weight: 700; }
 
 @media (max-width: 720px) { .rsum--5 { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---------- أعمدة زمنية ---------- */
+.cols__plot { display: flex; align-items: stretch; gap: 4px; height: 190px; overflow-x: auto; padding-top: 6px; }
+.cols__col { flex: 1 0 18px; display: grid; grid-template-rows: auto 1fr auto; justify-items: center; gap: 4px; min-width: 18px; }
+.cols__n { font-size: 0.66rem; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.cols__bar {
+  align-self: end;
+  width: 100%;
+  max-width: 34px;
+  min-height: 3px;
+  border-radius: 6px 6px 2px 2px;
+  background: linear-gradient(180deg, var(--donut-2), var(--donut-1));
+  transition: height 0.8s cubic-bezier(.22, 1, .36, 1);
+}
+.cols__col:hover .cols__bar { filter: brightness(1.15); }
+.cols__tick { font-size: 0.64rem; color: var(--ink-faint); direction: ltr; height: 1em; white-space: nowrap; }
+
+/* ---------- نماذج الإجابات ---------- */
+.quotes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.quotes__item {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--glass);
+  border: 1px solid var(--edge);
+  font-size: 0.9rem; line-height: 1.7; color: var(--ink);
+}
+.quotes__mark { flex: none; width: 15px; height: 15px; margin-top: 5px; color: var(--accent-text); opacity: 0.7; }
+.quotes__text { flex: 1; }
+.quotes__count {
+  flex: none; align-self: center;
+  font-size: 0.74rem; font-weight: 700;
+  padding: 2px 8px; border-radius: 999px;
+  background: var(--glass-strong); border: 1px solid var(--edge);
+  color: var(--accent-text); font-variant-numeric: tabular-nums;
+}

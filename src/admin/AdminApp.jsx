@@ -5,7 +5,7 @@ import ResponsesTable from './ResponsesTable';
 import SharePanel from './SharePanel';
 import AccountsPanel from './AccountsPanel';
 import MyAccount from './MyAccount';
-import ProjectReport from '../projects/ProjectReport';
+import ReportDesigner from './ReportDesigner';
 import SurveyPage from '../survey/SurveyPage';
 
 /*
@@ -20,7 +20,7 @@ const TABS = [
   { id: 'build', label: 'بناء الاستبيان' },
   { id: 'share', label: 'المشاركة' },
   { id: 'results', label: 'النتائج' },
-  { id: 'report', label: 'التقرير' },
+  { id: 'report', label: 'تصميم التقرير' },
   { id: 'preview', label: 'معاينة التعبئة' },
 ];
 
@@ -164,7 +164,7 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged }) {
 
   const saveSurvey = async () => {
     await store.updateSurvey(draft.id, {
-      title: draft.title, description: draft.description, pages: draft.pages,
+      title: draft.title, description: draft.description, pages: draft.pages, report: draft.report || {},
     });
     setSaved(true);
     setNotice('حُفظ الاستبيان');
@@ -341,16 +341,21 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged }) {
           )}
 
           {tab === 'report' && draft && (
-            approved.length === 0 ? (
-              <p className="results__empty">
-                لا توجد إجابات معتمدة بعد. اعتمد إجابات من تبويب النتائج ليظهر التقرير.
-              </p>
-            ) : (
-              <ProjectReport
-                project={{ ...project, surveys: [draft], responses: approved }}
+            <>
+              <div className="rd-savebar">
+                <span>{saved ? 'إعدادات التقرير محفوظة' : 'لديك تغييرات غير محفوظة في التقرير'}</span>
+                <button type="button" className="bx-save" onClick={saveSurvey} disabled={saved}>
+                  {saved ? 'محفوظ' : 'حفظ التغييرات'}
+                </button>
+              </div>
+              <ReportDesigner
+                project={project}
+                survey={draft}
+                responses={responses}
                 basemap={basemap}
+                onChange={(next) => { setDraft(next); setSaved(false); }}
               />
-            )
+            </>
           )}
 
           {tab === 'preview' && draft && (

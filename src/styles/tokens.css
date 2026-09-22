@@ -56,6 +56,18 @@
   --geo-label-stroke: rgba(0, 25, 22, 0.85);
   --dot-ring-active: var(--ivory-mist);
 
+  /*
+    ألوان الرسوم الفئوية: ستة من هوية الوزارة بتناوب دافئ/بارد،
+    فلا يتجاور لونان متقاربان.
+  */
+  --donut-1: #4f9489;
+  --donut-2: #c4ae7c;
+  --donut-3: #8fc0b5;
+  --donut-4: #8f7d58;
+  --donut-5: #e3d9b8;
+  --donut-6: #2f7a6e;
+  --donut-other: rgba(235, 232, 215, 0.28);
+
   --shell: 1240px;
   --gutter: 26px;
   --radius: 18px;
@@ -102,6 +114,15 @@
   --input-color-scheme: light;
 
   --geo-label-fill-sub: rgba(2, 68, 58, 0.78);
+
+  /* على الفاتح: درجات أعمق حتى لا يختفي الفاتح منها على الأبيض */
+  --donut-1: #02443a;
+  --donut-2: #b39a5f;
+  --donut-3: #428177;
+  --donut-4: #6e5e3c;
+  --donut-5: #7fb0a5;
+  --donut-6: #d3c28f;
+  --donut-other: rgba(2, 68, 58, 0.22);
   --geo-label-stroke: rgba(255, 255, 255, 0.92);
   --dot-ring-active: var(--forest);
 }

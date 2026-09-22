@@ -42,6 +42,7 @@ const mapSurvey = (r) => r && ({
   title: r.title,
   description: r.description,
   pages: r.pages?.length ? r.pages : [{ name: 'main', title: 'القسم الأول', children: [] }],
+  report: r.report || {},
   open: r.is_open,
   hasPassword: Boolean(r.has_password),
   closesAt: r.closes_at || '',
@@ -65,7 +66,7 @@ const mapResponse = (r) => r && ({
 });
 
 /* بصمة كلمة المرور لا تُقرأ أبداً للواجهة — فقط هل هي موجودة */
-const SURVEY_COLS = 'id, project_id, title, description, pages, is_open, closes_at, created_at, updated_at, has_password';
+const SURVEY_COLS = 'id, project_id, title, description, pages, report, is_open, closes_at, created_at, updated_at, has_password';
 
 const withFlag = (row) => row;
 
@@ -241,6 +242,7 @@ export async function updateSurvey(id, patch) {
   if ('title' in patch) row.title = patch.title;
   if ('description' in patch) row.description = patch.description;
   if ('pages' in patch) row.pages = patch.pages;
+  if ('report' in patch) row.report = patch.report || {};
   if ('open' in patch) row.is_open = patch.open;
   if ('closesAt' in patch) row.closes_at = patch.closesAt || null;
   const { data, error } = await supabase.from('surveys').update(row).eq('id', id).select(SURVEY_COLS).single();

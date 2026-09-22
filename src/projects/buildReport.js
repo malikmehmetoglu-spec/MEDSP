@@ -1,18 +1,11 @@
 import { flattenQuestions } from '../survey/schema';
 
 /*
-  توليد التقرير من الإجابات.
+  حساب بيانات التقرير.
 
-  المبدأ: نوع السؤال يحدد شكل عرضه — فلا يحتاج المشرف لتصميم
-  التقرير يدوياً. من يريد تخصيصاً يضبط reportAs على السؤال.
-
-    عدد/عشري        → بطاقة إحصائية (مجموع، متوسط)
-    اختيار واحد      → رسم حلقي
-    اختيار متعدد     → رسم شريطي
-    مقياس متدرّج     → توزيع + متوسط
-    محافظة/ناحية     → خريطة
-    تاريخ            → خط زمني
-    نص               → لا يُعرض (يُتاح في الجدول)
+  لكل سؤال قابل للعرض يُحسب كل ما قد يحتاجه أي رسم مناسب لنوعه
+  (توزيع، إحصاءات رقمية، جغرافيا، سلسلة زمنية، نماذج نصية).
+  اختيار الرسم نفسه في reportPlan.js — فتغييره لا يعيد الحساب.
 */
 
 const num = (v) => {
@@ -20,19 +13,18 @@ const num = (v) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+const blank = (v) => v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0);
+
 function labelOf(node, value) {
   if (!node.choices) return String(value);
   return node.choices.find((c) => String(c.value) === String(value))?.label ?? String(value);
 }
 
-/* توزيع تكراري مرتّب تنازلياً */
-function distribution(responses, node) {
+function distribution(values, node) {
   const counts = new Map();
-  for (const r of responses) {
-    const v = r.answers[node.name];
-    if (v === undefined || v === null || v === '') continue;
-    const list = Array.isArray(v) ? v : [v];
-    for (const item of list) {
+  for (const v of values) {
+    if (blank(v)) continue;
+    for (const item of (Array.isArray(v) ? v : [v])) {
       const key = String(item);
       counts.set(key, (counts.get(key) || 0) + 1);
     }
@@ -40,145 +32,116 @@ function distribution(responses, node) {
   const total = [...counts.values()].reduce((a, b) => a + b, 0);
   return [...counts.entries()]
     .map(([value, count]) => ({
-      value,
-      label: labelOf(node, value),
-      count,
-      pct: total ? Math.round((count / total) * 100) : 0,
+      value, label: labelOf(node, value), count, pct: total ? Math.round((count / total) * 100) : 0,
     }))
     .sort((a, b) => b.count - a.count);
 }
 
-function numericSummary(responses, node) {
-  const values = responses
-    .map((r) => r.answers[node.name])
-    .filter((v) => v !== undefined && v !== null && v !== '')
-    .map(num);
-
-  if (values.length === 0) return null;
-
-  const sum = values.reduce((a, b) => a + b, 0);
-  const sorted = [...values].sort((a, b) => a - b);
+function numericStats(values) {
+  const xs = values.filter((v) => !blank(v) && Number.isFinite(Number(v))).map(Number);
+  if (xs.length === 0) return null;
+  const sum = xs.reduce((a, b) => a + b, 0);
+  const sorted = [...xs].sort((a, b) => a - b);
   return {
-    count: values.length,
-    sum,
-    avg: Math.round((sum / values.length) * 10) / 10,
+    count: xs.length,
+    sum: Math.round(sum * 100) / 100,
+    avg: Math.round((sum / xs.length) * 10) / 10,
     min: sorted[0],
     max: sorted[sorted.length - 1],
     median: sorted[Math.floor(sorted.length / 2)],
   };
 }
 
-/* تجميع جغرافي — يُغذّي الخريطة مباشرة */
-function geoSummary(responses, node) {
+function geoSummary(values) {
   const byGov = new Map();
   const bySub = new Map();
-
-  for (const r of responses) {
-    const v = r.answers[node.name];
+  for (const v of values) {
     if (!v?.governorate) continue;
     byGov.set(v.governorate, (byGov.get(v.governorate) || 0) + 1);
     if (v.subdistrict) bySub.set(v.subdistrict, (bySub.get(v.subdistrict) || 0) + 1);
   }
-
   return {
     byGovernorate: [...byGov.entries()].map(([code, count]) => ({ code, count })),
     bySubdistrict: [...bySub.entries()].map(([code, count]) => ({ code, count })),
-    total: responses.length,
+    total: [...byGov.values()].reduce((a, b) => a + b, 0),
   };
 }
 
-function timeSeries(responses, node) {
+function timeSeries(values) {
   const byDay = new Map();
-  for (const r of responses) {
-    const v = r.answers[node.name];
+  for (const v of values) {
     if (!v) continue;
     const day = String(v).slice(0, 10);
     byDay.set(day, (byDay.get(day) || 0) + 1);
   }
-  return [...byDay.entries()]
-    .map(([date, count]) => ({ date, count }))
+  return [...byDay.entries()].map(([date, count]) => ({ date, count }))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-/* ---------------- المولّد ---------------- */
+/* الأنواع التي لها رسم ممكن */
+export const REPORTABLE = new Set([
+  'select_one', 'select_multiple', 'rank', 'range', 'integer', 'decimal', 'calculate',
+  'admin_area', 'date', 'datetime', 'repeat', 'text', 'textarea',
+]);
 
 export function buildReport(survey, responses) {
   const questions = flattenQuestions(survey.pages.flatMap((p) => p.children))
-    .filter((q) => q.type !== 'note');
+    .filter((q) => REPORTABLE.has(q.type));
 
-  const blocks = [];
+  const data = new Map();
 
   for (const node of questions) {
-    if (node.reportAs === 'none') continue;
+    const values = responses.map((r) => r.answers?.[node.name]);
+    const d = { node, answered: values.filter((v) => !blank(v)).length };
 
     switch (node.type) {
+      case 'select_one':
+      case 'select_multiple':
+      case 'rank':
+        d.dist = distribution(values, node);
+        break;
+      case 'range':
+        d.dist = distribution(values, node).sort((a, b) => num(a.value) - num(b.value));
+        d.stats = numericStats(values);
+        break;
       case 'integer':
       case 'decimal':
-      case 'calculate': {
-        const stats = numericSummary(responses, node);
-        if (stats) blocks.push({ kind: 'stat', node, stats });
+      case 'calculate':
+        d.stats = numericStats(values);
         break;
-      }
-
-      case 'range': {
-        const stats = numericSummary(responses, node);
-        const dist = distribution(responses, node);
-        if (stats) blocks.push({ kind: 'scale', node, stats, dist });
+      case 'admin_area':
+        d.geo = geoSummary(values);
         break;
-      }
-
-      case 'select_one': {
-        const dist = distribution(responses, node);
-        if (dist.length) blocks.push({ kind: 'donut', node, dist });
-        break;
-      }
-
-      case 'select_multiple':
-      case 'rank': {
-        const dist = distribution(responses, node);
-        if (dist.length) blocks.push({ kind: 'bars', node, dist });
-        break;
-      }
-
-      case 'admin_area': {
-        const geo = geoSummary(responses, node);
-        if (geo.byGovernorate.length) blocks.push({ kind: 'map', node, geo });
-        break;
-      }
-
       case 'date':
-      case 'datetime': {
-        const series = timeSeries(responses, node);
-        if (series.length > 1) blocks.push({ kind: 'timeline', node, series });
+      case 'datetime':
+        d.series = timeSeries(values);
+        break;
+      case 'repeat': {
+        const rows = values.flatMap((v) => (Array.isArray(v) ? v : []));
+        d.rowCount = rows.length;
+        d.sums = (node.children || [])
+          .filter((c) => ['integer', 'decimal', 'calculate'].includes(c.type))
+          .map((c) => ({ node: c, total: rows.reduce((a, row) => a + num(row?.[c.name]), 0) }));
         break;
       }
-
-      case 'repeat': {
-        /* نلخّص عدد المدخلات ومجموع الحقول الرقمية داخلها */
-        const rows = responses.flatMap((r) => r.answers[node.name] || []);
-        if (rows.length) {
-          const inner = (node.children || []).filter(
-            (c) => c.type === 'integer' || c.type === 'decimal',
-          );
-          const sums = inner.map((c) => ({
-            node: c,
-            total: rows.reduce((a, row) => a + num(row[c.name]), 0),
-          }));
-          blocks.push({ kind: 'repeat', node, rowCount: rows.length, sums });
+      case 'text':
+      case 'textarea':
+        /* الإجابات المتطابقة تُجمع مع عددها، والأحدث أولاً */
+        {
+          const seen = new Map();
+          values.filter((v) => !blank(v)).map((v) => String(v).trim()).reverse().forEach((t) => {
+            seen.set(t, (seen.get(t) || 0) + 1);
+          });
+          d.samples = [...seen.entries()].map(([text, count]) => ({ text, count })).slice(0, 12);
         }
         break;
-      }
-
       default:
         break;
     }
+    data.set(node.name, d);
   }
 
-  return {
-    total: responses.length,
-    blocks,
-    questions,
-  };
+  return { total: responses.length, data, questions };
 }
 
 export default buildReport;
