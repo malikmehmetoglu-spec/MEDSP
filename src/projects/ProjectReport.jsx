@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { buildReport } from './buildReport';
 import { planReport, aggValue, AGGS } from './reportPlan';
 import { Panel, Stat, Toll } from '../components/ReportShell';
@@ -7,6 +7,8 @@ import Donut from '../components/Donut';
 import SyriaMap from '../components/SyriaMap';
 import Figure from '../components/Figure';
 import Icon from '../components/Icon';
+import { loadOps, summarizeOps } from './opsSource';
+import { governorateIndex, matchGovernorate } from '../admin/importer/parse';
 
 /*
   تقرير المشروع — بمكوّنات تقارير المنصة نفسها.
@@ -37,6 +39,18 @@ function govsText(n) {
   if (n % 100 >= 3 && n % 100 <= 10) return `في ${n} محافظات`;
   return `في ${n} محافظة`;
 }
+
+/* مجاميع من سجلات المشروع — للمقارنة مع العمليات */
+const sumOf = (rows, field) => Math.round(rows.reduce((a, r) => a + (Number(r.answers?.[field]) || 0), 0) * 10) / 10;
+const govSums = (rows, govField, valueField) => {
+  const m = new Map();
+  for (const r of rows) {
+    const code = r.answers?.[govField]?.governorate;
+    if (!code) continue;
+    m.set(code, (m.get(code) || 0) + (Number(r.answers?.[valueField]) || 0));
+  }
+  return [...m.entries()];
+};
 
 const pctText = (p) => (p === null || p === undefined ? '—' : `${p < 10 && p > 0 ? p.toFixed(1) : Math.round(p)}%`);
 
@@ -234,6 +248,140 @@ export function DetailTable({ rows, columns, nodes, names }) {
         </tfoot>
       </table>
     </div>
+  );
+}
+
+/* ---------------- عمليات الإزالة والمجموع ---------------- */
+
+/* شريط مجزّأ يبدّل مصدر الأرقام */
+function SourceSwitch({ value, onChange, options }) {
+  return (
+    <div className="psrc" role="tablist" aria-label="مصدر البيانات">
+      {options.map((o) => (
+        <button key={o.id} type="button" role="tab" aria-selected={value === o.id}
+          className={`psrc__tab${value === o.id ? ' is-on' : ''}`} onClick={() => onChange(o.id)}>
+          <span className="psrc__label">{o.label}</span>
+          <span className="psrc__note">{o.note}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function DistPanel({ title, note, rows, tone, span }) {
+  const data = rows.filter((r) => r.label !== '—').map((r) => ({ label: r.label, value: r.count }));
+  const missing = rows.find((r) => r.label === '—');
+  if (!data.length) return null;
+  return (
+    <Panel span={span} title={title} note={note}>
+      <BarChart data={data} tone={tone} showShare />
+      {missing && <p className="bx-hint">{fmt(missing.count)} عملية بلا تسجيل لهذا الحقل.</p>}
+    </Panel>
+  );
+}
+
+function OpsReport({ ops, cfg, basemap, names }) {
+  if (!ops.ops) {
+    return <div className="pending"><h3>لا توجد عمليات مطابقة</h3><p>غيّر الفلاتر أو امسحها.</p></div>;
+  }
+  /* محافظة عملياتها كلها بوحدات غير المتر المكعب كميتها صفر — لا تُعرض كشريط فارغ */
+  const withQty = ops.byGovernorate.filter((g) => g.quantity > 0);
+  const govBars = withQty.map((g) => ({ label: names?.get(g.code) || g.name, value: g.quantity }));
+  return (
+    <>
+      <section className="hero">
+        <div className="hero__primary">
+          <span className="hero__eyebrow"><Icon name="t_calculate" />{cfg.label || 'عمليات الإزالة الاعتيادية'}</span>
+          <Figure value={ops.quantity} className="hero__figure" />
+          <span className="hero__sub">
+            م³، مرحّلة ضمن الأعمال الخدمية اليومية خارج المشاريع
+            {ops.from && ops.to && <>، بين <span className="nowrap" dir="ltr">{dmy(ops.from)}</span> و<span className="nowrap" dir="ltr">{dmy(ops.to)}</span></>}
+          </span>
+        </div>
+        <div className="hero__side hero__side--2">
+          <Stat icon="t_repeat" tone="teal" label="عدد العمليات" value={ops.ops} unit="عملية"
+            note={ops.otherUnits ? `استُبعدت ${fmt(ops.otherUnits)} مسجّلة بغير المتر المكعب` : 'إزالة وإعادة تدوير'} />
+          <Stat icon="t_integer" tone="forest" label="متوسط الكمية للعملية" value={ops.avg} unit="م³"
+            note={govsText(withQty.length)} />
+        </div>
+      </section>
+
+      <div className="panels">
+        <Panel span="wide" title="الكميات حسب المحافظة" note="بالمتر المكعب، مرتّبة تنازلياً">
+          <BarChart data={govBars} showShare />
+        </Panel>
+        <DistPanel title="ملكية الموقع" rows={ops.ownership} tone="gold" note="عدد العمليات" />
+        <DistPanel span="wide" title="المكان المستهدف" rows={ops.target} tone="teal" note="عدد العمليات" />
+        <DistPanel title="موافقة المالكين على الترحيل" rows={ops.consent} tone="gold" note="عدد العمليات" />
+        {basemap && ops.locations.length > 0 && (
+          <Panel span="full" title="مواقع عمليات الإزالة" note={`${fmt(ops.locations.length)} موقعاً مُرمّزاً`}>
+            <SyriaMap basemap={basemap} locations={ops.locations} noun="العمليات" />
+          </Panel>
+        )}
+      </div>
+    </>
+  );
+}
+
+/* المشاريع + العمليات معاً */
+function CombinedReport({ projectExecuted, projectPlanned, byGovProjects, ops, names }) {
+  const total = Math.round((projectExecuted + ops.quantity) * 10) / 10;
+  const rows = useMemo(() => {
+    const m = new Map();
+    for (const [code, v] of byGovProjects) {
+      m.set(code, { code, label: names?.get(code) || code, projects: v, ops: 0 });
+    }
+    for (const g of ops.byGovernorate) {
+      const cur = m.get(g.code) || { code: g.code, label: names?.get(g.code) || g.name, projects: 0, ops: 0 };
+      cur.ops += g.quantity;
+      m.set(g.code, cur);
+    }
+    return [...m.values()].map((r) => ({ ...r, total: r.projects + r.ops }))
+      .sort((a, b) => b.total - a.total);
+  }, [byGovProjects, ops, names]);
+  const max = Math.max(...rows.map((r) => r.total), 1);
+  const share = total ? Math.round((ops.quantity / total) * 1000) / 10 : 0;
+
+  return (
+    <>
+      <section className="hero">
+        <div className="hero__primary">
+          <span className="hero__eyebrow"><Icon name="t_calculate" />إجمالي الأنقاض المرحّلة</span>
+          <Figure value={total} className="hero__figure" />
+          <span className="hero__sub">م³، من المشاريع والأعمال الاعتيادية معاً</span>
+        </div>
+        <div className="hero__side hero__side--2">
+          <Stat icon="t_repeat" tone="teal" label="من المشاريع" value={projectExecuted} unit="م³"
+            share={total ? Math.round((projectExecuted / total) * 100) : 0}
+            note={`من أصل ${fmt(projectPlanned)} م³ مخططة`} />
+          <Stat icon="t_integer" tone="forest" label="من الأعمال الاعتيادية" value={ops.quantity} unit="م³"
+            share={Math.round(share)} note={`${share}% من الإجمالي، في ${fmt(ops.ops)} عملية`} />
+        </div>
+      </section>
+
+      <div className="panels">
+        <Panel span="full" title="الأنقاض المرحّلة حسب المحافظة" note="المشاريع والأعمال الاعتيادية معاً">
+          <div className="cmp">
+            <div className="cmp__legend">
+              <span><i className="cmp__sw cmp__sw--b" />المشاريع</span>
+              <span><i className="cmp__sw cmp__sw--ops" />الأعمال الاعتيادية</span>
+            </div>
+            {rows.map((r) => (
+              <div className="cmp__row cmp__row--stack" key={r.code}>
+                <span className="cmp__label">{r.label}</span>
+                <div className="cmp__bars">
+                  <span className="cmp__track cmp__track--stack" style={{ width: `${(r.total / max) * 100}%` }}>
+                    <span className="cmp__seg cmp__seg--a" style={{ width: `${r.total ? (r.projects / r.total) * 100 : 0}%` }} />
+                    <span className="cmp__seg cmp__seg--b" style={{ width: `${r.total ? (r.ops / r.total) * 100 : 0}%` }} />
+                  </span>
+                </div>
+                <span className="cmp__nums" dir="ltr">{fmt(Math.round(r.total))} م³</span>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
+    </>
   );
 }
 
@@ -444,6 +592,27 @@ export default function ProjectReport({ project, basemap }) {
   const noun = cfg.noun || 'الاستمارات';
   const forms = cfg.record || RECORD;
 
+  /* مصدر ثانٍ: عمليات الإزالة من تقرير الأعمال الخدمية */
+  const opsCfg = cfg.ops;
+  const [view, setView] = useState('project');
+  const [opsData, setOpsData] = useState(null);
+  const [opsError, setOpsError] = useState(false);
+  useEffect(() => {
+    if (!opsCfg) return;
+    loadOps(opsCfg.feed || 'services').then(setOpsData).catch(() => setOpsError(true));
+  }, [opsCfg]);
+
+  const govIdx = useMemo(() => (basemap ? governorateIndex(basemap) : null), [basemap]);
+  const govFilterField = filterFields.find((f) => f.type === 'admin_area');
+  const opsSummary = useMemo(() => {
+    if (!opsCfg || !opsData || !govIdx) return null;
+    return summarizeOps(opsData, {
+      types: opsCfg.types,
+      govOf: (name) => matchGovernorate(name, govIdx)?.code || name,
+      filter: { gov: govFilterField ? filters[govFilterField.name] : undefined },
+    });
+  }, [opsCfg, opsData, govIdx, filters, govFilterField]);
+
   const report = useMemo(() => (survey ? buildReport(survey, responses) : null), [survey, responses]);
   const plan = useMemo(() => (survey && report ? planReport(survey, report) : null), [survey, report]);
 
@@ -464,12 +633,36 @@ export default function ProjectReport({ project, basemap }) {
         </div>
       )}
 
+      {opsCfg && (
+        <SourceSwitch value={view} onChange={setView} options={[
+          { id: 'project', label: opsCfg.projectLabel || 'المشاريع', note: 'مشاريع الترحيل المتعاقد عليها' },
+          { id: 'ops', label: opsCfg.opsLabel || 'عمليات الإزالة', note: 'الأعمال الخدمية اليومية' },
+          { id: 'both', label: 'الإجمالي', note: 'الاثنان معاً' },
+        ]} />
+      )}
+
       {all.length > 0 && (
-        <FilterBar fields={filterFields} responses={all} values={filters}
+        <FilterBar fields={view === 'project' ? filterFields : filterFields.filter((f) => f.type === 'admin_area')}
+          responses={all} values={filters}
           onChange={setFilters} names={names} shown={responses.length} />
       )}
 
-      {report.total === 0 ? (
+      {opsCfg && view !== 'project' && (opsError || !opsSummary) ? (
+        <div className="pending">
+          <h3>{opsError ? 'تعذّر تحميل بيانات العمليات' : 'جارٍ التحميل…'}</h3>
+          {opsError && <p>حدّث الصفحة وحاول مجدداً.</p>}
+        </div>
+      ) : view === 'ops' ? (
+        <OpsReport ops={opsSummary} cfg={opsCfg} basemap={basemap} names={names} />
+      ) : view === 'both' ? (
+        <CombinedReport
+          ops={opsSummary}
+          names={names}
+          projectExecuted={sumOf(responses, opsCfg.executed)}
+          projectPlanned={sumOf(responses, opsCfg.planned)}
+          byGovProjects={govSums(responses, opsCfg.gov, opsCfg.executed)}
+        />
+      ) : report.total === 0 ? (
         <div className="pending">
           {all.length ? (
             <><h3>لا توجد سجلات تطابق الفلاتر</h3><p>غيّر اختيارك أو امسح الفلاتر.</p></>

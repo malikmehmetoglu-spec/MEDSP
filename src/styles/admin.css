@@ -1703,3 +1703,43 @@ button.adminbar__exit { background: none; border: 0; border-bottom: 1px solid va
 .kind__opt.is-on { border-color: var(--golden-wheat); background: var(--glass-strong); box-shadow: inset 0 0 0 1px var(--golden-wheat); }
 :root[data-theme='light'] .kind__opt.is-on { border-color: var(--forest); box-shadow: inset 0 0 0 1px var(--forest); }
 .pcard__kind { color: var(--accent-text); font-weight: 700; }
+
+/* ---------- مبدّل مصدر البيانات ---------- */
+.psrc {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--edge);
+  background: var(--glass);
+}
+
+.psrc__tab {
+  display: grid; gap: 2px; justify-items: center; text-align: center;
+  padding: 11px 14px; border-radius: calc(var(--radius) - 5px);
+  border: 0; background: transparent; color: var(--ink-soft);
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.psrc__tab:hover { color: var(--ink); }
+.psrc__label { font-size: 0.95rem; font-weight: 700; }
+.psrc__note { font-size: 0.72rem; color: var(--ink-faint); }
+.psrc__tab.is-on { background: var(--golden-wheat); color: var(--emerald-shadow); }
+.psrc__tab.is-on .psrc__note { color: rgba(0, 29, 26, 0.7); }
+:root[data-theme='light'] .psrc__tab.is-on { background: var(--forest); color: var(--ivory-mist); }
+:root[data-theme='light'] .psrc__tab.is-on .psrc__note { color: rgba(235, 232, 215, 0.75); }
+
+/* شريط مكدّس: المشاريع + الأعمال الاعتيادية */
+.cmp__sw--ops { background: linear-gradient(90deg, var(--donut-2), #e0c68a); }
+.cmp__row--stack { grid-template-columns: minmax(90px, 150px) minmax(0, 1fr) minmax(110px, auto); }
+.cmp__track--stack { display: flex; background: var(--surface-track); }
+.cmp__seg { display: block; height: 100%; }
+.cmp__seg--a { background: linear-gradient(90deg, var(--donut-1), var(--donut-3)); }
+.cmp__seg--b { background: linear-gradient(90deg, var(--donut-2), #e0c68a); }
+
+@media (max-width: 720px) {
+  .cmp__row--stack { grid-template-columns: 1fr auto; grid-template-areas: 'l n' 'b b'; }
+  .cmp__row--stack .cmp__nums { grid-area: n; }
+}

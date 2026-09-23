@@ -319,6 +319,9 @@ const SERVICES = {
     { key: 'kind', title: 'نوع العمل المنفَّذ', column: 'نوع العملية' },
     { key: 'target', title: 'المكان المستهدف', column: 'المكان المستهدف' },
     { key: 'status', title: 'حالة النشاط', column: 'حالة النشاط' },
+    /* يُسجَّلان لعمليات إزالة الأنقاض — يُعرضان في مشروع الأنقاض */
+    { key: 'ownership', title: 'ملكية الموقع', column: 'ملكية الموقع المستهدف بعملية ازالة الانقاض' },
+    { key: 'consent', title: 'موافقة المالكين على الترحيل', column: 'هل توجد موافقة مالكي العقارات بازالة و ترحيل الانقاض؟' },
   ],
   metrics: [
     { key: 'rubble', title: 'الأنقاض المرحّلة', columns: ['الكمية'], when: (r) => isRubble(r) && isCubic(r), decimals: 1 },
