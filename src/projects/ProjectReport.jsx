@@ -73,7 +73,12 @@ function useGeo(geo, basemap) {
     const locations = source.map((d) => {
       const area = lookup.get(d.code);
       const c = area && centroid(area.g);
-      return c ? { lon: c[0], lat: c[1], name: area.name, count: d.count } : null;
+      /* اسم المحافظة على كل نقطة — ليعمل الضغط على الخريطة */
+      const govCode = geo.bySubdistrict.length ? area?.parent : d.code;
+      return c ? {
+        lon: c[0], lat: c[1], name: area.name, count: d.count, code: d.code,
+        governorate: govs.get(govCode)?.name,
+      } : null;
     }).filter(Boolean).sort((a, b) => b.count - a.count);
     const byGov = geo.byGovernorate.map((d) => ({ key: d.code, label: names.get(d.code) || d.code, value: d.count }))
       .sort((a, b) => b.value - a.value);
@@ -277,54 +282,71 @@ function SourceSwitch({ value, onChange, options }) {
   );
 }
 
-function DistPanel({ title, note, rows, tone, span }) {
-  const data = rows.filter((r) => r.label !== '—').map((r) => ({ label: r.label, value: r.count }));
+function DistPanel({ title, note, rows, tone, span, partOf, highlighting, selected, onSelect }) {
+  const data = rows.filter((r) => r.label !== '—')
+    .map((r) => ({ key: r.label, label: r.label, value: r.count, part: partOf ? partOf(r.label) : 0 }));
   const missing = rows.find((r) => r.label === '—');
   if (!data.length) return null;
   return (
     <Panel span={span} title={title} note={note}>
-      <BarChart data={data} tone={tone} showShare />
+      <BarChart data={data} tone={tone} showShare
+        highlighting={highlighting} selected={selected} onSelect={onSelect} />
       {missing && <p className="bx-hint">{fmt(missing.count)} عملية بلا تسجيل لهذا الحقل.</p>}
     </Panel>
   );
 }
 
-function OpsReport({ ops, cfg, basemap, names }) {
+function OpsReport({ ops, part, cfg, basemap, names, highlight, onPick }) {
+  const hl = (dim) => ({
+    highlighting: Boolean(part),
+    selected: highlight?.dim === dim ? highlight.value : null,
+    onSelect: onPick ? onPick(dim) : undefined,
+  });
+  const partBy = (list, key) => (label) => list?.find((x) => (key ? x[key] : x.label) === label)?.count ?? 0;
   if (!ops.ops) {
     return <div className="pending"><h3>لا توجد عمليات مطابقة</h3><p>غيّر الفلاتر أو امسحها.</p></div>;
   }
   /* محافظة عملياتها كلها بوحدات غير المتر المكعب كميتها صفر — لا تُعرض كشريط فارغ */
   const withQty = ops.byGovernorate.filter((g) => g.quantity > 0);
-  const govBars = withQty.map((g) => ({ label: names?.get(g.code) || g.name, value: g.quantity }));
+  const partGov = part?.byGovernorate || [];
+  const govBars = withQty.map((g) => ({
+    key: g.code, label: names?.get(g.code) || g.name, value: g.quantity,
+    part: partGov.find((x) => x.code === g.code)?.quantity ?? 0,
+  }));
   return (
     <>
       <section className="hero">
         <div className="hero__primary">
           <span className="hero__eyebrow"><Icon name="t_calculate" />{cfg.label || 'عمليات الإزالة الاعتيادية'}</span>
-          <Figure value={ops.quantity} className="hero__figure" />
+          <Figure value={(part || ops).quantity} className="hero__figure" />
           <span className="hero__sub">
+            {part && <><b className="hero__of">من أصل {fmt(ops.quantity)}</b>{' '}</>}
             م³، مرحّلة ضمن الأعمال الخدمية اليومية خارج المشاريع
             {ops.from && ops.to && <>، بين <span className="nowrap" dir="ltr">{dmy(ops.from)}</span> و<span className="nowrap" dir="ltr">{dmy(ops.to)}</span></>}
           </span>
         </div>
         <div className="hero__side hero__side--2">
-          <Stat icon="t_repeat" tone="teal" label="عدد العمليات" value={ops.ops} unit="عملية"
+          <Stat icon="t_repeat" tone="teal" label="عدد العمليات" value={(part || ops).ops} unit="عملية"
             note={ops.otherUnits ? `استُبعدت ${fmt(ops.otherUnits)} مسجّلة بغير المتر المكعب` : 'إزالة وإعادة تدوير'} />
-          <Stat icon="t_integer" tone="forest" label="متوسط الكمية للعملية" value={ops.avg} unit="م³"
+          <Stat icon="t_integer" tone="forest" label="متوسط الكمية للعملية" value={(part || ops).avg} unit="م³"
             note={govsText(withQty.length)} />
         </div>
       </section>
 
       <div className="panels">
         <Panel span="wide" title="الكميات حسب المحافظة" note="بالمتر المكعب، مرتّبة تنازلياً">
-          <BarChart data={govBars} showShare />
+          <BarChart data={govBars} showShare {...hl('gov')} />
         </Panel>
-        <DistPanel title="ملكية الموقع" rows={ops.ownership} tone="gold" note="عدد العمليات" />
-        <DistPanel span="wide" title="المكان المستهدف" rows={ops.target} tone="teal" note="عدد العمليات" />
-        <DistPanel title="موافقة المالكين على الترحيل" rows={ops.consent} tone="gold" note="عدد العمليات" />
+        <DistPanel title="ملكية الموقع" rows={ops.ownership} tone="gold" note="عدد العمليات"
+          partOf={partBy(part?.ownership)} {...hl('ownership')} />
+        <DistPanel span="wide" title="المكان المستهدف" rows={ops.target} tone="teal" note="عدد العمليات"
+          partOf={partBy(part?.target)} {...hl('target')} />
+        <DistPanel title="موافقة المالكين على الترحيل" rows={ops.consent} tone="gold" note="عدد العمليات"
+          partOf={partBy(part?.consent)} {...hl('consent')} />
         {basemap && ops.locations.length > 0 && (
           <Panel span="full" title="مواقع عمليات الإزالة" note={`${fmt(ops.locations.length)} موقعاً مُرمّزاً`}>
-            <SyriaMap basemap={basemap} locations={ops.locations} noun="العمليات" />
+            <SyriaMap basemap={basemap} locations={ops.locations} noun="العمليات"
+              faded={part ? new Set(part.locations.map((l) => l.name)) : null} />
           </Panel>
         )}
       </div>
@@ -333,7 +355,17 @@ function OpsReport({ ops, cfg, basemap, names }) {
 }
 
 /* المشاريع + العمليات معاً */
-function CombinedReport({ projectExecuted, projectPlanned, byGovProjects, ops, names }) {
+function CombinedReport({
+  projectExecuted, projectPlanned, byGovProjects, ops, opsPart, names, records, govField, highlight, onPickGov,
+}) {
+  /* التمييز هنا بالمحافظة: الأرقام تعرض حصتها، والصفوف الأخرى تبهت */
+  const picked = highlight?.dim === 'gov' ? highlight.value : null;
+  const projShown = picked
+    ? Math.round(records.filter((r) => r.answers?.[govField]?.governorate === picked)
+      .reduce((a, r) => a + (Number(r.answers?.executed) || 0), 0) * 10) / 10
+    : projectExecuted;
+  const opsShown = picked ? (opsPart?.quantity ?? 0) : ops.quantity;
+  const shownTotal = Math.round((projShown + opsShown) * 10) / 10;
   const total = Math.round((projectExecuted + ops.quantity) * 10) / 10;
   const rows = useMemo(() => {
     const m = new Map();
@@ -356,15 +388,19 @@ function CombinedReport({ projectExecuted, projectPlanned, byGovProjects, ops, n
       <section className="hero">
         <div className="hero__primary">
           <span className="hero__eyebrow"><Icon name="t_calculate" />إجمالي الأنقاض المرحّلة</span>
-          <Figure value={total} className="hero__figure" />
-          <span className="hero__sub">م³، من المشاريع والأعمال الاعتيادية معاً</span>
+          <Figure value={shownTotal} className="hero__figure" />
+          <span className="hero__sub">
+            {picked && <><b className="hero__of">من أصل {fmt(total)}</b>{' '}</>}
+            م³، من المشاريع والأعمال الاعتيادية معاً
+          </span>
         </div>
         <div className="hero__side hero__side--2">
-          <Stat icon="t_repeat" tone="teal" label="من المشاريع" value={projectExecuted} unit="م³"
-            share={total ? Math.round((projectExecuted / total) * 100) : 0}
-            note={`من أصل ${fmt(projectPlanned)} م³ مخططة`} />
-          <Stat icon="t_integer" tone="forest" label="من الأعمال الاعتيادية" value={ops.quantity} unit="م³"
-            share={Math.round(share)} note={`${share}% من الإجمالي، في ${fmt(ops.ops)} عملية`} />
+          <Stat icon="t_repeat" tone="teal" label="من المشاريع" value={projShown} unit="م³"
+            share={shownTotal ? Math.round((projShown / shownTotal) * 100) : 0}
+            note={picked ? `من أصل ${fmt(projectExecuted)} م³ في كل المحافظات` : `من أصل ${fmt(projectPlanned)} م³ مخططة`} />
+          <Stat icon="t_integer" tone="forest" label="من الأعمال الاعتيادية" value={opsShown} unit="م³"
+            share={shownTotal ? Math.round((opsShown / shownTotal) * 100) : 0}
+            note={picked ? `من أصل ${fmt(ops.quantity)} م³` : `${share}% من الإجمالي، في ${fmt(ops.ops)} عملية`} />
         </div>
       </section>
 
@@ -376,7 +412,10 @@ function CombinedReport({ projectExecuted, projectPlanned, byGovProjects, ops, n
               <span><i className="cmp__sw cmp__sw--ops" />الأعمال الاعتيادية</span>
             </div>
             {rows.map((r) => (
-              <div className="cmp__row cmp__row--stack" key={r.code}>
+              <button type="button" key={r.code}
+                className={`cmp__row cmp__row--stack${picked === r.code ? ' is-on' : ''}${picked && picked !== r.code ? ' is-dim' : ''}`}
+                onClick={() => onPickGov(picked === r.code ? null : r.code)}
+                aria-pressed={picked === r.code}>
                 <span className="cmp__label">{r.label}</span>
                 <div className="cmp__bars">
                   <span className="cmp__track cmp__track--stack" style={{ width: `${(r.total / max) * 100}%` }}>
@@ -385,7 +424,7 @@ function CombinedReport({ projectExecuted, projectPlanned, byGovProjects, ops, n
                   </span>
                 </div>
                 <span className="cmp__nums" dir="ltr">{fmt(Math.round(r.total))} م³</span>
-              </div>
+              </button>
             ))}
           </div>
         </Panel>
@@ -395,13 +434,19 @@ function CombinedReport({ projectExecuted, projectPlanned, byGovProjects, ops, n
 }
 
 /* شريط يبيّن ما هو مميَّز الآن */
-function HighlightBar({ node, label, shown, total, onClear }) {
+const OPS_DIM_TITLES = {
+  gov: 'المحافظة', ownership: 'ملكية الموقع', consent: 'موافقة المالكين', target: 'المكان المستهدف',
+};
+
+function HighlightBar({ node, label, shown, total, onClear, unit = '' }) {
   return (
     <div className="phl" role="status">
       <Icon name="t_select_one" className="phl__icon" />
       <span className="phl__text">
         مميَّز: <b>{node?.label || ''}</b> = <b>{label}</b>
-        <span className="phl__count">{fmt(shown)} من {fmt(total)}</span>
+        {shown != null && (
+          <span className="phl__count">{fmt(shown)} من {fmt(total)}{unit && ` ${unit}`}</span>
+        )}
       </span>
       <span className="phl__hint">بقية الأرقام تعرض حصة هذا التحديد، والباقي باهت.</span>
       <button type="button" className="phl__clear" onClick={onClear}>إلغاء التمييز</button>
@@ -492,6 +537,13 @@ function PanelFor({ item, tone, basemap, nodes, names, rows, noun, part, partGro
   const title = settings?.title || node?.label;
 
   const geo = useGeo(data?.geo, basemap);
+  /* مواقع المجموعة المميَّزة — لتبهت بقية النقاط */
+  const partGeoCodes = useMemo(() => {
+    if (!part?.geo) return null;
+    const subs = new Set(part.geo.bySubdistrict.map((d) => d.code));
+    const govs = new Set(part.geo.byGovernorate.map((d) => d.code));
+    return subs.size ? subs : govs;
+  }, [part]);
 
   if (chart === 'compare') {
     const c = item.compare;
@@ -572,7 +624,12 @@ function PanelFor({ item, tone, basemap, nodes, names, rows, noun, part, partGro
         <Panel span={span} title={title} note={data.geo.bySubdistrict.length
           ? `${fmt(geo.locations.length)} ناحية، مطابقة بحدودها الرسمية`
           : `${fmt(geo.locations.length)} محافظة`}>
-          <SyriaMap basemap={basemap} locations={geo.locations} noun={noun} />
+          <SyriaMap basemap={basemap} locations={geo.locations} noun={noun}
+            faded={partGeoCodes}
+            onPickGovernorate={onPick ? (govName) => {
+              const code = [...(names?.entries() || [])].find(([, n]) => n === govName)?.[0] || govName;
+              onPick(node.name)(highlight?.field === node.name && highlight.value === code ? null : code);
+            } : undefined} />
         </Panel>
       );
     case 'gov': {
@@ -690,6 +747,16 @@ export default function ProjectReport({ project, basemap }) {
 
   const pick = (field) => (value) => setHighlight(value == null ? null : { field, value });
 
+  const opsPart = useMemo(() => {
+    if (!opsCfg || !opsData || !govIdx || !highlight || view === 'project') return null;
+    return summarizeOps(opsData, {
+      types: opsCfg.types,
+      govOf: (name) => matchGovernorate(name, govIdx)?.code || name,
+      filter: { gov: govFilterField ? filters[govFilterField.name] : undefined },
+      highlight,
+    });
+  }, [opsCfg, opsData, govIdx, filters, govFilterField, highlight, view]);
+
   const report = useMemo(() => (survey ? buildReport(survey, responses) : null), [survey, responses]);
   /* تقرير المجموعة المميَّزة — منه تُؤخذ الأجزاء المعروضة فوق الأشرطة */
   const partReport = useMemo(
@@ -741,16 +808,31 @@ export default function ProjectReport({ project, basemap }) {
           })()} />
       )}
 
+      {view !== 'project' && highlight && opsPart && (
+        <HighlightBar
+          node={{ label: OPS_DIM_TITLES[highlight.dim] || highlight.dim }}
+          label={highlight.dim === 'gov' ? (names?.get(highlight.value) || highlight.value) : highlight.value}
+          shown={view === 'both' ? null : opsPart.ops}
+          total={view === 'both' ? null : opsSummary.ops} unit="عملية"
+          onClear={() => setHighlight(null)} />
+      )}
+
       {opsCfg && view !== 'project' && (opsError || !opsSummary) ? (
         <div className="pending">
           <h3>{opsError ? 'تعذّر تحميل بيانات العمليات' : 'جارٍ التحميل…'}</h3>
           {opsError && <p>حدّث الصفحة وحاول مجدداً.</p>}
         </div>
       ) : view === 'ops' ? (
-        <OpsReport ops={opsSummary} cfg={opsCfg} basemap={basemap} names={names} />
+        <OpsReport ops={opsSummary} part={opsPart} cfg={opsCfg} basemap={basemap} names={names}
+          highlight={highlight} onPick={(dim) => (value) => setHighlight(value == null ? null : { dim, value })} />
       ) : view === 'both' ? (
         <CombinedReport
           ops={opsSummary}
+          opsPart={opsPart}
+          highlight={highlight}
+          onPickGov={(value) => setHighlight(value == null ? null : { dim: 'gov', value })}
+          records={responses}
+          govField={opsCfg.gov}
           names={names}
           projectExecuted={sumOf(responses, opsCfg.executed)}
           projectPlanned={sumOf(responses, opsCfg.planned)}

@@ -43,7 +43,7 @@ function useBounds(basemap) {
 }
 
 /* noun: ما تمثّله النقاط، بصيغة الجمع المعرّفة (البلاغات، الاستمارات…) */
-export default function SyriaMap({ basemap, locations, noun = 'البلاغات' }) {
+export default function SyriaMap({ basemap, locations, noun = 'البلاغات', faded = null, onPickGovernorate = null }) {
   const wrapRef = useRef(null);
   const [size, setSize] = useState({ width: 900, height: 560 });
   const [view, setView] = useState({ zoom: 1, x: 0, y: 0 });
@@ -184,8 +184,16 @@ export default function SyriaMap({ basemap, locations, noun = 'البلاغات'
     return () => el.removeEventListener('wheel', onWheel);
   }, [zoomAt]);
 
+  /*
+    الخريطة تلتقط المؤشر لتمكين السحب، فلا تصل ضغطة النقطة إلى الدائرة.
+    لذلك نسجّل ما تحت المؤشر عند الضغط، وعند الإفلات: إن لم تتحرك اليد
+    فهي ضغطة اختيار لا سحب.
+  */
   const onPointerDown = (event) => {
-    drag.current = { sx: event.clientX, sy: event.clientY, ox: view.x, oy: view.y };
+    drag.current = {
+      sx: event.clientX, sy: event.clientY, ox: view.x, oy: view.y,
+      gov: event.target?.dataset?.gov || null,
+    };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
@@ -202,6 +210,12 @@ export default function SyriaMap({ basemap, locations, noun = 'البلاغات'
   };
 
   const endDrag = (event) => {
+    /* ضغطة (لا سحب): الإزاحة أقل من 4 بكسل وتحتها نقطة محافظة */
+    const d = drag.current;
+    if (d?.gov && onPickGovernorate && event
+        && Math.abs(event.clientX - d.sx) < 4 && Math.abs(event.clientY - d.sy) < 4) {
+      onPickGovernorate(d.gov);
+    }
     drag.current = null;
     if (event?.pointerId !== undefined) {
       try {
@@ -284,11 +298,18 @@ export default function SyriaMap({ basemap, locations, noun = 'البلاغات'
                   cx={x}
                   cy={y}
                   r={radius(loc.count)}
-                  className={hovered?.code === loc.code ? 'map__dot map__dot--on' : 'map__dot'}
+                  className={[
+                    'map__dot',
+                    hovered?.code === loc.code ? 'map__dot--on' : '',
+                    /* خارج التحديد: النقطة تبهت ولا تختفي */
+                    faded && !faded.has(loc.code) ? 'map__dot--faded' : '',
+                    onPickGovernorate ? 'map__dot--pick' : '',
+                  ].filter(Boolean).join(' ')}
                   onMouseEnter={() =>
                     setHovered({ ...loc, x: x * zoom + view.x, y: y * zoom + view.y })
                   }
                   onMouseLeave={() => setHovered(null)}
+                  data-gov={loc.governorate || undefined}
                 />
               );
             })}

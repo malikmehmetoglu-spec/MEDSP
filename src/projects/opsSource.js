@@ -29,7 +29,7 @@ const norm = (s) => String(s ?? '').trim().replace(/[إأآ]/g, 'ا');
   govOf   اسم المحافظة ← رمزها الرسمي
   filter  { gov: 'SY07' } اختياري
 */
-export function summarizeOps(data, { types, govOf, filter = {} } = {}) {
+export function summarizeOps(data, { types, govOf, filter = {}, highlight = null } = {}) {
   const want = new Set((types || []).map(norm));
   const dimIdx = Object.fromEntries(data.dims.map((d, i) => [d.key, 5 + i]));
   const metricIdx = Object.fromEntries(data.metrics.map((m, i) => [m.key, 5 + data.dims.length + i]));
@@ -53,6 +53,15 @@ export function summarizeOps(data, { types, govOf, filter = {} } = {}) {
     const govName = data.dict.govs[r[1]];
     const code = govOf?.(govName) || govName;
     if (filter.gov && code !== filter.gov) continue;
+
+    /* الفلترة المتقاطعة: نحسب المجموعة المميَّزة وحدها */
+    if (highlight) {
+      if (highlight.dim === 'gov') { if (code !== highlight.value) continue; }
+      else {
+        const at = dimIdx[highlight.dim];
+        if (at === undefined || dimValues[highlight.dim][r[at]] !== highlight.value) continue;
+      }
+    }
 
     const q = r[qtyAt] || 0;
     quantity += q;

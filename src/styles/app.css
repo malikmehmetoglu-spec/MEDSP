@@ -1571,3 +1571,7 @@ button.bars__hit { cursor: pointer; }
 
 .donut__seg.is-faded { opacity: 0.22; }
 .donut__seg--part { opacity: 1; filter: saturate(1.15); }
+
+/* الخريطة ضمن الفلترة المتقاطعة */
+.map__dot--faded { opacity: 0.18; }
+.map__dot--pick { cursor: pointer; }

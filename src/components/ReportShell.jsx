@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import useReportStats from '../hooks/useReportStats';
 import Filters from './Filters';
 import SyriaMap from './SyriaMap';
@@ -65,8 +65,11 @@ export function Toll({ rows }) {
 }
 
 /* لوحة بُعد: تعرض رسماً شريطياً أو حلقياً حسب عدد الفئات */
-export function DimPanel({ dim, tone = 'teal', max, span, donutAt = 3 }) {
+export function DimPanel({ dim, tone = 'teal', max, span, donutAt = 3, part, selected, onSelect, highlighting }) {
   if (!dim || dim.data.length === 0) return null;
+
+  const partOf = (label) => part?.data.find((d) => d.label === label)?.value ?? 0;
+  const rows = dim.data.map((d) => ({ ...d, key: d.label, part: partOf(d.label) }));
 
   const note = [
     dim.note,
@@ -80,9 +83,10 @@ export function DimPanel({ dim, tone = 'teal', max, span, donutAt = 3 }) {
   return (
     <Panel title={dim.title} note={note || null} span={span}>
       {dim.data.length <= donutAt ? (
-        <Donut data={dim.data} tone={tone} />
+        <Donut data={rows} tone={tone} highlighting={highlighting} selected={selected} onSelect={onSelect} />
       ) : (
-        <BarChart data={dim.data} tone={tone} max={max} showShare />
+        <BarChart data={rows} tone={tone} max={max} showShare
+          highlighting={highlighting} selected={selected} onSelect={onSelect} />
       )}
     </Panel>
   );
@@ -96,8 +100,18 @@ export default function ReportShell({ report, basemap, view }) {
   const [range, setRange] = useState({ from: report.from, to: report.to });
   const [directorate, setDirectorate] = useState(null);
   const [center, setCenter] = useState(null);
+  /* الفلترة المتقاطعة: فئة واحدة مميَّزة في كل مرة */
+  const [highlight, setHighlight] = useState(null);
 
-  const data = useReportStats(report, range, { directorate, center });
+  const data = useReportStats(report, range, { directorate, center }, highlight);
+  /* البطاقات العلوية تعرض قيم المميَّز، والإجمالي يُذكر تحتها */
+  const shown = data.part ?? data;
+  const pick = (dim) => (value) => setHighlight(value == null ? null : { dim, value });
+  const hlProps = (dim) => ({
+    highlighting: Boolean(data.part),
+    selected: highlight?.dim === dim ? highlight.value : null,
+    onSelect: pick(dim),
+  });
 
   const pickDirectorate = (value) => {
     setDirectorate(value);
@@ -108,7 +122,15 @@ export default function ReportShell({ report, basemap, view }) {
     setRange({ from: report.from, to: report.to });
     setDirectorate(null);
     setCenter(null);
+    setHighlight(null);
   };
+
+  /* تغيّر المرشّحات يلغي التمييز حتى لا يبقى على فئة لم تعد موجودة */
+  useEffect(() => { setHighlight(null); }, [range, directorate, center]);
+
+  const dimTitle = highlight
+    ? (highlight.dim === 'gov' ? 'المحافظة' : data.dims[highlight.dim]?.title)
+    : '';
 
   return (
     <>
@@ -127,6 +149,18 @@ export default function ReportShell({ report, basemap, view }) {
         unit={view.unit ?? 'عملية'}
       />
 
+      {highlight && data.part && (
+        <div className="phl" role="status">
+          <Icon name="target" className="phl__icon" />
+          <span className="phl__text">
+            مميَّز: <b>{dimTitle}</b> = <b>{highlight.value}</b>
+            <span className="phl__count">{fmt(data.part.total)} من {fmt(data.total)}</span>
+          </span>
+          <span className="phl__hint">بقية الأرقام تعرض حصة هذا التحديد، والباقي باهت.</span>
+          <button type="button" className="phl__clear" onClick={() => setHighlight(null)}>إلغاء التمييز</button>
+        </div>
+      )}
+
       {data.total === 0 ? (
         <div className="pending">
           <h3>لا توجد بيانات بهذه المرشّحات</h3>
@@ -140,21 +174,23 @@ export default function ReportShell({ report, basemap, view }) {
                 <Icon name={view.icon} />
                 {view.eyebrow}
               </span>
-              <Figure value={data.total} className="hero__figure" />
+              <Figure value={shown.total} className="hero__figure" />
               <span className="hero__sub">
-                في {fmt(data.locations.length)} موقعاً ضمن{' '}
-                {fmt(data.byGovernorate.length)} محافظة
+                {data.part && <><b className="hero__of">من أصل {fmt(data.total)}</b>{' '}</>}
+                في {fmt(shown.locations.length)} موقعاً ضمن{' '}
+                {fmt(shown.byGovernorate.length)} محافظة
               </span>
             </div>
 
             <div className={`hero__side${view.sidePanel ? ' hero__side--panel' : ''}`}>
-              {view.stats(data).map((stat) => (
+              {view.stats(shown).map((stat) => (
                 <Stat key={stat.label} {...stat} />
               ))}
               {/* لوحة في الصف الأول بعرض بطاقتين (قطاع الخدمة) */}
               {view.sidePanel && (
                 <div className="hero__panel">
-                  <DimPanel dim={data.dims[view.sidePanel.dim]} tone={view.sidePanel.tone} max={view.sidePanel.max} />
+                  <DimPanel dim={data.dims[view.sidePanel.dim]} tone={view.sidePanel.tone} max={view.sidePanel.max}
+                    part={data.part?.dims[view.sidePanel.dim]} {...hlProps(view.sidePanel.dim)} />
                 </div>
               )}
             </div>
@@ -163,7 +199,7 @@ export default function ReportShell({ report, basemap, view }) {
           <div className="panels">
             {view.toll && (
               <Panel title={view.toll.title} note={view.toll.note} span="full">
-                <Toll rows={view.toll.rows(data)} />
+                <Toll rows={view.toll.rows(shown)} />
               </Panel>
             )}
 
@@ -174,6 +210,8 @@ export default function ReportShell({ report, basemap, view }) {
                 tone={panel.tone}
                 max={panel.max}
                 span={panel.span}
+                part={data.part?.dims[panel.dim]}
+                {...hlProps(panel.dim)}
               />
             ))}
 
@@ -182,15 +220,25 @@ export default function ReportShell({ report, basemap, view }) {
               title="التوزّع الجغرافي"
               note={`${fmt(data.locations.length)} موقعاً مُرمّزاً، مطابقة بإحداثياتها الرسمية`}
             >
-              <SyriaMap basemap={basemap} locations={data.locations} />
+              <SyriaMap basemap={basemap} locations={data.locations}
+                faded={data.part ? new Set(data.part.locations.map((l) => l.code)) : null}
+                onPickGovernorate={(name) => setHighlight(
+                  highlight?.dim === 'gov' && highlight.value === name ? null : { dim: 'gov', value: name },
+                )} />
             </Panel>
 
             <Panel title="التوزّع حسب المحافظة" note="مرتّبة تنازلياً" span="wide">
-              <BarChart data={data.byGovernorate} showShare />
+              <BarChart showShare
+                data={data.byGovernorate.map((g) => ({
+                  ...g, key: g.label,
+                  part: data.part?.byGovernorate.find((x) => x.label === g.label)?.value ?? 0,
+                }))}
+                {...hlProps('gov')} />
             </Panel>
 
             {view.tail?.map((panel) => (
-              <DimPanel key={panel.dim} dim={data.dims[panel.dim]} tone={panel.tone} max={panel.max} span={panel.span} />
+              <DimPanel key={panel.dim} dim={data.dims[panel.dim]} tone={panel.tone} max={panel.max} span={panel.span}
+                part={data.part?.dims[panel.dim]} {...hlProps(panel.dim)} />
             ))}
           </div>
         </>
