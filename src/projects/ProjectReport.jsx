@@ -75,7 +75,7 @@ function useGeo(geo, basemap) {
       const c = area && centroid(area.g);
       return c ? { lon: c[0], lat: c[1], name: area.name, count: d.count } : null;
     }).filter(Boolean).sort((a, b) => b.count - a.count);
-    const byGov = geo.byGovernorate.map((d) => ({ label: names.get(d.code) || d.code, value: d.count }))
+    const byGov = geo.byGovernorate.map((d) => ({ key: d.code, label: names.get(d.code) || d.code, value: d.count }))
       .sort((a, b) => b.value - a.value);
     return { locations, byGov };
   }, [geo, basemap]);
@@ -118,8 +118,9 @@ function Quotes({ samples }) {
 }
 
 /* مخطط مقابل منفذ لكل فئة */
-function Compare({ groups, unit, names, labelA, labelB }) {
+function Compare({ groups, unit, names, labelA, labelB, onSelect, selected, highlighting, parts }) {
   const max = Math.max(...groups.map((g) => g.a), 1);
+  const Row = onSelect ? 'button' : 'div';
   return (
     <div className="cmp">
       <div className="cmp__legend">
@@ -128,8 +129,15 @@ function Compare({ groups, unit, names, labelA, labelB }) {
       </div>
       {groups.map((g) => {
         const over = g.pct !== null && g.pct > 100;
+        const on = selected != null && String(selected) === String(g.key);
+        const part = highlighting ? (parts?.get(String(g.key)) ?? 0) : null;
         return (
-          <div className="cmp__row" key={g.key}>
+          <Row
+            type={onSelect ? 'button' : undefined}
+            className={`cmp__row${on ? ' is-on' : ''}${highlighting && !part ? ' is-dim' : ''}`}
+            key={g.key}
+            onClick={onSelect ? () => onSelect(on ? null : g.key) : undefined}
+            aria-pressed={onSelect ? on : undefined}>
             <span className="cmp__label">{names?.get(g.key) || g.label}</span>
             <div className="cmp__bars">
               <span className="cmp__track" style={{ width: `${(g.a / max) * 100}%` }}>
@@ -141,9 +149,10 @@ function Compare({ groups, unit, names, labelA, labelB }) {
               {pctText(g.pct)}
             </span>
             <span className="cmp__nums" dir="ltr">
+              {part != null && part !== g.b ? `${fmt(Math.round(part))} / ` : ''}
               {fmt(Math.round(g.b))} <em>/ {fmt(Math.round(g.a))}</em>{unit && ` ${unit}`}
             </span>
-          </div>
+          </Row>
         );
       })}
     </div>
@@ -151,7 +160,7 @@ function Compare({ groups, unit, names, labelA, labelB }) {
 }
 
 /* جدول تفصيلي — قابل للترتيب بالضغط على العناوين */
-export function DetailTable({ rows, columns, nodes, names }) {
+export function DetailTable({ rows, columns, nodes, names, dimOutside }) {
   const cols = columns.map((c) => nodes.get(c)).filter(Boolean);
   /* الترتيب الافتراضي: العمود الأول (كالمرحلة) تصاعدياً */
   const [sort, setSort] = useState({ by: columns[0] || null, dir: 1 });
@@ -214,7 +223,7 @@ export function DetailTable({ rows, columns, nodes, names }) {
         </thead>
         <tbody>
           {sorted.map((r) => (
-            <tr key={r.id}>
+            <tr key={r.id} className={dimOutside && !dimOutside.has(r.id) ? 'is-dim' : ''}>
               {cols.map((n) => {
                 const v = val(r, n);
                 if (n.type === 'calculate' && n.calc?.op === 'percent') {
@@ -385,6 +394,21 @@ function CombinedReport({ projectExecuted, projectPlanned, byGovProjects, ops, n
   );
 }
 
+/* شريط يبيّن ما هو مميَّز الآن */
+function HighlightBar({ node, label, shown, total, onClear }) {
+  return (
+    <div className="phl" role="status">
+      <Icon name="t_select_one" className="phl__icon" />
+      <span className="phl__text">
+        مميَّز: <b>{node?.label || ''}</b> = <b>{label}</b>
+        <span className="phl__count">{fmt(shown)} من {fmt(total)}</span>
+      </span>
+      <span className="phl__hint">بقية الأرقام تعرض حصة هذا التحديد، والباقي باهت.</span>
+      <button type="button" className="phl__clear" onClick={onClear}>إلغاء التمييز</button>
+    </div>
+  );
+}
+
 /* ---------------- الفلاتر ---------------- */
 
 function FilterBar({ fields, responses, values, onChange, names, shown }) {
@@ -459,7 +483,11 @@ function matches(r, fields, values) {
 
 /* ---------------- لوحة واحدة ---------------- */
 
-function PanelFor({ item, tone, basemap, nodes, names, rows, noun }) {
+function PanelFor({ item, tone, basemap, nodes, names, rows, noun, part, partGroups, partRows, highlight, onPick }) {
+  const cmpParts = useMemo(
+    () => (partGroups ? new Map(partGroups.map((g) => [String(g.key), g.b])) : null),
+    [partGroups],
+  );
   const { node, settings, data, chart, span } = item;
   const title = settings?.title || node?.label;
 
@@ -473,15 +501,20 @@ function PanelFor({ item, tone, basemap, nodes, names, rows, noun }) {
       <Panel span="full" title={c.title || `${B?.label} مقابل ${A?.label}`}
         note={`نسبة الإنجاز = ${B?.label || 'المنجز'} ÷ ${A?.label || 'المرجع'}، ${nodes.get(c.by)?.choices?.length ? 'بترتيب الفئات' : 'مرتّبة حسب الحجم'}`}>
         <Compare groups={item.groups} unit={A?.unit} names={names}
-          labelA={A?.label || c.a} labelB={B?.label || c.b} />
+          labelA={A?.label || c.a} labelB={B?.label || c.b}
+          highlighting={Boolean(highlight)}
+          parts={cmpParts}
+          selected={highlight?.field === c.by ? highlight.value : null}
+          onSelect={onPick ? onPick(c.by) : undefined} />
       </Panel>
     );
   }
 
   if (chart === 'table') {
+    const keep = partRows ? new Set(partRows.map((r) => r.id)) : null;
     return (
       <Panel span="full" title="التفاصيل" note="اضغط عنوان أي عمود للترتيب">
-        <DetailTable rows={rows} columns={item.columns} nodes={nodes} names={names} />
+        <DetailTable rows={rows} columns={item.columns} nodes={nodes} names={names} dimOutside={keep} />
       </Panel>
     );
   }
@@ -500,22 +533,37 @@ function PanelFor({ item, tone, basemap, nodes, names, rows, noun }) {
 
   const answered = `${fmt(data.answered)} إجابة`;
   switch (chart) {
-    case 'donut':
+    case 'donut': {
+      const partOf = (v) => part?.dist.find((x) => String(x.value) === String(v))?.count ?? 0;
       return (
         <Panel span={span} title={title} note={answered}>
-          <Donut data={data.dist.map((d) => ({ label: d.label, value: d.count }))} tone={tone} caption="إجابة" />
+          <Donut
+            data={data.dist.map((d) => ({ key: d.value, label: d.label, value: d.count, part: partOf(d.value) }))}
+            tone={tone} caption="إجابة"
+            highlighting={Boolean(highlight)}
+            selected={highlight?.field === node.name ? highlight.value : null}
+            onSelect={onPick ? onPick(node.name) : undefined}
+          />
         </Panel>
       );
+    }
     case 'bars': {
-      const rows = node.type === 'range'
-        ? data.dist.map((d) => ({ label: `الدرجة ${d.value}`, value: d.count }))
-        : data.dist.map((d) => ({ label: d.label, value: d.count }));
+      const partOf = (v) => part?.dist.find((x) => String(x.value) === String(v))?.count ?? 0;
+      const rows = data.dist.map((d) => ({
+        key: d.value,
+        label: node.type === 'range' ? `الدرجة ${d.value}` : d.label,
+        value: d.count,
+        part: partOf(d.value),
+      }));
       const note = node.type === 'range' && data.stats
         ? `المتوسط ${fmt(data.stats.avg)} من ${node.max ?? 5}`
         : node.type === 'select_multiple' ? 'يمكن اختيار أكثر من إجابة' : answered;
       return (
         <Panel span={span} title={title} note={note}>
-          <BarChart data={rows} tone={tone} showShare />
+          <BarChart data={rows} tone={tone} showShare
+            highlighting={Boolean(highlight)}
+            selected={highlight?.field === node.name ? highlight.value : null}
+            onSelect={onPick ? onPick(node.name) : undefined} />
         </Panel>
       );
     }
@@ -527,12 +575,21 @@ function PanelFor({ item, tone, basemap, nodes, names, rows, noun }) {
           <SyriaMap basemap={basemap} locations={geo.locations} noun={noun} />
         </Panel>
       );
-    case 'gov':
+    case 'gov': {
+      const partGeo = part?.geo?.byGovernorate || [];
+      const bars = geo.byGov.map((g) => ({
+        ...g,
+        part: partGeo.find((x) => x.code === g.key)?.count ?? 0,
+      }));
       return (
         <Panel span={span} title={item.group ? 'التوزّع حسب المحافظة' : title} note="مرتّبة تنازلياً">
-          <BarChart data={geo.byGov} showShare />
+          <BarChart data={bars} showShare
+            highlighting={Boolean(highlight)}
+            selected={highlight?.field === node.name ? highlight.value : null}
+            onSelect={onPick ? onPick(node.name) : undefined} />
         </Panel>
       );
+    }
     case 'timeline':
       return (
         <Panel span={span} title={title} note={`${fmt(data.series.length)} يوماً`}>
@@ -613,11 +670,38 @@ export default function ProjectReport({ project, basemap }) {
     });
   }, [opsCfg, opsData, govIdx, filters, govFilterField]);
 
+  /*
+    الفلترة المتقاطعة: الضغط على فئة في أي رسم يميّزها، فتعرض بقية
+    الرسوم حصتها منها ويبهت الباقي. قيمة واحدة في كل مرة.
+  */
+  const [highlight, setHighlight] = useState(null);
+  useEffect(() => { setHighlight(null); }, [filters, view, surveyId]);
+
+  const highlighted = useMemo(() => {
+    if (!highlight) return null;
+    const node = nodes.get(highlight.field);
+    return responses.filter((r) => {
+      const v = r.answers?.[highlight.field];
+      if (node?.type === 'admin_area') return v?.governorate === highlight.value;
+      if (Array.isArray(v)) return v.map(String).includes(String(highlight.value));
+      return String(v) === String(highlight.value);
+    });
+  }, [highlight, responses, nodes]);
+
+  const pick = (field) => (value) => setHighlight(value == null ? null : { field, value });
+
   const report = useMemo(() => (survey ? buildReport(survey, responses) : null), [survey, responses]);
+  /* تقرير المجموعة المميَّزة — منه تُؤخذ الأجزاء المعروضة فوق الأشرطة */
+  const partReport = useMemo(
+    () => (survey && highlighted ? buildReport(survey, highlighted) : null),
+    [survey, highlighted],
+  );
   const plan = useMemo(() => (survey && report ? planReport(survey, report) : null), [survey, report]);
 
   if (!survey) return <div className="pending"><h3>لا يوجد استبيان في هذا المشروع</h3></div>;
 
+  /* مع وجود تمييز: البطاقات تعرض قيمة المجموعة المميَّزة، والإجمالي يُذكر تحتها */
+  const shown = partReport || report;
   const dated = responses.map((r) => r.submittedAt).filter(Boolean).sort();
   const govCount = [...report.data.values()].find((d) => d.geo)?.geo.byGovernorate.length || 0;
   const hero = plan.hero;
@@ -645,6 +729,16 @@ export default function ProjectReport({ project, basemap }) {
         <FilterBar fields={view === 'project' ? filterFields : filterFields.filter((f) => f.type === 'admin_area')}
           responses={all} values={filters}
           onChange={setFilters} names={names} shown={responses.length} />
+      )}
+
+      {highlight && highlighted && view === 'project' && (
+        <HighlightBar node={nodes.get(highlight.field)} shown={highlighted.length} total={responses.length}
+          onClear={() => setHighlight(null)}
+          label={(() => {
+            const n = nodes.get(highlight.field);
+            if (n?.type === 'admin_area') return names?.get(highlight.value) || highlight.value;
+            return n?.choices?.find((c) => String(c.value) === String(highlight.value))?.label ?? highlight.value;
+          })()} />
       )}
 
       {opsCfg && view !== 'project' && (opsError || !opsSummary) ? (
@@ -679,11 +773,14 @@ export default function ProjectReport({ project, basemap }) {
                 {hero.kind === 'field' ? (hero.settings.title || hero.node.label) : survey.title}
               </span>
               <Figure
-                value={hero.kind === 'field' ? aggValue(hero.data?.stats, hero.settings.agg) : report.total}
+                value={hero.kind === 'field'
+                  ? aggValue(shown.data.get(hero.node.name)?.stats, hero.settings.agg)
+                  : shown.total}
                 className="hero__figure" />
               <span className="hero__sub">
+                {highlight && <><b className="hero__of">من أصل {fmt(hero.kind === 'field' ? aggValue(hero.data?.stats, hero.settings.agg) : report.total)}</b>{' '}</>}
                 {hero.kind === 'field'
-                  ? <>{hero.node.unit ? `${hero.node.unit}، ` : ''}{AGG_OF[hero.settings.agg]} {counted(report.total, forms)}{govCount > 0 && ` ${govsText(govCount)}`}</>
+                  ? <>{hero.node.unit ? `${hero.node.unit}، ` : ''}{AGG_OF[hero.settings.agg]} {counted(shown.total, forms)}{govCount > 0 && ` ${govsText(govCount)}`}</>
                   : <>{forms === RECORD ? 'استمارة معتمدة' : forms.many}{govCount > 0 && ` ${govsText(govCount)}`}</>}
                 {dated.length > 0 && (dmy(dated[0]) === dmy(dated[dated.length - 1]) ? (
                   <>، بيانات <span className="nowrap" dir="ltr">{dmy(dated[0])}</span></>
@@ -700,7 +797,7 @@ export default function ProjectReport({ project, basemap }) {
               <div className={`hero__side hero__side--${plan.side.length}`}>
                 {plan.side.map((sd, i) => {
                   if (sd.kind === 'ratio') {
-                    const v = sd.value;
+                    const v = (shown.ratios || report.ratios)?.get(sd.ratio.id) || sd.value;
                     return (
                       <Stat
                         key={`ratio-${sd.ratio.id}`}
@@ -714,7 +811,8 @@ export default function ProjectReport({ project, basemap }) {
                       />
                     );
                   }
-                  const st = sd.data.stats;
+                  const full = sd.data.stats;
+                  const st = shown.data.get(sd.node.name)?.stats || full;
                   const v = aggValue(st, sd.settings.agg);
                   return (
                     <Stat
@@ -725,9 +823,11 @@ export default function ProjectReport({ project, basemap }) {
                       value={v}
                       unit={sd.node.unit || ''}
                       share={st.max ? Math.round((st.avg / st.max) * 100) : 0}
-                      note={sd.settings.agg === 'sum'
-                        ? `بمتوسط ${fmt(st.avg)} لكل ${forms.unit || 'استمارة'}، وأعلى قيمة ${fmt(st.max)}`
-                        : `${AGGS[sd.settings.agg]} من ${fmt(st.count)} إجابة`}
+                      note={highlight
+                        ? `من أصل ${fmt(aggValue(full, sd.settings.agg))}${sd.node.unit ? ` ${sd.node.unit}` : ''} للكل`
+                        : sd.settings.agg === 'sum'
+                          ? `بمتوسط ${fmt(st.avg)} لكل ${forms.unit || 'استمارة'}، وأعلى قيمة ${fmt(st.max)}`
+                          : `${AGGS[sd.settings.agg]} من ${fmt(st.count)} إجابة`}
                     />
                   );
                 })}
@@ -738,7 +838,11 @@ export default function ProjectReport({ project, basemap }) {
           <div className="panels">
             {plan.panels.map((item, i) => (
               <PanelFor key={item.key} item={item} tone={TONES[i % TONES.length]} basemap={basemap}
-                nodes={nodes} names={names} rows={responses} noun={noun} />
+                nodes={nodes} names={names} rows={responses} noun={noun}
+                part={partReport?.data.get(item.node?.name)}
+                partGroups={item.compare ? partReport?.compares?.get(item.compare.id) : null}
+                partRows={highlighted}
+                highlight={highlight} onPick={pick} />
             ))}
           </div>
         </>

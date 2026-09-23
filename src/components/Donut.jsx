@@ -22,7 +22,9 @@ const pct = (x) => {
   return v > 0 && v < 1 ? '<1' : String(Math.round(v));
 };
 
-export default function Donut({ data, tone = 'teal', caption, unit = '' }) {
+export default function Donut({
+  data, tone = 'teal', caption, unit = '', onSelect, selected, highlighting,
+}) {
   const [ref, seen] = useInView();
   const [active, setActive] = useState(null);
 
@@ -34,6 +36,7 @@ export default function Donut({ data, tone = 'teal', caption, unit = '' }) {
     return [...head, {
       label: `أخرى (${rest.length})`,
       value: rest.reduce((s, d) => s + d.value, 0),
+      part: rest.reduce((s, d) => s + (d.part || 0), 0),
       other: true,
     }];
   }, [data]);
@@ -53,10 +56,13 @@ export default function Donut({ data, tone = 'teal', caption, unit = '' }) {
     const share = s.value / total;
     const len = share * C;
     const dash = Math.max(len - GAP, 0.01);
+    const partShare = highlighting ? Math.min((s.part || 0) / (s.value || 1), 1) : 0;
     const seg = {
       ...s,
       i,
       share,
+      partDash: Math.max((len - GAP) * partShare, 0),
+      key: s.key ?? s.label,
       color: s.other ? 'var(--donut-other)' : `var(--donut-${((i + start) % COLORS) + 1})`,
       dash,
       offset: -(run + GAP / 2),
@@ -76,23 +82,39 @@ export default function Donut({ data, tone = 'teal', caption, unit = '' }) {
           aria-label={segs.map((s) => `${s.label} ${pct(s.share)}٪`).join('، ')}>
           <circle cx="80" cy="80" r={R} fill="none" className="donut__track" strokeWidth={SW} />
           <g transform="rotate(-90 80 80)">
-            {segs.map((s) => (
-              <circle
-                key={s.label}
-                cx="80" cy="80" r={R}
-                fill="none"
-                stroke={s.color}
-                strokeWidth={active === s.i ? SW + 5 : SW}
-                strokeLinecap={slices.length > 1 ? 'round' : 'butt'}
-                strokeDasharray={`${seen ? s.dash : 0} ${C}`}
-                strokeDashoffset={s.offset}
-                className={`donut__seg${active !== null && active !== s.i ? ' is-dim' : ''}${active === s.i ? ' is-on' : ''}`}
-                style={{ transitionDelay: seen && active === null ? `${s.delay}ms` : '0ms' }}
-                onMouseEnter={() => setActive(s.i)}
-                onMouseLeave={() => setActive(null)}
-                onClick={() => setActive(active === s.i ? null : s.i)}
-              />
-            ))}
+            {segs.map((s) => {
+              const picked = selected != null && String(selected) === String(s.key);
+              const faded = highlighting && !picked;
+              return (
+                <g key={s.label}>
+                  <circle
+                    cx="80" cy="80" r={R}
+                    fill="none"
+                    stroke={s.color}
+                    strokeWidth={active === s.i ? SW + 5 : SW}
+                    strokeLinecap={slices.length > 1 ? 'round' : 'butt'}
+                    strokeDasharray={`${seen ? s.dash : 0} ${C}`}
+                    strokeDashoffset={s.offset}
+                    className={`donut__seg${active !== null && active !== s.i ? ' is-dim' : ''}${active === s.i ? ' is-on' : ''}${faded ? ' is-faded' : ''}`}
+                    style={{ transitionDelay: seen && active === null ? `${s.delay}ms` : '0ms' }}
+                    onMouseEnter={() => setActive(s.i)}
+                    onMouseLeave={() => setActive(null)}
+                    onClick={() => (onSelect ? onSelect(picked ? null : s.key, s) : setActive(active === s.i ? null : s.i))}
+                  />
+                  {/* الجزء المطابق للتحديد داخل الشريحة نفسها */}
+                  {highlighting && s.partDash > 0 && (
+                    <circle
+                      cx="80" cy="80" r={R} fill="none" stroke={s.color} strokeWidth={SW}
+                      strokeLinecap={slices.length > 1 ? 'round' : 'butt'}
+                      strokeDasharray={`${seen ? s.partDash : 0} ${C}`}
+                      strokeDashoffset={s.offset}
+                      className="donut__seg donut__seg--part"
+                      pointerEvents="none"
+                    />
+                  )}
+                </g>
+              );
+            })}
           </g>
         </svg>
 
@@ -118,19 +140,23 @@ export default function Donut({ data, tone = 'teal', caption, unit = '' }) {
           <li key={s.label}>
             <button
               type="button"
-              className={`donut__row${active === s.i ? ' is-on' : ''}${active !== null && active !== s.i ? ' is-dim' : ''}`}
+              className={`donut__row${active === s.i || (selected != null && String(selected) === String(s.key)) ? ' is-on' : ''}${active !== null && active !== s.i ? ' is-dim' : ''}`}
               onMouseEnter={() => setActive(s.i)}
               onMouseLeave={() => setActive(null)}
               onFocus={() => setActive(s.i)}
               onBlur={() => setActive(null)}
-              onClick={() => setActive(active === s.i ? null : s.i)}
+              onClick={() => (onSelect
+                ? onSelect(selected != null && String(selected) === String(s.key) ? null : s.key, s)
+                : setActive(active === s.i ? null : s.i))}
               style={{ '--c': s.color }}
             >
               <span className="donut__swatch" />
               <span className="donut__name">{s.label}</span>
               <span className="donut__pct" dir="ltr">{pct(s.share)}%</span>
               <span className="donut__bar"><span style={{ width: seen ? `${s.share * 100}%` : 0 }} /></span>
-              <span className="donut__num" dir="ltr">{fmt(s.value)}</span>
+              <span className="donut__num" dir="ltr">
+              {highlighting && s.part != null && s.part !== s.value ? `${fmt(s.part)} / ${fmt(s.value)}` : fmt(s.value)}
+            </span>
             </button>
           </li>
         ))}

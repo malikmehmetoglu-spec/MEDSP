@@ -551,6 +551,7 @@
 }
 
 .bars__track {
+  position: relative;
   height: 8px;
   background: var(--surface-track-2);
   border-radius: 999px;
@@ -1534,3 +1535,39 @@ button.opcard:hover {
 @media (min-width: 620px) {
   .hero__side--panel .hero__panel { grid-column: span 2; }
 }
+
+/* ===== الفلترة المتقاطعة: الشريط الكامل باهت والجزء المحدد صريح ===== */
+
+.bars__hit {
+  display: contents;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: inherit;
+}
+
+button.bars__hit { cursor: pointer; }
+
+.bars__part {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  border-radius: 999px;
+  background: var(--donut-2);
+  transition: width 0.7s cubic-bezier(.22, 1, .36, 1);
+}
+
+.bars--teal .bars__part { background: var(--donut-1); }
+.bars--gold .bars__part { background: var(--donut-2); }
+.bars--forest .bars__part { background: var(--donut-6); }
+
+.bars.is-highlighting .bars__fill { opacity: 0.28; }
+.bars__row.is-dim { opacity: 0.45; }
+.bars__row.is-on .bars__label { color: var(--ink); font-weight: 700; }
+.bars__row.is-on .bars__fill { opacity: 0.45; }
+.bars__row:focus-within { outline: 2px solid var(--golden-wheat); outline-offset: 2px; border-radius: 8px; }
+
+.donut__seg.is-faded { opacity: 0.22; }
+.donut__seg--part { opacity: 1; filter: saturate(1.15); }

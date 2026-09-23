@@ -1743,3 +1743,31 @@ button.adminbar__exit { background: none; border: 0; border-bottom: 1px solid va
   .cmp__row--stack { grid-template-columns: 1fr auto; grid-template-areas: 'l n' 'b b'; }
   .cmp__row--stack .cmp__nums { grid-area: n; }
 }
+
+/* ---------- شريط التمييز ---------- */
+.phl {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 11px 16px; margin-bottom: 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--golden-wheat);
+  background: var(--glass-strong);
+}
+:root[data-theme='light'] .phl { border-color: var(--forest); }
+.phl__icon { width: 17px; height: 17px; color: var(--accent-text); }
+.phl__text { font-size: 0.9rem; color: var(--ink-soft); }
+.phl__text b { color: var(--ink); }
+.phl__count { margin-inline-start: 10px; font-size: 0.8rem; color: var(--accent-text); font-variant-numeric: tabular-nums; }
+.phl__hint { font-size: 0.76rem; color: var(--ink-faint); }
+.phl__clear {
+  margin-inline-start: auto; padding: 6px 14px; border-radius: 999px;
+  border: 1px solid var(--edge-strong); background: transparent; color: var(--ink-soft); font-size: var(--caption);
+}
+.phl__clear:hover { border-color: var(--golden-wheat); color: var(--ink); }
+.hero__of { color: var(--accent-text); font-weight: 700; }
+
+/* الفلترة المتقاطعة في المقارنة والجدول */
+button.cmp__row { width: 100%; font: inherit; color: inherit; background: none; text-align: inherit; cursor: pointer; border: 0; border-top: 1px solid var(--edge); }
+.cmp__row.is-dim { opacity: 0.4; }
+.cmp__row.is-on { background: var(--glass-strong); border-radius: 8px; }
+.cmp__row.is-on .cmp__label { font-weight: 700; color: var(--ink); }
+.dtable tbody tr.is-dim { opacity: 0.35; }
