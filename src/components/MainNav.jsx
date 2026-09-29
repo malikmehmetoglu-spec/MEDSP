@@ -126,6 +126,12 @@ export default function MainNav({ route, ops, projects, projectsStatus }) {
             {currentProject && <span className="mainnav__here">{currentProject.name}</span>}
             <span className="mainnav__caret" aria-hidden="true" />
           </button>
+
+          <a href={href.maps()}
+            className={`categories__item${route.page === 'maps' ? ' is-active' : ''}`}
+            aria-current={route.page === 'maps' ? 'page' : undefined}>
+            الخرائط
+          </a>
         </div>
       </div>
 

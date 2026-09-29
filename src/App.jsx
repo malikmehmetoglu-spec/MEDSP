@@ -14,6 +14,7 @@ import useRoute, { href } from './hooks/useRoute';
 import AdminApp from './admin/AdminApp';
 import FillPage from './projects/FillPage';
 import AuthGate from './admin/AuthGate';
+import MapsPage from './components/MapsPage';
 
 export default function App() {
   const { theme, toggle: toggleTheme } = useTheme();
@@ -104,6 +105,7 @@ export default function App() {
     else if (route.page === 'projects') page = 'المشاريع الإحصائية';
     else if (route.page === 'project' && currentProject) page = currentProject.name;
     else if (route.page === 'admin') page = 'مساحة العمل';
+    else if (route.page === 'maps') page = 'خريطة الأخطار المتعددة';
     document.title = page ? `${page} — ${site}` : `${site} — وزارة الطوارئ وإدارة الكوارث`;
   }, [route, active.name, currentProject, unknownOp]);
 
@@ -153,6 +155,14 @@ export default function App() {
       <MainNav route={route} ops={ops} projects={projects.list} projectsStatus={projects.status} />
 
       <main>
+        {route.page === 'maps' && (
+          <section className="shell">
+            <div className="report__head"><h1>خريطة الأخطار المتعددة</h1></div>
+            <p className="report__summary">مؤشرات الخطر الزلزالي وقابلية الفيضان والخطر المركّب على مستوى النواحي، بتحليل هرمي (AHP).</p>
+            <MapsPage />
+          </section>
+        )}
+
         {route.page === 'projects' && (
           <section className="shell">
             <div className="report__head"><h1>المشاريع الإحصائية</h1></div>

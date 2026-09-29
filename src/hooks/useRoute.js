@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
     #/projects         كل المشاريع المنشورة
     #/projects/<uuid>  تقرير مشروع
     #/s/<uuid>         تعبئة استبيان (صفحة مستقلة)
+    #/maps             عارض الخرائط
     #/admin            مساحة العمل
 */
 
@@ -18,6 +19,7 @@ export function parseRoute(hash) {
   let m;
   if ((m = path.match(/^\/s\/([\w-]+)/))) return { page: 'fill', id: m[1] };
   if (path.startsWith('/admin')) return { page: 'admin' };
+  if (path.startsWith('/maps')) return { page: 'maps' };
   if ((m = path.match(/^\/ops\/([\w-]+)/))) return { page: 'ops', id: m[1] };
   if ((m = path.match(/^\/projects\/([\w-]+)/))) return { page: 'project', id: m[1] };
   if (path.startsWith('/projects')) return { page: 'projects' };
@@ -28,6 +30,7 @@ export const href = {
   overview: () => '#/',
   ops: (id) => `#/ops/${id}`,
   projects: () => '#/projects',
+  maps: () => '#/maps',
   project: (id) => `#/projects/${id}`,
 };
 

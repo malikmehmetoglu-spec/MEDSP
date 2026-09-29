@@ -1575,3 +1575,69 @@ button.bars__hit { cursor: pointer; }
 /* الخريطة ضمن الفلترة المتقاطعة */
 .map__dot--faded { opacity: 0.18; }
 .map__dot--pick { cursor: pointer; }
+
+/* ===== عارض الخرائط ===== */
+
+.mapsview {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.mapsview__map {
+  height: min(78vh, 780px);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--surface-map);
+  overflow: hidden;
+}
+
+.mapsview__map.leaflet-container { background: var(--surface-map); font-family: inherit; }
+
+.mapsview__panel {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  max-height: min(78vh, 780px);
+  overflow-y: auto;
+}
+
+.mapsview__group {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-sm);
+  background: var(--glass);
+}
+
+.mapsview__label { font-size: var(--caption); font-weight: 700; color: var(--accent-text); }
+.mapsview__note { font-size: var(--caption); color: var(--ink-soft); margin: 0; }
+
+.mapsview__opt {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 9px; border-radius: 8px; cursor: pointer; color: var(--ink-soft);
+}
+.mapsview__opt.is-on { background: var(--glass-strong); color: var(--ink); }
+.mapsview__opt input { accent-color: var(--mountain-teal); }
+
+.mapsview__legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: var(--caption); color: var(--ink); }
+.mapsview__legend i {
+  display: inline-block; width: 22px; height: 12px; border-radius: 3px;
+  margin-inline-end: 8px; vertical-align: middle; border: 1px solid var(--edge-strong);
+}
+
+.mapsview__place { color: var(--ink); font-size: var(--h3); }
+.mapsview__info dl {
+  display: grid; grid-template-columns: 1fr auto; gap: 5px 12px;
+  margin: 6px 0 0; font-size: var(--caption);
+}
+.mapsview__info dt { color: var(--ink-soft); }
+.mapsview__info dd { margin: 0; color: var(--ink); }
+
+@media (max-width: 860px) {
+  .mapsview { grid-template-columns: 1fr; }
+  .mapsview__map { order: -1; height: 62vh; }
+  .mapsview__panel { max-height: none; }
+}
