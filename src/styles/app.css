@@ -1740,3 +1740,18 @@ button.bars__hit { cursor: pointer; }
 *::-webkit-scrollbar-button { display: none; height: 0; width: 0; }
 *::-webkit-scrollbar-corner { background: transparent; }
 .mapsview__card { overscroll-behavior: contain; }
+
+/* ===== بطاقة الناحية فوق الخريطة: مضغوطة بلا تمرير ===== */
+.mapsview__card { bottom: auto; max-height: none; overflow: visible; width: min(380px, calc(100% - 24px)); }
+.mapsview__card .mcard { min-height: 0; gap: 10px; padding: 14px 16px; }
+.mapsview__card .mcard__name { font-size: 1.15rem; }
+.mapsview__card .mcard__badge { padding: 4px 10px; }
+.mapsview__card .mcard__lead { font-size: .84rem; line-height: 1.7; }
+.mapsview__card .mcard__bars { grid-template-columns: 1fr 1fr; gap: 8px 14px; }
+.mapsview__card .mbar { gap: 4px; }
+.mapsview__card .mbar__top { flex-direction: column; gap: 1px; font-size: .78rem; }
+.mapsview__card .mbar__track { height: 5px; }
+.mapsview__card .mcard__facts { grid-template-columns: repeat(3, 1fr); gap: 8px; padding-top: 10px; }
+.mapsview__card .mcard__facts dt { font-size: .74rem; }
+.mapsview__card .mcard__facts dd { font-size: .88rem; }
+.mapsview__close { width: 26px; height: 26px; font-size: 17px; top: 8px; }
