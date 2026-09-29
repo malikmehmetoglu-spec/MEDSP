@@ -1593,7 +1593,7 @@ button.bars__hit { cursor: pointer; }
   overflow: hidden;
 }
 
-.mapsview__map.leaflet-container { background: var(--surface-map); font-family: inherit; }
+.mapsview__map.leaflet-container { background: #ebe8d7; font-family: inherit; }
 
 .mapsview__panel {
   display: grid;

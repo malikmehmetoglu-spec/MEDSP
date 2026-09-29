@@ -14,6 +14,8 @@ import 'leaflet/dist/leaflet.css';
 */
 
 const BASE = 'maps/multihazard';
+/* الخريطة الأساس — مولّدة من مشروع Syria_Basemap_Light في QGIS */
+const BASEMAP = 'maps/basemap/syria/{z}/{x}/{y}.jpg';
 
 const MAPS = [
   {
@@ -67,17 +69,21 @@ export default function MapsPage() {
   const tiles = useRef(null);
   const hit = useRef(null);
   const [active, setActive] = useState('risk');
-  const [opacity, setOpacity] = useState(1);
+  const [opacity, setOpacity] = useState(0.8);
   const [info, setInfo] = useState(null);
 
   /* إنشاء الخريطة مرة واحدة */
   useEffect(() => {
     const m = L.map(box.current, {
       minZoom: 6, maxZoom: 13, zoomSnap: 0.5,
-      maxBounds: BOUNDS.pad(0.4), attributionControl: false, zoomControl: false,
+      maxBounds: L.latLngBounds([31.6, 34.6], [38.1, 43.4]), maxBoundsViscosity: 1, attributionControl: false, zoomControl: false,
     });
     L.control.zoom({ position: 'topleft' }).addTo(m);
     m.fitBounds(BOUNDS);
+    L.tileLayer(BASEMAP, {
+      minZoom: 6, maxZoom: 13, minNativeZoom: 6, maxNativeZoom: 11, zIndex: 0,
+      errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==',
+    }).addTo(m);
     map.current = m;
 
     let sel = null;
@@ -113,9 +119,8 @@ export default function MapsPage() {
     tiles.current = L.tileLayer(`${BASE}/${active}/{z}/{x}/{y}.webp`, {
       minZoom: 6, maxZoom: 13, minNativeZoom: 6, maxNativeZoom: 11,
       bounds: BOUNDS, errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==',
-      opacity,
+      opacity, zIndex: 1,
     }).addTo(m);
-    tiles.current.bringToBack();
   }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { tiles.current?.setOpacity(opacity); }, [opacity]);
@@ -146,7 +151,7 @@ export default function MapsPage() {
         </div>
 
         <div className="mapsview__group">
-          <span className="mapsview__label">الشفافية</span>
+          <span className="mapsview__label">شفافية الطبقة فوق الخريطة الأساس</span>
           <input type="range" min="0.2" max="1" step="0.05" value={opacity}
             onChange={(e) => setOpacity(Number(e.target.value))} />
         </div>
