@@ -1595,9 +1595,53 @@ button.bars__hit { cursor: pointer; }
 .mapsview__row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .mapsview__label { font-size: var(--caption); font-weight: 700; color: var(--accent-text); }
 .mapsview__note { font-size: var(--caption); color: var(--ink-soft); margin: 0; }
+.mapsview__frame { position: relative; }
 .mapsview__hint {
-  margin: 0; padding: 16px; text-align: center; font-size: var(--caption); color: var(--ink-soft);
-  border: 1px dashed var(--edge-strong); border-radius: var(--radius-sm);
+  position: absolute; z-index: 500; top: 14px; inset-inline-start: 14px; margin: 0;
+  padding: 8px 14px; border-radius: 999px; font-size: var(--caption); pointer-events: none;
+  background: var(--forest); color: var(--ivory-mist); border: 1px solid var(--golden-wheat);
+}
+.mapsview__card {
+  position: absolute; z-index: 600; top: 12px; bottom: 12px; inset-inline-start: 12px;
+  width: min(400px, calc(100% - 24px)); overflow-y: auto; border-radius: var(--radius);
+  background: var(--page-bg-solid); box-shadow: 0 18px 40px rgba(0, 0, 0, .35);
+  animation: mcard-in .18s ease-out;
+}
+@keyframes mcard-in { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+.mapsview__card .mcard { border: 1px solid var(--golden-wheat); min-height: 100%; }
+.mapsview__card .mcard__bars { grid-template-columns: 1fr; }
+.mapsview__close {
+  position: absolute; top: 10px; inset-inline-end: 10px; z-index: 2; width: 30px; height: 30px;
+  border-radius: 50%; border: 1px solid var(--edge-strong); background: var(--glass-strong);
+  color: var(--ink); font-size: 20px; line-height: 1; cursor: pointer;
+}
+.mapsview__card .mcard__head { padding-inline-end: 36px; }
+
+/* أسماء المناطق */
+.mname { background: none; border: 0; }
+.mname span {
+  display: block; transform: translate(-50%, -50%); white-space: nowrap; font-family: inherit;
+  color: #161616; text-shadow: 0 0 3px #ebe8d7, 0 0 3px #ebe8d7, 0 0 2px #ebe8d7;
+}
+.mname--1 span { font-size: 14px; font-weight: 700; color: #02443a; }
+.mname--2 span { font-size: 12px; font-weight: 700; }
+.mname--3 span { font-size: 11px; }
+
+/* وصف الخريطة والمصادر */
+.mabout {
+  display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px; padding: 22px 24px;
+  border: 1px solid var(--edge); border-radius: var(--radius); background: var(--glass); color: var(--ink);
+}
+.mabout h2 { margin: 0 0 10px; font-size: var(--h3); color: var(--accent-text); }
+.mabout h3 { margin: 16px 0 6px; font-size: var(--body); }
+.mabout p, .mabout li { line-height: 1.9; font-size: .95rem; margin: 0; }
+.mabout ul { margin: 0; padding-inline-start: 18px; display: grid; gap: 6px; }
+.mabout__src li { color: var(--ink-soft); }
+.mabout__src b { color: var(--ink); }
+.mabout__note { margin-top: 12px !important; font-size: var(--caption) !important; color: var(--ink-soft); }
+@media (max-width: 860px) {
+  .mabout { grid-template-columns: 1fr; }
+  .mapsview__card { position: static; width: auto; margin-top: 12px; box-shadow: none; }
 }
 .mapsview__opt { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 8px; cursor: pointer; color: var(--ink-soft); }
 .mapsview__opt.is-on { background: var(--glass-strong); color: var(--ink); }

@@ -16,7 +16,6 @@ import 'leaflet/dist/leaflet.css';
 const BASE = 'maps/multihazard';
 /* الخريطة الأساس والتسميات — مولّدتان من مشروع Syria_Basemap_Light في QGIS */
 const BASEMAP = 'maps/basemap/syria/{z}/{x}/{y}.jpg';
-const LABELS = 'maps/basemap/syria-labels/{z}/{x}/{y}.webp';
 const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 
 /* تدرّج الهوية البصرية: عاجي ← قمحي ← أحمر دمشقي ← كرزي */
@@ -56,6 +55,47 @@ const pct = (v) => `${(v * 100).toFixed(1)}%`;
 const BOUNDS = L.latLngBounds([32.25, 35.55], [37.38, 42.45]);
 /* حدود بيانات الخريطة الأساس (التضاريس) — لا يُسمح بالتحريك خارجها فلا تظهر حواف فارغة */
 const PAN = L.latLngBounds([32.12, 35.06], [37.79, 42.78]);
+
+function About() {
+  return (
+    <section className="mabout">
+      <div className="mabout__col">
+        <h2>عن الخريطة</h2>
+        <p>
+          تبيّن الخريطة مدى تعرّض كل ناحية من نواحي سوريا الـ 272 لخطرين طبيعيين رئيسيين هما الزلازل والفيضانات،
+          ومدى قابلية سكانها ومبانيها للتأثر بهما. كلما اقترب اللون من الأحمر الداكن كان الخطر أعلى،
+          وكلما اقترب من العاجي كان أدنى.
+        </p>
+        <h3>كيف تقرأ الطبقات</h3>
+        <ul>
+          <li><b>مؤشر الخطر الزلزالي</b> و<b>مؤشر قابلية الفيضان</b>: قيمة لكل خلية مساحتها 90×90 م، من 0 (أدنى) إلى 1 (أعلى).</li>
+          <li><b>مؤشر الأخطار المتعددة</b>: يجمع المؤشرين بوزن 60% للزلازل و40% للفيضان.</li>
+          <li><b>خريطة المخاطر — النواحي</b>: متوسط الخطر المركّب في الناحية مضروباً بقابلية التأثر (الكثافة السكانية وحالة المباني)، ومصنّف في خمس فئات.</li>
+        </ul>
+        <h3>المنهجية</h3>
+        <p>
+          بُنيت المؤشرات بطريقة التحليل الهرمي متعدد المعايير (AHP): يُعطى كل معيار وزناً وفق أهميته،
+          ثم تُجمع المعايير الموزونة في مؤشر واحد. اعتمد الخطر الزلزالي على البعد عن الصدوع ومعايير طبوغرافية،
+          واعتمدت قابلية الفيضان على الارتفاع والانحدار ومؤشر الرطوبة الطبوغرافي وتراكم الجريان
+          والبعد عن الأنهار والمسطحات المائية والسدود.
+        </p>
+        <p className="mabout__note">
+          المؤشرات تقديرية لأغراض التخطيط وترتيب الأولويات، ولا تغني عن الدراسات الميدانية والهندسية التفصيلية.
+        </p>
+      </div>
+      <div className="mabout__col">
+        <h2>مصادر البيانات</h2>
+        <ul className="mabout__src">
+          <li><b>الحدود الإدارية والأسماء:</b> مجموعة الحدود الإدارية المشتركة لسوريا (COD-AB)، الإصدار v02 بتاريخ 17/12/2020، مكتب الأمم المتحدة لتنسيق الشؤون الإنسانية (OCHA).</li>
+          <li><b>السكان:</b> التعداد العام للسكان والمساكن 2004، المكتب المركزي للإحصاء.</li>
+          <li><b>الارتفاعات والمعايير الطبوغرافية:</b> نموذج ارتفاع رقمي بدقة 90 م، ومنه اشتُقّ الانحدار ومؤشر الرطوبة وتراكم الجريان.</li>
+          <li><b>الصدوع والأنهار والمسطحات المائية والسدود:</b> طبقات جغرافية معتمدة في مشروع التحليل.</li>
+          <li><b>التحليل والإعداد:</b> مديرية التخطيط والإحصاء، وزارة الطوارئ وإدارة الكوارث، 2026.</li>
+        </ul>
+      </div>
+    </section>
+  );
+}
 
 function Card({ p, stats }) {
   const rank = stats.rank.get(p.pcode);
@@ -138,7 +178,38 @@ export default function MapsPage() {
     L.control.zoom({ position: 'topleft' }).addTo(m);
     m.fitBounds(BOUNDS);
     L.tileLayer(BASEMAP, { minZoom: 6, maxZoom: 13, maxNativeZoom: 11, zIndex: 0, errorTileUrl: BLANK }).addTo(m);
-    labels.current = L.tileLayer(LABELS, { minZoom: 6, maxZoom: 13, maxNativeZoom: 11, zIndex: 5, errorTileUrl: BLANK }).addTo(m);
+    m.createPane('names').style.zIndex = 450;
+    m.getPane('names').style.pointerEvents = 'none';
+    labels.current = L.layerGroup([], { pane: 'names' }).addTo(m);
+    fetch('maps/labels.json').then((r) => r.json()).then((rows) => {
+      const marks = rows.map(([lvl, name, lat, lon]) => ({
+        lvl,
+        m: L.marker([lat, lon], {
+          pane: 'names', interactive: false, keyboard: false,
+          icon: L.divIcon({ className: `mname mname--${lvl}`, html: `<span>${name}</span>`, iconSize: null }),
+        }),
+      }));
+      /* مستوى واحد لكل تكبير + إخفاء المتداخل: لا يتكرر اسم ولا يتراكب */
+      const place = () => {
+        const z = m.getZoom();
+        const lvl = z < 8 ? 1 : z < 10 ? 2 : 3;
+        const g = labels.current;
+        g.clearLayers();
+        const view = m.getBounds().pad(0.1);
+        const taken = [];
+        marks.filter((x) => x.lvl === lvl && view.contains(x.m.getLatLng())).forEach((x) => {
+          const pt = m.latLngToContainerPoint(x.m.getLatLng());
+          const w = x.m.options.icon.options.html.length * (lvl === 1 ? 5.2 : 4.2) + 16;
+          const h = lvl === 1 ? 22 : 18;
+          const box = [pt.x - w / 2, pt.y - h / 2, pt.x + w / 2, pt.y + h / 2];
+          if (taken.some((b) => box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1])) return;
+          taken.push(box);
+          g.addLayer(x.m);
+        });
+      };
+      m.on('zoomend moveend', place);
+      place();
+    });
     map.current = m;
 
     let sel = null;
@@ -247,10 +318,17 @@ export default function MapsPage() {
       </aside>
 
       <div className="mapsview__main">
-        <div className="mapsview__map" ref={box} />
-        {info && stats
-          ? <Card p={info} stats={stats} />
-          : <p className="mapsview__hint">اضغط على أي ناحية في الخريطة لعرض بطاقتها التفصيلية.</p>}
+        <div className="mapsview__frame">
+          <div className="mapsview__map" ref={box} />
+          {!info && <p className="mapsview__hint">اضغط على أي ناحية لعرض بطاقتها</p>}
+          {info && stats && (
+            <div className="mapsview__card">
+              <button type="button" className="mapsview__close" aria-label="إغلاق البطاقة" onClick={() => setInfo(null)}>×</button>
+              <Card p={info} stats={stats} />
+            </div>
+          )}
+        </div>
+        <About />
       </div>
     </div>
   );
