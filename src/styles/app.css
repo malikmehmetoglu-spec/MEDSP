@@ -1578,66 +1578,108 @@ button.bars__hit { cursor: pointer; }
 
 /* ===== عارض الخرائط ===== */
 
-.mapsview {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 16px;
-  margin-top: 18px;
-}
-
+.mapsview { display: grid; grid-template-columns: 290px 1fr; gap: 16px; margin-top: 18px; align-items: start; }
+.mapsview__main { display: grid; gap: 16px; }
 .mapsview__map {
-  height: min(78vh, 780px);
+  height: min(74vh, 760px);
   border: 1px solid var(--edge);
   border-radius: var(--radius);
-  background: var(--surface-map);
   overflow: hidden;
 }
-
 .mapsview__map.leaflet-container { background: #ebe8d7; font-family: inherit; }
-
-.mapsview__panel {
-  display: grid;
-  gap: 14px;
-  align-content: start;
-  max-height: min(78vh, 780px);
-  overflow-y: auto;
-}
-
+.mapsview__panel { display: grid; gap: 14px; align-content: start; position: sticky; top: 16px; }
 .mapsview__group {
-  display: grid;
-  gap: 8px;
-  padding: 14px 16px;
-  border: 1px solid var(--edge);
-  border-radius: var(--radius-sm);
-  background: var(--glass);
+  display: grid; gap: 10px; padding: 14px 16px;
+  border: 1px solid var(--edge); border-radius: var(--radius-sm); background: var(--glass);
 }
-
+.mapsview__row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .mapsview__label { font-size: var(--caption); font-weight: 700; color: var(--accent-text); }
 .mapsview__note { font-size: var(--caption); color: var(--ink-soft); margin: 0; }
-
-.mapsview__opt {
-  display: flex; align-items: center; gap: 8px;
-  padding: 7px 9px; border-radius: 8px; cursor: pointer; color: var(--ink-soft);
+.mapsview__hint {
+  margin: 0; padding: 16px; text-align: center; font-size: var(--caption); color: var(--ink-soft);
+  border: 1px dashed var(--edge-strong); border-radius: var(--radius-sm);
 }
+.mapsview__opt { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 8px; cursor: pointer; color: var(--ink-soft); }
 .mapsview__opt.is-on { background: var(--glass-strong); color: var(--ink); }
-.mapsview__opt input { accent-color: var(--mountain-teal); }
-
-.mapsview__legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: var(--caption); color: var(--ink); }
+.mapsview__opt input { accent-color: var(--golden-wheat); }
+.mapsview__legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: var(--caption); color: var(--ink); }
 .mapsview__legend i {
-  display: inline-block; width: 22px; height: 12px; border-radius: 3px;
+  display: inline-block; width: 24px; height: 12px; border-radius: 3px;
   margin-inline-end: 8px; vertical-align: middle; border: 1px solid var(--edge-strong);
 }
 
-.mapsview__place { color: var(--ink); font-size: var(--h3); }
-.mapsview__info dl {
-  display: grid; grid-template-columns: 1fr auto; gap: 5px 12px;
-  margin: 6px 0 0; font-size: var(--caption);
+/* زر التسميات */
+.mapsview__toggle {
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  padding: 5px 12px 5px 6px; border-radius: 999px; font: inherit; font-size: var(--caption);
+  color: var(--ink-soft); background: var(--surface-track); border: 1px solid var(--edge);
 }
-.mapsview__info dt { color: var(--ink-soft); }
-.mapsview__info dd { margin: 0; color: var(--ink); }
+.mapsview__toggle.is-on { color: var(--ink); border-color: var(--edge-strong); }
+.mapsview__switch {
+  position: relative; width: 30px; height: 17px; border-radius: 999px;
+  background: var(--surface-track-2); border: 1px solid var(--edge-strong); transition: background .15s;
+}
+.mapsview__switch::after {
+  content: ''; position: absolute; top: 2px; inset-inline-start: 2px; width: 11px; height: 11px;
+  border-radius: 50%; background: var(--ink-soft); transition: inset-inline-start .15s, background .15s;
+}
+.mapsview__toggle.is-on .mapsview__switch { background: var(--golden-wheat); }
+.mapsview__toggle.is-on .mapsview__switch::after { inset-inline-start: 15px; background: var(--forest); }
+
+/* شريط الشفافية */
+.mrange {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 6px; margin: 4px 0;
+  border-radius: 999px; direction: rtl; cursor: pointer;
+  background: linear-gradient(to left, var(--golden-wheat) var(--fill), var(--surface-track) var(--fill));
+}
+.mrange:focus-visible { outline: 2px solid var(--golden-wheat); outline-offset: 4px; }
+.mrange::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--ivory-mist); border: 3px solid var(--forest); box-shadow: 0 0 0 1px var(--golden-wheat);
+}
+.mrange::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--ivory-mist); border: 3px solid var(--forest); box-shadow: 0 0 0 1px var(--golden-wheat);
+}
+.mrange::-moz-range-track { background: transparent; }
+
+/* تلميح اسم الناحية */
+.mtip.leaflet-tooltip {
+  font-family: inherit; direction: rtl; background: var(--forest); color: var(--ivory-mist);
+  border: 1px solid var(--golden-wheat); border-radius: 8px; box-shadow: none;
+}
+.mtip.leaflet-tooltip-top::before { border-top-color: var(--golden-wheat); }
+
+/* بطاقة الناحية */
+.mcard {
+  display: grid; gap: 16px; padding: 20px 22px;
+  border: 1px solid var(--edge); border-radius: var(--radius); background: var(--glass);
+}
+.mcard__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.mcard__name { margin: 0; font-size: var(--h2); color: var(--ink); }
+.mcard__where { font-size: var(--caption); color: var(--ink-soft); }
+.mcard__badge { flex: none; padding: 6px 14px; border-radius: 999px; font-size: var(--caption); font-weight: 700; border: 1px solid var(--edge-strong); }
+.mcard__lead { margin: 0; line-height: 1.9; color: var(--ink); }
+.mcard__bars { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px 22px; }
+.mbar { display: grid; gap: 6px; }
+.mbar__top { display: flex; justify-content: space-between; gap: 8px; font-size: var(--caption); }
+.mbar__name { color: var(--ink); font-weight: 700; }
+.mbar__val { color: var(--ink-soft); display: inline-flex; align-items: center; gap: 6px; }
+.mbar__val em { width: 10px; height: 10px; border-radius: 2px; border: 1px solid var(--edge-strong); }
+.mbar__track { height: 6px; border-radius: 999px; background: var(--surface-track); overflow: hidden; }
+.mbar__track span { display: block; height: 100%; border-radius: inherit; margin-inline-start: 0; }
+.mcard__facts {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 0;
+  padding-top: 14px; border-top: 1px solid var(--edge);
+}
+.mcard__facts div { display: grid; gap: 2px; }
+.mcard__facts dt { font-size: var(--caption); color: var(--ink-soft); }
+.mcard__facts dd { margin: 0; color: var(--ink); font-weight: 700; text-align: start; }
 
 @media (max-width: 860px) {
   .mapsview { grid-template-columns: 1fr; }
-  .mapsview__map { order: -1; height: 62vh; }
-  .mapsview__panel { max-height: none; }
+  .mapsview__main { order: -1; }
+  .mapsview__panel { position: static; }
+  .mapsview__map { height: 60vh; }
 }
+.mapsview__map path:focus { outline: none; }

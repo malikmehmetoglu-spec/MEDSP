@@ -14,91 +14,158 @@ import 'leaflet/dist/leaflet.css';
 */
 
 const BASE = 'maps/multihazard';
-/* الخريطة الأساس — مولّدة من مشروع Syria_Basemap_Light في QGIS */
+/* الخريطة الأساس والتسميات — مولّدتان من مشروع Syria_Basemap_Light في QGIS */
 const BASEMAP = 'maps/basemap/syria/{z}/{x}/{y}.jpg';
+const LABELS = 'maps/basemap/syria-labels/{z}/{x}/{y}.webp';
+const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+
+/* تدرّج الهوية البصرية: عاجي ← قمحي ← أحمر دمشقي ← كرزي */
+const LEVELS = ['منخفض جداً', 'منخفض', 'متوسط', 'مرتفع', 'مرتفع جداً'];
+const RAMP = ['#ebe8d7', '#d3c7a3', '#b9a779', '#6d222d', '#48181d'];
+const LEGEND = LEVELS.map((t, i) => [RAMP[i], t]);
 
 const MAPS = [
-  {
-    id: 'risk',
-    name: 'خريطة المخاطر — النواحي',
-    note: 'خطر مركّب × قابلية التأثر، مصنّف على مستوى الناحية.',
-    legend: [
-      ['#ffffb2', 'منخفض جداً'], ['#fecc5c', 'منخفض'], ['#fd8d3c', 'متوسط'],
-      ['#f03b20', 'مرتفع'], ['#bd0026', 'مرتفع جداً'],
-    ],
-  },
-  {
-    id: 'multihazard',
-    name: 'مؤشر الأخطار المتعددة',
-    note: 'زلازل 60% + فيضان 40%، بدقة 90 م.',
-    legend: [
-      ['#ffffcc', 'منخفض جداً'], ['#fed976', 'منخفض'], ['#fd8d3c', 'متوسط'],
-      ['#e31a1c', 'مرتفع'], ['#800026', 'مرتفع جداً'],
-    ],
-  },
-  {
-    id: 'seismic',
-    name: 'مؤشر الخطر الزلزالي',
-    note: 'تحليل هرمي (AHP)، بدقة 90 م.',
-    legend: [
-      ['#f7f4f9', 'منخفض جداً'], ['#d4b9da', 'منخفض'], ['#df65b0', 'متوسط'],
-      ['#980043', 'مرتفع'], ['#4d004b', 'مرتفع جداً'],
-    ],
-  },
-  {
-    id: 'flood',
-    name: 'مؤشر قابلية الفيضان',
-    note: 'تحليل هرمي (AHP)، بدقة 90 م.',
-    legend: [
-      ['#f7fbff', 'منخفض جداً'], ['#c6dbef', 'منخفض'], ['#fee08b', 'متوسط'],
-      ['#fc8d59', 'مرتفع'], ['#b30000', 'مرتفع جداً'],
-    ],
-  },
+  { id: 'risk', name: 'خريطة المخاطر — النواحي', note: 'الخطر المركّب مضروباً بقابلية التأثر، مصنّفاً على مستوى الناحية.' },
+  { id: 'multihazard', name: 'مؤشر الأخطار المتعددة', note: 'الخطر الزلزالي بوزن 60% وقابلية الفيضان بوزن 40%، بدقة 90 م.' },
+  { id: 'seismic', name: 'مؤشر الخطر الزلزالي', note: 'تحليل هرمي متعدد المعايير (AHP)، بدقة 90 م.' },
+  { id: 'flood', name: 'مؤشر قابلية الفيضان', note: 'تحليل هرمي متعدد المعايير (AHP)، بدقة 90 م.' },
 ];
 
-const CLASS = ['', 'منخفض جداً', 'منخفض', 'متوسط', 'مرتفع', 'مرتفع جداً'];
-const f2 = (v) => (v == null ? '—' : Number(v).toFixed(2));
-const fi = (v) => (v == null ? '—' : Math.round(v).toLocaleString('en-US'));
-const fp = (v) => (v == null ? '—' : `${Number(v).toFixed(1)}%`);
+/* حدود الفئات كما في أنماط QGIS لكل مؤشر */
+const BREAKS = {
+  mh_mean: [0.34, 0.39, 0.454, 0.553, 0.9],
+  seis_mean: [0.1, 0.2, 0.32, 0.5, 0.8],
+  flood_mean: [0.35, 0.5, 0.6, 0.7, 0.85],
+};
+const levelOf = (v, br) => {
+  let k = 0;
+  br.forEach((b, i) => { if (v >= b) k = i; });
+  return k;
+};
+
+const INDICATORS = [
+  { key: 'mh_mean', name: 'الأخطار المتعددة', hint: 'متوسط المؤشر المركّب داخل الناحية' },
+  { key: 'seis_mean', name: 'الخطر الزلزالي', hint: 'متوسط مؤشر الخطر الزلزالي' },
+  { key: 'flood_mean', name: 'قابلية الفيضان', hint: 'متوسط مؤشر قابلية الفيضان' },
+  { key: 'vuln_idx', name: 'قابلية التأثر', hint: 'الكثافة السكانية وحالة المباني' },
+];
+
+const fi = (v) => Math.round(v).toLocaleString('en-US');
+const pct = (v) => `${(v * 100).toFixed(1)}%`;
 
 const BOUNDS = L.latLngBounds([32.25, 35.55], [37.38, 42.45]);
+/* حدود بيانات الخريطة الأساس (التضاريس) — لا يُسمح بالتحريك خارجها فلا تظهر حواف فارغة */
+const PAN = L.latLngBounds([32.12, 35.06], [37.79, 42.78]);
+
+function Card({ p, stats }) {
+  const rank = stats.rank.get(p.pcode);
+  const cls = Math.max(1, Math.min(5, p.risk_class || 1)) - 1;
+  const lv = Object.fromEntries(Object.entries(BREAKS).map(([k, br]) => [k, levelOf(p[k], br)]));
+  const main = p.seis_mean >= p.flood_mean
+    ? `الخطر الزلزالي (${LEVELS[lv.seis_mean]})`
+    : `قابلية الفيضان (${LEVELS[lv.flood_mean]})`;
+  const pop = p.POP2004 > 0 ? p.POP2004 : null;
+  const dens = p.pop_dens > 0 ? p.pop_dens : null;
+
+  return (
+    <article className="mcard">
+      <header className="mcard__head">
+        <div>
+          <h3 className="mcard__name">ناحية {p.name}</h3>
+          <span className="mcard__where">منطقة {p.district} · محافظة {p.gov}</span>
+        </div>
+        <span className="mcard__badge" style={{ background: RAMP[cls], color: cls >= 3 ? '#ebe8d7' : '#161616' }}>
+          {LEVELS[cls]}
+        </span>
+      </header>
+
+      <p className="mcard__lead">
+        تقع الناحية ضمن فئة الخطر «{LEVELS[cls]}»، وترتيبها <b className="num">{rank}</b> من
+        أصل <b className="num">{stats.total}</b> ناحية من حيث مؤشر الخطر النهائي
+        (<span className="num">{p.risk_ahp.toFixed(2)}</span>). العامل الطبيعي الأبرز فيها {main}.
+      </p>
+
+      <div className="mcard__bars">
+        {INDICATORS.map((it) => {
+          const v = p[it.key];
+          const br = BREAKS[it.key];
+          const k = br ? lv[it.key] : null;
+          const share = stats.pct[it.key](v);
+          return (
+            <div className="mbar" key={it.key}>
+              <div className="mbar__top">
+                <span className="mbar__name">{it.name}</span>
+                <span className="mbar__val">
+                  {k != null && <em style={{ background: RAMP[k] }} />}
+                  {k != null ? LEVELS[k] : `أعلى من ${share}% من النواحي`}
+                  <span className="num"> {v.toFixed(2)}</span>
+                </span>
+              </div>
+              <div className="mbar__track"><span style={{ width: `${Math.min(100, v * 100)}%`, background: k != null ? RAMP[Math.max(k, 2)] : 'var(--mountain-teal)' }} /></div>
+            </div>
+          );
+        })}
+      </div>
+
+      <dl className="mcard__facts">
+        <div><dt>السكان (تعداد 2004)</dt><dd>{pop ? <span className="num">{fi(pop)}</span> : 'غير متوفر'}</dd></div>
+        <div><dt>الكثافة السكانية</dt><dd><span className="num">{dens ? fi(dens) : '—'}</span> {dens ? 'نسمة/كم²' : ''}</dd></div>
+        <div><dt>مبانٍ هشّة</dt><dd><span className="num">{pct(p.frag_pct)}</span></dd></div>
+        <div><dt>مبانٍ قديمة</dt><dd><span className="num">{pct(p.old_pct)}</span></dd></div>
+        <div><dt>مبانٍ غير نظامية</dt><dd><span className="num">{pct(p.nonstd_pct)}</span></dd></div>
+        <div><dt>الرمز الإداري</dt><dd><span className="num">{p.pcode}</span></dd></div>
+      </dl>
+    </article>
+  );
+}
 
 export default function MapsPage() {
   const box = useRef(null);
   const map = useRef(null);
   const tiles = useRef(null);
-  const hit = useRef(null);
+  const labels = useRef(null);
   const [active, setActive] = useState('risk');
-  const [opacity, setOpacity] = useState(0.8);
+  const [opacity, setOpacity] = useState(0.85);
+  const [showLabels, setShowLabels] = useState(true);
   const [info, setInfo] = useState(null);
+  const [stats, setStats] = useState(null);
 
-  /* إنشاء الخريطة مرة واحدة */
   useEffect(() => {
     const m = L.map(box.current, {
-      minZoom: 6, maxZoom: 13, zoomSnap: 0.5,
-      maxBounds: L.latLngBounds([31.6, 34.6], [38.1, 43.4]), maxBoundsViscosity: 1, attributionControl: false, zoomControl: false,
+      minZoom: 6, maxZoom: 13, zoomSnap: 0.25,
+      maxBounds: PAN, maxBoundsViscosity: 1, attributionControl: false, zoomControl: false,
     });
     L.control.zoom({ position: 'topleft' }).addTo(m);
     m.fitBounds(BOUNDS);
-    L.tileLayer(BASEMAP, {
-      minZoom: 6, maxZoom: 13, minNativeZoom: 6, maxNativeZoom: 11, zIndex: 0,
-      errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==',
-    }).addTo(m);
+    L.tileLayer(BASEMAP, { minZoom: 6, maxZoom: 13, maxNativeZoom: 11, zIndex: 0, errorTileUrl: BLANK }).addTo(m);
+    labels.current = L.tileLayer(LABELS, { minZoom: 6, maxZoom: 13, maxNativeZoom: 11, zIndex: 5, errorTileUrl: BLANK }).addTo(m);
     map.current = m;
 
     let sel = null;
     fetch(`${BASE}/subdistricts.geojson`)
       .then((r) => r.json())
       .then((gj) => {
-        hit.current = L.geoJSON(gj, {
+        const ps = gj.features.map((f) => f.properties);
+        const order = [...ps].sort((a, b) => b.risk_ahp - a.risk_ahp);
+        const pctFn = (k) => {
+          const vals = ps.map((x) => x[k]).sort((a, b) => a - b);
+          return (v) => Math.round((vals.filter((x) => x < v).length / vals.length) * 100);
+        };
+        setStats({
+          total: ps.length,
+          rank: new Map(order.map((x, i) => [x.pcode, i + 1])),
+          pct: Object.fromEntries(INDICATORS.map((it) => [it.key, pctFn(it.key)])),
+        });
+        L.geoJSON(gj, {
           style: { color: 'transparent', weight: 2, fillColor: '#000', fillOpacity: 0 },
           onEachFeature: (f, layer) => {
-            layer.on('mouseover', () => { if (layer !== sel) layer.setStyle({ color: '#ffffff', weight: 1.5 }); });
+            layer.bindTooltip(`ناحية ${f.properties.name}`, { direction: 'top', sticky: true, className: 'mtip' });
+            layer.on('mouseover', () => { if (layer !== sel) layer.setStyle({ color: '#02443a', weight: 1.5 }); });
             layer.on('mouseout', () => { if (layer !== sel) layer.setStyle({ color: 'transparent' }); });
             layer.on('click', () => {
               if (sel) sel.setStyle({ color: 'transparent', weight: 2 });
               sel = layer;
-              layer.setStyle({ color: '#161616', weight: 2.5 });
+              layer.setStyle({ color: '#02443a', weight: 3 });
               setInfo(f.properties);
             });
           },
@@ -106,24 +173,36 @@ export default function MapsPage() {
       })
       .catch(() => {});
 
-    const ro = new ResizeObserver(() => m.invalidateSize());
+    /* أقل تكبير = ما يملأ الإطار بالخريطة الأساس كاملاً */
+    const fill = () => {
+      m.invalidateSize();
+      const z = m.getBoundsZoom(PAN, true);
+      m.setMinZoom(z);
+      if (m.getZoom() < z) m.setZoom(z);
+    };
+    fill();
+    m.fitBounds(BOUNDS);
+    const ro = new ResizeObserver(fill);
     ro.observe(box.current);
     return () => { ro.disconnect(); m.remove(); };
   }, []);
 
-  /* تبديل الطبقة */
   useEffect(() => {
     const m = map.current;
     if (!m) return;
     if (tiles.current) m.removeLayer(tiles.current);
     tiles.current = L.tileLayer(`${BASE}/${active}/{z}/{x}/{y}.webp`, {
-      minZoom: 6, maxZoom: 13, minNativeZoom: 6, maxNativeZoom: 11,
-      bounds: BOUNDS, errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==',
-      opacity, zIndex: 1,
+      minZoom: 6, maxZoom: 13, maxNativeZoom: 11, errorTileUrl: BLANK, opacity, zIndex: 1,
     }).addTo(m);
   }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { tiles.current?.setOpacity(opacity); }, [opacity]);
+
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !labels.current) return;
+    if (showLabels) labels.current.addTo(m); else m.removeLayer(labels.current);
+  }, [showLabels]);
 
   const current = MAPS.find((x) => x.id === active);
 
@@ -144,43 +223,35 @@ export default function MapsPage() {
         <div className="mapsview__group">
           <span className="mapsview__label">مفتاح الخريطة</span>
           <ul className="mapsview__legend">
-            {current.legend.map(([c, t]) => (
-              <li key={c}><i style={{ background: c }} />{t}</li>
-            ))}
+            {LEGEND.map(([c, t]) => <li key={c}><i style={{ background: c }} />{t}</li>)}
           </ul>
         </div>
 
         <div className="mapsview__group">
-          <span className="mapsview__label">شفافية الطبقة فوق الخريطة الأساس</span>
-          <input type="range" min="0.2" max="1" step="0.05" value={opacity}
+          <div className="mapsview__row">
+            <span className="mapsview__label">العرض</span>
+            <button type="button" className={`mapsview__toggle${showLabels ? ' is-on' : ''}`}
+              aria-pressed={showLabels} onClick={() => setShowLabels((v) => !v)}>
+              <span className="mapsview__switch" aria-hidden="true" />
+              التسميات
+            </button>
+          </div>
+          <div className="mapsview__row">
+            <span className="mapsview__note">شفافية الطبقة</span>
+            <span className="mapsview__note num">{Math.round(opacity * 100)}%</span>
+          </div>
+          <input className="mrange" type="range" min="0.2" max="1" step="0.05" value={opacity}
+            style={{ '--fill': `${((opacity - 0.2) / 0.8) * 100}%` }}
             onChange={(e) => setOpacity(Number(e.target.value))} />
         </div>
-
-        <div className="mapsview__group mapsview__info">
-          <span className="mapsview__label">الناحية</span>
-          {!info && <p className="mapsview__note">اضغط على أي ناحية لعرض مؤشراتها.</p>}
-          {info && (
-            <>
-              <strong className="mapsview__place">{info.ADM3_NAME}</strong>
-              <span className="mapsview__note">{info.ADM2_NAME} — {info.ADM1_NAME}</span>
-              <dl>
-                <dt>فئة الخطر</dt><dd>{CLASS[info.risk_class] || '—'}</dd>
-                <dt>مؤشر الخطر (AHP)</dt><dd className="num">{f2(info.risk_ahp)}</dd>
-                <dt>الأخطار المتعددة</dt><dd className="num">{f2(info.mh_mean)}</dd>
-                <dt>الخطر الزلزالي</dt><dd className="num">{f2(info.seis_mean)}</dd>
-                <dt>قابلية الفيضان</dt><dd className="num">{f2(info.flood_mean)}</dd>
-                <dt>قابلية التأثر</dt><dd className="num">{f2(info.vuln_idx)}</dd>
-                <dt>السكان (2004)</dt><dd className="num">{fi(info.POP2004)}</dd>
-                <dt>الكثافة السكانية</dt><dd className="num">{fi(info.pop_dens)}</dd>
-                <dt>مبانٍ هشّة</dt><dd className="num">{fp(info.frag_pct)}</dd>
-                <dt>مبانٍ قديمة</dt><dd className="num">{fp(info.old_pct)}</dd>
-                <dt>مبانٍ غير نظامية</dt><dd className="num">{fp(info.nonstd_pct)}</dd>
-              </dl>
-            </>
-          )}
-        </div>
       </aside>
-      <div className="mapsview__map" ref={box} />
+
+      <div className="mapsview__main">
+        <div className="mapsview__map" ref={box} />
+        {info && stats
+          ? <Card p={info} stats={stats} />
+          : <p className="mapsview__hint">اضغط على أي ناحية في الخريطة لعرض بطاقتها التفصيلية.</p>}
+      </div>
     </div>
   );
 }
