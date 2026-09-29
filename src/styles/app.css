@@ -1727,3 +1727,16 @@ button.bars__hit { cursor: pointer; }
   .mapsview__map { height: 60vh; }
 }
 .mapsview__map path:focus { outline: none; }
+
+/* ===== أشرطة التمرير — بألوان الهوية ===== */
+* { scrollbar-width: thin; scrollbar-color: rgba(185, 167, 121, 0.45) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: rgba(185, 167, 121, 0.4); border-radius: 999px;
+  border: 2px solid transparent; background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover { background-color: rgba(185, 167, 121, 0.7); }
+*::-webkit-scrollbar-button { display: none; height: 0; width: 0; }
+*::-webkit-scrollbar-corner { background: transparent; }
+.mapsview__card { overscroll-behavior: contain; }
