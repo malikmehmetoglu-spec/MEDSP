@@ -274,21 +274,26 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged, initialTab = 'bu
 
   return (
     <div className="pedit">
-      <div className="pedit__top">
-        <button type="button" className="q-btn" onClick={onBack}>← المشاريع</button>
-        <h2>{project.name}</h2>
-        <span className="tag">{isData ? 'مشروع بيانات' : 'استبيان ميداني'}</span>
-        <div className="pedit__topright">
-          {pending > 0 && <span className="tag tag--pending">{pending} بانتظار المراجعة</span>}
+      <header className="pedit__head">
+        <button type="button" className="pedit__back" onClick={onBack}>→ المشاريع</button>
+        <div className="pedit__top">
+          <div className="pedit__title">
+            <h2>{project.name}</h2>
+            <div className="pedit__meta">
+              <span className="tag">{isData ? 'مشروع بيانات' : 'استبيان ميداني'}</span>
+              {pending > 0 && <span className="tag tag--pending">{pending} بانتظار المراجعة</span>}
+              {project.published && <span className="tag tag--approved">منشور</span>}
+            </div>
+          </div>
           <button
             type="button"
-            className={`survey__navbtn${project.published ? '' : ' survey__navbtn--primary'}`}
+            className={`pedit__publish${project.published ? ' is-live' : ''}`}
             onClick={togglePublish}
           >
             {project.published ? 'إلغاء النشر' : 'نشر على الصفحة الرئيسية'}
           </button>
         </div>
-      </div>
+      </header>
 
       {notice && <p className="pedit__notice">{notice}</p>}
 
@@ -319,8 +324,8 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged, initialTab = 'bu
             {s.title}
           </button>
         ))}
-        <button type="button" className="q-btn q-btn--add q-btn--sm" onClick={addSurvey}>
-          + استبيان
+        <button type="button" className="pedit__addsurvey" onClick={addSurvey}>
+          + استبيان جديد
         </button>
       </div>}
 
@@ -329,6 +334,7 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged, initialTab = 'bu
       ) : (
         <>
           <div className="pedit__tabs">
+            <div className="pedit__seg" role="tablist">
             {(isData ? DATA_TABS : TABS).map((t) => (
               <button
                 key={t.id}
@@ -338,10 +344,11 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged, initialTab = 'bu
               >
                 {t.label}
                 {t.id === 'results' && responses.length > 0 && (
-                  <span className="results__badge">{responses.length}</span>
+                  <span className="pedit__count">{responses.length}</span>
                 )}
               </button>
             ))}
+            </div>
             {(tab === 'results' || tab === 'report') && (
               <button type="button" className="q-btn q-btn--sm pedit__refresh" onClick={refreshResponses}>
                 تحديث

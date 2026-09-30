@@ -104,18 +104,54 @@
 
 /* ---------- محرر المشروع ---------- */
 
-.pedit { display: grid; gap: 16px; }
+.pedit { display: grid; gap: 18px; }
+
+/* رأس المشروع: مسار ← عنوان وشارات ← زر النشر */
+.pedit__head { display: grid; gap: 10px; padding-bottom: 6px; }
+
+.pedit__back {
+  justify-self: start;
+  background: none; border: 0; padding: 0;
+  font: inherit; font-size: var(--caption);
+  color: var(--ink-faint);
+  transition: color 0.16s;
+}
+.pedit__back:hover { color: var(--ink); }
 
 .pedit__top {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
+  gap: 16px 24px;
   flex-wrap: wrap;
 }
 
-.pedit__top h2 { font-size: var(--h2); color: var(--ink); flex: 1; min-width: 160px; }
+.pedit__title { display: grid; gap: 8px; min-width: 0; }
+.pedit__title h2 { font-size: var(--h2); color: var(--ink); line-height: 1.25; margin: 0; }
+.pedit__meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 
-.pedit__topright { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.pedit__publish {
+  padding: 9px 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--golden-wheat);
+  background: var(--golden-wheat);
+  color: var(--emerald-shadow);
+  font: inherit; font-size: 0.92rem; font-weight: 700;
+  white-space: nowrap;
+  transition: background 0.16s, border-color 0.16s, color 0.16s;
+}
+.pedit__publish:hover { background: var(--ivory-mist); border-color: var(--ivory-mist); }
+.pedit__publish.is-live {
+  background: transparent; border-color: var(--edge-strong);
+  color: var(--ink-soft); font-weight: 500;
+}
+.pedit__publish.is-live:hover { color: var(--ink); background: var(--glass); }
+:root[data-theme='light'] .pedit__publish:not(.is-live) {
+  background: var(--forest); border-color: var(--forest); color: var(--ivory-mist);
+}
+:root[data-theme='light'] .pedit__publish:not(.is-live):hover {
+  background: var(--emerald-shadow); border-color: var(--emerald-shadow);
+}
 
 .pedit__notice {
   padding: 10px 15px;
@@ -126,44 +162,93 @@
   font-size: var(--caption);
 }
 
-.pedit__surveys, .pedit__tabs, .preport__tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
+/* المستوى الثاني: الاستبيانات — تبويبات نصية بخط سفلي */
+.pedit__surveys {
+  display: flex; align-items: flex-end; gap: 4px 22px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--edge);
 }
-
-.pedit__stab, .pedit__tab, .preport__tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 8px 15px;
-  border-radius: 999px;
-  border: 1px solid var(--edge);
-  background: var(--glass);
+.pedit__stab {
+  position: relative;
+  padding: 10px 2px 12px;
+  background: none; border: 0;
+  font: inherit; font-size: 0.95rem;
   color: var(--ink-soft);
-  font-size: var(--caption);
+  transition: color 0.16s;
+}
+.pedit__stab::after {
+  content: ''; position: absolute; inset-inline: 0; bottom: -1px; height: 2px;
+  border-radius: 2px; background: transparent; transition: background 0.16s;
+}
+.pedit__stab:hover { color: var(--ink); }
+.pedit__stab.is-on { color: var(--ink); font-weight: 700; }
+.pedit__stab.is-on::after { background: var(--golden-wheat); }
+:root[data-theme='light'] .pedit__stab.is-on::after { background: var(--forest); }
+
+.pedit__addsurvey {
+  margin-inline-start: auto;
+  padding: 10px 2px 12px;
+  background: none; border: 0;
+  font: inherit; font-size: var(--caption);
+  color: var(--accent-text);
+}
+.pedit__addsurvey:hover { color: var(--ink); }
+
+/* المستوى الثالث: أقسام الاستبيان — شريط مجزّأ واحد */
+.pedit__tabs {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.pedit__seg {
+  display: inline-flex; flex-wrap: wrap; gap: 2px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--glass-strong);
+  border: 1px solid var(--edge);
+}
+.pedit__tab {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 0; background: transparent;
+  font: inherit; font-size: var(--caption);
+  color: var(--ink-soft);
+  transition: background 0.16s, color 0.16s, box-shadow 0.16s;
+}
+.pedit__tab:hover { color: var(--ink); }
+.pedit__tab.is-on {
+  background: var(--surface-control-hover);
+  color: var(--ink); font-weight: 700;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.18);
+}
+:root[data-theme='light'] .pedit__tab.is-on {
+  background: var(--white); color: var(--forest);
+  box-shadow: 0 1px 3px rgba(2,68,58,0.14), 0 0 0 1px rgba(2,68,58,0.06);
+}
+.pedit__count {
+  min-width: 20px; padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.7rem; line-height: 18px; text-align: center;
+  font-variant-numeric: tabular-nums;
+  background: var(--golden-wheat); color: var(--emerald-shadow); font-weight: 700;
+}
+:root[data-theme='light'] .pedit__count { background: var(--forest); color: var(--ivory-mist); }
+
+/* تبويبات تقرير المشروع (دون تغيير) */
+.preport__tabs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.preport__tab {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 15px; border-radius: 999px;
+  border: 1px solid var(--edge); background: var(--glass);
+  color: var(--ink-soft); font-size: var(--caption);
   transition: border-color 0.16s, color 0.16s, background 0.16s;
 }
-
-.pedit__stab:hover, .pedit__tab:hover, .preport__tab:hover {
-  border-color: var(--edge-strong); color: var(--ink);
+.preport__tab:hover { border-color: var(--edge-strong); color: var(--ink); }
+.preport__tab.is-on {
+  background: var(--golden-wheat); border-color: var(--golden-wheat);
+  color: var(--emerald-shadow); font-weight: 700;
 }
-
-.pedit__stab.is-on, .pedit__tab.is-on, .preport__tab.is-on {
-  background: var(--golden-wheat);
-  border-color: var(--golden-wheat);
-  color: var(--emerald-shadow);
-  font-weight: 700;
-}
-
-:root[data-theme='light'] .pedit__stab.is-on,
-:root[data-theme='light'] .pedit__tab.is-on,
 :root[data-theme='light'] .preport__tab.is-on {
   background: var(--forest); border-color: var(--forest); color: var(--ivory-mist);
 }
-
-.pedit__tabs { border-bottom: 1px solid var(--edge); padding-bottom: 12px; }
 
 .pedit__save { display: flex; gap: 9px; flex-wrap: wrap; }
 
