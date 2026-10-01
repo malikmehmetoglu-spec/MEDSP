@@ -154,8 +154,6 @@ export default function ReportShell({ report, basemap, view }) {
           options: data.dimOptions?.[f.dim] ?? [],
         }))}
         onExtra={(dim, value) => setDimFilters((cur) => ({ ...cur, [dim]: value }))}
-        count={data.total}
-        unit={view.unit ?? 'عملية'}
       />
 
       {highlight && data.part && (

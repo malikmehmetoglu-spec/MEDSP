@@ -4,22 +4,10 @@
   كلها تعمل معاً، وتظهر أسفلها المرشّحات النشطة مع إمكانية إزالتها.
 */
 
-const MONTHS = [
-  'كانون الثاني', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران',
-  'تموز', 'آب', 'أيلول', 'تشرين الأول', 'تشرين الثاني', 'كانون الأول',
-];
-
 const shift = (day, back) => {
   const d = new Date(`${day}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() - back);
   return d.toISOString().slice(0, 10);
-};
-
-const label = (day) => {
-  if (!day) return '—';
-  const d = new Date(`${day}T00:00:00Z`);
-  if (Number.isNaN(d.getTime())) return '—';
-  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 };
 
 export default function Filters({
@@ -35,8 +23,6 @@ export default function Filters({
   onReset,
   extra = [],
   onExtra,
-  count,
-  unit = 'عملية',
 }) {
   const presets = [
     { id: 'all', name: 'كامل الفترة', from: bounds.from, to: bounds.to },
@@ -106,15 +92,19 @@ export default function Filters({
             />
           </label>
         </div>
+
+        {dirty && (
+          <button type="button" className="filters__reset" onClick={onReset}>
+            إزالة المرشّحات
+          </button>
+        )}
       </div>
 
-      <div className="filters__row filters__row--bottom">
-        <label className="select">
-          <span>المديرية</span>
-          <select
-            value={directorate ?? ''}
-            onChange={(e) => onDirectorate(e.target.value || null)}
-          >
+      <div className="filters__fields" style={{ '--n': 2 + extra.length }}>
+        <label className="ffield">
+          <span className="ffield__label">المديرية</span>
+          <select className={directorate ? 'is-on' : ''} value={directorate ?? ''}
+            onChange={(e) => onDirectorate(e.target.value || null)}>
             <option value="">كل المديريات</option>
             {directorates.map((name) => (
               <option key={name} value={name}>{name}</option>
@@ -122,9 +112,10 @@ export default function Filters({
           </select>
         </label>
 
-        <label className="select">
-          <span>المركز</span>
-          <select value={center ?? ''} onChange={(e) => onCenter(e.target.value || null)}>
+        <label className="ffield">
+          <span className="ffield__label">المركز</span>
+          <select className={center ? 'is-on' : ''} value={center ?? ''}
+            onChange={(e) => onCenter(e.target.value || null)}>
             <option value="">كل المراكز</option>
             {centers.map((name) => (
               <option key={name} value={name}>{name}</option>
@@ -133,9 +124,10 @@ export default function Filters({
         </label>
 
         {extra.map((f) => (
-          <label className="select" key={f.dim}>
-            <span>{f.label}</span>
-            <select value={f.value ?? ''} onChange={(e) => onExtra(f.dim, e.target.value || null)}>
+          <label className="ffield" key={f.dim}>
+            <span className="ffield__label">{f.label}</span>
+            <select className={f.value ? 'is-on' : ''} value={f.value ?? ''}
+              onChange={(e) => onExtra(f.dim, e.target.value || null)}>
               <option value="">{f.all ?? 'الكل'}</option>
               {/* القيمة المختارة تبقى ظاهرة حتى لو اختفت من الخيارات */}
               {f.value && !f.options.some((o) => o.label === f.value) && (
@@ -147,18 +139,6 @@ export default function Filters({
             </select>
           </label>
         ))}
-
-        {dirty && (
-          <button type="button" className="chip chip--clear" onClick={onReset}>
-            إزالة المرشّحات
-          </button>
-        )}
-
-        <p className="filters__summary">
-          {label(range.from)} — {label(range.to)}
-          <strong dir="ltr">{count.toLocaleString('en-US')}</strong>
-          <span>{unit}</span>
-        </p>
       </div>
     </div>
   );

@@ -927,11 +927,6 @@
   gap: 10px 20px;
 }
 
-.filters__row--bottom {
-  padding-top: 12px;
-  border-top: 1px solid var(--edge);
-}
-
 .filters__presets {
   display: flex;
   flex-wrap: wrap;
@@ -977,8 +972,7 @@
   margin-inline-start: auto;
 }
 
-.filters__dates label,
-.select {
+.filters__dates label {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -986,58 +980,94 @@
   color: var(--ink-soft);
 }
 
-.filters__dates input,
-.select select {
+.filters__dates input {
   font: inherit;
   font-size: 0.84rem;
   color: var(--ink);
   background: var(--surface-input);
   border: 1px solid var(--edge);
   border-radius: var(--radius-sm);
-  padding: 7px 11px;
+  height: 38px;
+  padding: 0 11px;
   color-scheme: var(--input-color-scheme);
-  max-width: 230px;
 }
 
-.select select {
-  cursor: pointer;
-  min-width: 165px;
+.filters__dates input:hover { border-color: var(--edge-strong); }
+
+.filters__reset {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 0.8rem;
+  color: #c0606f;
+  border-bottom: 1px solid currentColor;
+}
+.filters__reset:hover { color: #e0705c; }
+
+/* حقول المرشّحات: كلها في سطر واحد بأعمدة متساوية، العنوان فوق القائمة */
+.filters__fields {
+  display: grid;
+  grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr));
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--edge);
 }
 
-.filters__dates input:hover,
-.select select:hover {
-  border-color: var(--edge-strong);
-}
+.ffield { display: grid; gap: 6px; min-width: 0; }
 
-.filters__summary {
-  margin-inline-start: auto;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 0.83rem;
-  font-weight: 300;
+.ffield__label {
+  font-size: 0.74rem;
+  font-weight: 500;
   color: var(--ink-faint);
+  letter-spacing: 0.01em;
 }
 
-.filters__summary strong {
-  font-size: 1.05rem;
+.ffield select {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 40px;
+  padding-block: 0;
+  padding-inline: 12px 34px;
+  font: inherit;
+  font-size: 0.86rem;
+  color: var(--ink);
+  background-color: var(--surface-input);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' fill='none' stroke='%23b9a779' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-size: 12px 12px;
+  background-repeat: no-repeat;
+  background-position: left 13px center;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-sm);
+  color-scheme: var(--input-color-scheme);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.16s, box-shadow 0.16s;
+}
+
+.ffield select:hover { border-color: var(--edge-strong); }
+.ffield select:focus-visible {
+  outline: none;
+  border-color: var(--golden-wheat);
+  box-shadow: 0 0 0 3px rgba(185, 167, 121, 0.22);
+}
+
+/* قائمة عليها اختيار: إطار وخط أوضح حتى يُعرف ما الذي يرشّح التقرير */
+.ffield select.is-on {
+  border-color: var(--golden-wheat);
   font-weight: 700;
-  color: var(--accent-text);
+}
+:root[data-theme='light'] .ffield select.is-on { border-color: var(--forest); }
+
+@media (max-width: 1000px) {
+  .filters__fields { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
 }
 
 @media (max-width: 860px) {
-  .filters__dates,
-  .filters__summary {
-    margin-inline-start: 0;
-  }
-
-  .filters__summary {
-    width: 100%;
-  }
-
-  .select select {
-    min-width: 140px;
-  }
+  .filters__dates { margin-inline-start: 0; }
 }
 
 /* ===== بطاقات العمليات في الصفحة الرئيسية ===== */
