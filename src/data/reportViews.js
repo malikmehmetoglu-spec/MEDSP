@@ -99,6 +99,10 @@ export const REPORT_VIEWS = {
   ambulance: {
     icon: 'civilianHurt',
     eyebrow: 'إجمالي بلاغات الإسعاف',
+    filters: [
+      { dim: 'reason', label: 'سبب طلب الإسعاف', all: 'كل الأسباب' },
+      { dim: 'condition', label: 'نوع العملية', all: 'كل الأنواع' },
+    ],
     unit: 'بلاغ',
     stats: (d) => [
       etaStat(d),
