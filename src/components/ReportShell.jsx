@@ -100,10 +100,12 @@ export default function ReportShell({ report, basemap, view }) {
   const [range, setRange] = useState({ from: report.from, to: report.to });
   const [directorate, setDirectorate] = useState(null);
   const [center, setCenter] = useState(null);
+  /* مرشّحات الأبعاد الخاصة بالتقرير (مثل سبب الحريق في تقرير الإطفاء) */
+  const [dimFilters, setDimFilters] = useState({});
   /* الفلترة المتقاطعة: فئة واحدة مميَّزة في كل مرة */
   const [highlight, setHighlight] = useState(null);
 
-  const data = useReportStats(report, range, { directorate, center }, highlight);
+  const data = useReportStats(report, range, { directorate, center, dims: dimFilters }, highlight);
   /* البطاقات العلوية تعرض قيم المميَّز، والإجمالي يُذكر تحتها */
   const shown = data.part ?? data;
   const pick = (dim) => (value) => setHighlight(value == null ? null : { dim, value });
@@ -122,11 +124,12 @@ export default function ReportShell({ report, basemap, view }) {
     setRange({ from: report.from, to: report.to });
     setDirectorate(null);
     setCenter(null);
+    setDimFilters({});
     setHighlight(null);
   };
 
   /* تغيّر المرشّحات يلغي التمييز حتى لا يبقى على فئة لم تعد موجودة */
-  useEffect(() => { setHighlight(null); }, [range, directorate, center]);
+  useEffect(() => { setHighlight(null); }, [range, directorate, center, dimFilters]);
 
   const dimTitle = highlight
     ? (highlight.dim === 'gov' ? 'المحافظة' : data.dims[highlight.dim]?.title)
@@ -145,6 +148,12 @@ export default function ReportShell({ report, basemap, view }) {
         onDirectorate={pickDirectorate}
         onCenter={setCenter}
         onReset={reset}
+        extra={(view.filters ?? []).map((f) => ({
+          ...f,
+          value: dimFilters[f.dim] ?? null,
+          options: data.dimOptions?.[f.dim] ?? [],
+        }))}
+        onExtra={(dim, value) => setDimFilters((cur) => ({ ...cur, [dim]: value }))}
         count={data.total}
         unit={view.unit ?? 'عملية'}
       />
@@ -164,7 +173,7 @@ export default function ReportShell({ report, basemap, view }) {
       {data.total === 0 ? (
         <div className="pending">
           <h3>لا توجد بيانات بهذه المرشّحات</h3>
-          <p>وسّع الفترة الزمنية أو أزل مرشّح المديرية أو المركز.</p>
+          <p>وسّع الفترة الزمنية أو أزل بعض المرشّحات.</p>
         </div>
       ) : (
         <>

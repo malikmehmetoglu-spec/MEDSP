@@ -1,5 +1,6 @@
 /*
-  شريط المرشّحات: الفترة الزمنية + المديرية + المركز.
+  شريط المرشّحات: الفترة الزمنية + المديرية + المركز،
+  ومرشّحات إضافية يحدّدها كل تقرير (extra).
   كلها تعمل معاً، وتظهر أسفلها المرشّحات النشطة مع إمكانية إزالتها.
 */
 
@@ -32,6 +33,8 @@ export default function Filters({
   onDirectorate,
   onCenter,
   onReset,
+  extra = [],
+  onExtra,
   count,
   unit = 'عملية',
 }) {
@@ -44,7 +47,7 @@ export default function Filters({
 
   const activePreset = presets.find((p) => p.from === range.from && p.to === range.to);
   const isFullRange = range.from === bounds.from && range.to === bounds.to;
-  const dirty = !isFullRange || directorate || center;
+  const dirty = !isFullRange || directorate || center || extra.some((f) => f.value);
 
   /*
     لا تُصحَّح القيمة أثناء الكتابة — التصحيح الفوري كان يعيد الحقل
@@ -128,6 +131,22 @@ export default function Filters({
             ))}
           </select>
         </label>
+
+        {extra.map((f) => (
+          <label className="select" key={f.dim}>
+            <span>{f.label}</span>
+            <select value={f.value ?? ''} onChange={(e) => onExtra(f.dim, e.target.value || null)}>
+              <option value="">{f.all ?? 'الكل'}</option>
+              {/* القيمة المختارة تبقى ظاهرة حتى لو اختفت من الخيارات */}
+              {f.value && !f.options.some((o) => o.label === f.value) && (
+                <option value={f.value}>{f.value}</option>
+              )}
+              {f.options.map((o) => (
+                <option key={o.label} value={o.label}>{o.label} ({o.count.toLocaleString('en-US')})</option>
+              ))}
+            </select>
+          </label>
+        ))}
 
         {dirty && (
           <button type="button" className="chip chip--clear" onClick={onReset}>

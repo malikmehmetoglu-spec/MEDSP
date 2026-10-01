@@ -259,6 +259,7 @@ const FIRE = {
     { key: 'cause', title: 'أسباب الحرائق', column: 'نوع العملية', exclude: 'مجهول' },
     { key: 'placeType', title: 'نوع مكان الحريق', column: 'نوع مكان الحريق' },
     { key: 'inhabited', title: 'طبيعة الموقع', column: 'نوع المكان' },
+    { key: 'target', title: 'المكان المستهدف', column: 'المكان المستهدف' },
   ],
   metrics: [
     { key: 'area', title: 'المساحة المحترقة', columns: ['المساحة المحترقة (دنم)'] },
