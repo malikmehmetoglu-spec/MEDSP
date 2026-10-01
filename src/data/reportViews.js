@@ -167,6 +167,11 @@ export const REPORT_VIEWS = {
   traffic: {
     icon: 'target',
     eyebrow: 'إجمالي حوادث السير',
+    filters: [
+      { dim: 'crashType', label: 'نوع حادث السير', all: 'كل الأنواع' },
+      { dim: 'vehicle', label: 'نوع المركبة', all: 'كل المركبات', multi: true },
+      { dim: 'cause', label: 'سبب الحادث', all: 'كل الأسباب' },
+    ],
     unit: 'حادث',
     stats: (d) => [
       etaStat(d),

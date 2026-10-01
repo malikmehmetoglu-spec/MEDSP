@@ -35,7 +35,7 @@ export default function Filters({
 
   const activePreset = presets.find((p) => p.from === range.from && p.to === range.to);
   const isFullRange = range.from === bounds.from && range.to === bounds.to;
-  const dirty = !isFullRange || directorate || center || extra.some((f) => f.value);
+  const dirty = !isFullRange || directorate || center || extra.some((f) => (Array.isArray(f.value) ? f.value.length : f.value));
 
   /*
     لا تُصحَّح القيمة أثناء الكتابة — التصحيح الفوري كان يعيد الحقل
@@ -121,11 +121,13 @@ export default function Filters({
           <div className="ffield" key={f.dim}>
             <span className="ffield__label">{f.label}</span>
             <Dropdown label={f.label} placeholder={f.all ?? 'الكل'} value={f.value}
+              multi={f.multi}
               onChange={(v) => onExtra(f.dim, v)}
               options={[
-                /* القيمة المختارة تبقى ظاهرة حتى لو اختفت من الخيارات */
-                ...(f.value && !f.options.some((o) => o.label === f.value)
-                  ? [{ value: f.value, label: f.value }] : []),
+                /* القيم المختارة تبقى ظاهرة حتى لو اختفت من الخيارات */
+                ...[].concat(f.value ?? [])
+                  .filter((v) => !f.options.some((o) => o.label === v))
+                  .map((v) => ({ value: v, label: v })),
                 ...f.options.map((o) => ({ value: o.label, label: o.label, count: o.count })),
               ]} />
           </div>

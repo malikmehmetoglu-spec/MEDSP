@@ -8,8 +8,9 @@ import { useEffect, useId, useRef, useState } from 'react';
   دائماً، بارتفاع محدود وتمرير داخلي، وسهمها واحد في كل مكان.
 
   options: [{ value, label, count? }]
+  multi: تحديد أكثر من خيار — value قائمة، والقائمة تبقى مفتوحة أثناء الاختيار.
 */
-export default function Dropdown({ value, onChange, options, placeholder = 'الكل', label }) {
+export default function Dropdown({ value, onChange, options, placeholder = 'الكل', label, multi = false }) {
   const [open, setOpen] = useState(false);
   const [cursor, setCursor] = useState(-1);
   const root = useRef(null);
@@ -18,8 +19,15 @@ export default function Dropdown({ value, onChange, options, placeholder = 'ال
 
   /* الخيار الأول دائماً «الكل» (قيمة فارغة) */
   const items = [{ value: '', label: placeholder }, ...options];
-  const current = items.find((o) => String(o.value) === String(value ?? '')) ?? items[0];
-  const isOn = Boolean(value);
+  const chosen = multi ? [].concat(value ?? []).map(String) : [];
+  const isSel = (o) => (multi
+    ? (o.value === '' ? chosen.length === 0 : chosen.includes(String(o.value)))
+    : String(o.value) === String(value ?? ''));
+  const current = items.find((o) => !multi && isSel(o)) ?? items[0];
+  const isOn = multi ? chosen.length > 0 : Boolean(value);
+  const shown = !multi || chosen.length === 0 ? current.label
+    : chosen.length === 1 ? (items.find((o) => String(o.value) === chosen[0])?.label ?? chosen[0])
+      : `${items.find((o) => String(o.value) === chosen[0])?.label ?? chosen[0]} +${chosen.length - 1}`;
 
   useEffect(() => {
     if (!open) return undefined;
@@ -30,7 +38,7 @@ export default function Dropdown({ value, onChange, options, placeholder = 'ال
 
   /* عند الفتح: المؤشر على الخيار المختار، ويُمرَّر إليه */
   const openList = () => {
-    const i = Math.max(0, items.indexOf(current));
+    const i = multi ? 0 : Math.max(0, items.indexOf(current));
     setCursor(i);
     setOpen(true);
     requestAnimationFrame(() => {
@@ -40,6 +48,12 @@ export default function Dropdown({ value, onChange, options, placeholder = 'ال
   const toggle = () => (open ? setOpen(false) : openList());
 
   const pick = (o) => {
+    if (multi) {
+      if (o.value === '') { onChange([]); return; }
+      const v = String(o.value);
+      onChange(chosen.includes(v) ? chosen.filter((x) => x !== v) : [...chosen, v]);
+      return;
+    }
     onChange(o.value === '' ? null : o.value);
     setOpen(false);
   };
@@ -75,7 +89,7 @@ export default function Dropdown({ value, onChange, options, placeholder = 'ال
         onClick={toggle}
         onKeyDown={onKey}
       >
-        <span className="dd__value">{current.label}</span>
+        <span className="dd__value">{shown}</span>
         <svg className="dd__chev" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
           <path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" strokeWidth="1.6"
             strokeLinecap="round" strokeLinejoin="round" />
@@ -83,9 +97,9 @@ export default function Dropdown({ value, onChange, options, placeholder = 'ال
       </button>
 
       {open && (
-        <ul className="dd__list" role="listbox" id={id} ref={list}>
+        <ul className={`dd__list${multi ? ' dd__list--multi' : ''}`} role="listbox" aria-multiselectable={multi || undefined} id={id} ref={list}>
           {items.map((o, i) => {
-            const selected = String(o.value) === String(value ?? '');
+            const selected = isSel(o);
             return (
               <li
                 key={`${o.value}`}
@@ -95,6 +109,12 @@ export default function Dropdown({ value, onChange, options, placeholder = 'ال
                 onPointerEnter={() => setCursor(i)}
                 onClick={() => pick(o)}
               >
+                {multi && (
+                  <span className="dd__check" aria-hidden="true">
+                    <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 5.2 4.1 7.2 8 3" fill="none"
+                      stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  </span>
+                )}
                 <span className="dd__optlabel">{o.label}</span>
                 {o.count != null && <span className="dd__count">{Number(o.count).toLocaleString('en-US')}</span>}
               </li>

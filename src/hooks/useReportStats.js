@@ -101,22 +101,37 @@ function aggregate(rows, { dict, dims, metrics }) {
 
 /* highlight: { dim: 'كود البعد' أو 'gov', value: 'النص' } */
 export default function useReportStats(report, range, filters = {}, highlight = null) {
-  const { directorate = null, center = null, dims: dimFilters = null } = filters;
-  const dimKey = JSON.stringify(dimFilters ?? {});
+  const { directorate = null, center = null, dims: dimFilters = null, multi = [] } = filters;
+  const dimKey = JSON.stringify([dimFilters ?? {}, multi]);
 
   return useMemo(() => {
-    const { dict, dims, metrics, records } = report;
+    const { dict, dims, records } = report;
+    /* القيم تُقرأ من مفتاحها النصي حتى لا يُعاد الحساب لكل كائن جديد بنفس المحتوى */
+    const [dimSel, multiList] = JSON.parse(dimKey);
     const { from, to } = range;
 
     const dirIdx = directorate ? dict.directorates.indexOf(directorate) : -1;
     const centerIdx = center ? dict.centers.indexOf(center) : -1;
 
-    /* مرشّحات الأبعاد: { مفتاح البعد: النص المختار } → [عمود السجل, رقم القيمة] */
-    const active = Object.entries(dimFilters ?? {})
-      .filter(([, v]) => v)
+    /*
+      مرشّحات الأبعاد: { مفتاح البعد: نص أو قائمة نصوص }.
+      البعد متعدد القيم (multi) يخزّن السجل الواحد قيماً مثل «سيارة,شاحنة»،
+      فيُقسَّم ويطابق السجلُ إن احتوى أياً من الخيارات المحدّدة.
+    */
+    const multiSet = new Set(multiList);
+    const tokens = (label) => String(label ?? '').split(/[,،]/).map((x) => x.trim()).filter(Boolean);
+    const active = Object.entries(dimSel)
+      .filter(([, v]) => (Array.isArray(v) ? v.length : v))
       .map(([key, v]) => {
         const pos = dims.findIndex((d) => d.key === key);
-        return pos < 0 ? null : { key, col: BASE + pos, idx: dims[pos].values.indexOf(v) };
+        if (pos < 0) return null;
+        const want = new Set(Array.isArray(v) ? v : [v]);
+        const allowed = new Set();
+        dims[pos].values.forEach((label, i) => {
+          const hit = multiSet.has(key) ? tokens(label).some((t) => want.has(t)) : want.has(label);
+          if (hit) allowed.add(i);
+        });
+        return { key, col: BASE + pos, allowed };
       })
       .filter(Boolean);
 
@@ -130,7 +145,7 @@ export default function useReportStats(report, range, filters = {}, highlight = 
       return true;
     };
     const scoped = records.filter(inScope);
-    const passes = (r, skip) => active.every((f) => f.key === skip || r[f.col] === f.idx);
+    const passes = (r, skip) => active.every((f) => f.key === skip || f.allowed.has(r[f.col]));
     const rows = scoped.filter((r) => passes(r));
 
     /*
@@ -143,11 +158,13 @@ export default function useReportStats(report, range, filters = {}, highlight = 
       for (const r of scoped) {
         if (!passes(r, dim.key)) continue;
         const v = r[BASE + pos];
-        if (v >= 0 && dim.values[v]) counts.set(v, (counts.get(v) ?? 0) + 1);
+        if (v < 0 || !dim.values[v]) continue;
+        const labels = multiSet.has(dim.key) ? tokens(dim.values[v]) : [dim.values[v]];
+        for (const label of labels) counts.set(label, (counts.get(label) ?? 0) + 1);
       }
       dimOptions[dim.key] = [...counts.entries()]
         .sort((a, b) => b[1] - a[1])
-        .map(([v, count]) => ({ label: dim.values[v], count }));
+        .map(([label, count]) => ({ label, count }));
     });
 
     /* المراكز المتاحة تتقلص تبعاً للمديرية المختارة */

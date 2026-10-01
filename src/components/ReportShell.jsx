@@ -105,7 +105,8 @@ export default function ReportShell({ report, basemap, view }) {
   /* الفلترة المتقاطعة: فئة واحدة مميَّزة في كل مرة */
   const [highlight, setHighlight] = useState(null);
 
-  const data = useReportStats(report, range, { directorate, center, dims: dimFilters }, highlight);
+  const multiDims = (view.filters ?? []).filter((f) => f.multi).map((f) => f.dim);
+  const data = useReportStats(report, range, { directorate, center, dims: dimFilters, multi: multiDims }, highlight);
   /* البطاقات العلوية تعرض قيم المميَّز، والإجمالي يُذكر تحتها */
   const shown = data.part ?? data;
   const pick = (dim) => (value) => setHighlight(value == null ? null : { dim, value });

@@ -1102,6 +1102,19 @@
   flex: none;
 }
 :root[data-theme='light'] .dd__opt.is-sel::before { background: var(--forest); }
+/* تحديد متعدد: مربع اختيار بدل النقطة */
+.dd__list--multi .dd__opt.is-sel::before { display: none; }
+.dd__check {
+  flex: none;
+  width: 16px; height: 16px;
+  display: grid; place-items: center;
+  border-radius: 4px;
+  border: 1.5px solid var(--edge-strong);
+  color: transparent;
+  transition: background 0.14s, border-color 0.14s;
+}
+.dd__opt.is-sel .dd__check { background: var(--golden-wheat); border-color: var(--golden-wheat); color: var(--emerald-shadow); }
+:root[data-theme='light'] .dd__opt.is-sel .dd__check { background: var(--forest); border-color: var(--forest); color: var(--ivory-mist); }
 .dd__optlabel { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dd__count { flex: none; font-size: 0.74rem; font-variant-numeric: tabular-nums; color: var(--ink-faint); }
 
