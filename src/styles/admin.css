@@ -1514,6 +1514,8 @@ button.adminbar__exit { background: none; border: 0; border-bottom: 1px solid va
 
 /* ===================== الفلاتر ===================== */
 .pfilters {
+  position: relative;
+  z-index: 30;
   display: flex;
   align-items: flex-end;
   flex-wrap: wrap;
@@ -1526,28 +1528,7 @@ button.adminbar__exit { background: none; border: 0; border-bottom: 1px solid va
   backdrop-filter: blur(14px);
 }
 
-.pfilters__field { display: grid; gap: 5px; min-width: 160px; }
-.pfilters__field > span { font-size: 0.74rem; color: var(--ink-faint); }
-
-.pfilters__select {
-  appearance: none;
-  font: inherit;
-  font-size: 0.9rem;
-  color: var(--ink);
-  background-color: var(--surface-input);
-  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
-  background-position: left 15px top 52%, left 10px top 52%;
-  background-size: 5px 5px, 5px 5px;
-  background-repeat: no-repeat;
-  border: 1px solid var(--edge);
-  border-radius: 999px;
-  padding: 8px 16px;
-  padding-inline-start: 34px;
-  color-scheme: var(--input-color-scheme);
-}
-
-.pfilters__select.is-on { border-color: var(--golden-wheat); background-color: var(--glass-strong); font-weight: 700; }
-:root[data-theme='light'] .pfilters__select.is-on { border-color: var(--forest); }
+.pfilters__field { min-width: 190px; }
 
 .pfilters__count { margin-inline-start: auto; font-size: 0.8rem; color: var(--ink-faint); align-self: center; }
 .pfilters__count b { color: var(--accent-text); font-size: 0.95rem; }

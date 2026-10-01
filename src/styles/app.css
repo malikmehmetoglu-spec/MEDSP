@@ -909,6 +909,9 @@
 /* ===== شريط المرشّحات ===== */
 
 .filters {
+  /* فوق البطاقات التالية حتى لا تغطي القائمة المنسدلة */
+  position: relative;
+  z-index: 30;
   margin-top: 22px;
   padding: 14px 20px 16px;
   background: var(--glass);
@@ -1023,44 +1026,84 @@
   letter-spacing: 0.01em;
 }
 
-.ffield select {
-  appearance: none;
-  -webkit-appearance: none;
+/* ===== القائمة المنسدلة الموحّدة (Dropdown) — تُفتح لأسفل دائماً ===== */
+.dd { position: relative; min-width: 0; }
+
+.dd__btn {
   width: 100%;
   height: 40px;
-  padding-block: 0;
-  padding-inline: 12px 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px;
   font: inherit;
   font-size: 0.86rem;
   color: var(--ink);
-  background-color: var(--surface-input);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' fill='none' stroke='%23b9a779' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-size: 12px 12px;
-  background-repeat: no-repeat;
-  background-position: left 13px center;
+  text-align: start;
+  background: var(--surface-input);
   border: 1px solid var(--edge);
   border-radius: var(--radius-sm);
-  color-scheme: var(--input-color-scheme);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
   cursor: pointer;
   transition: border-color 0.16s, box-shadow 0.16s;
 }
-
-.ffield select:hover { border-color: var(--edge-strong); }
-.ffield select:focus-visible {
+.dd__btn:hover { border-color: var(--edge-strong); }
+.dd__btn:focus-visible,
+.dd.is-open .dd__btn {
   outline: none;
   border-color: var(--golden-wheat);
-  box-shadow: 0 0 0 3px rgba(185, 167, 121, 0.22);
+  box-shadow: 0 0 0 3px rgba(185, 167, 121, 0.2);
 }
+.dd__btn.is-on { border-color: var(--golden-wheat); font-weight: 700; }
+:root[data-theme='light'] .dd__btn.is-on { border-color: var(--forest); }
 
-/* قائمة عليها اختيار: إطار وخط أوضح حتى يُعرف ما الذي يرشّح التقرير */
-.ffield select.is-on {
-  border-color: var(--golden-wheat);
-  font-weight: 700;
+.dd__value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.dd__chev { flex: none; color: var(--golden-wheat); transition: transform 0.18s; }
+.dd.is-open .dd__chev { transform: rotate(180deg); }
+
+.dd__list {
+  position: absolute;
+  top: calc(100% + 6px);
+  inset-inline: 0;
+  min-width: 200px;
+  z-index: 60;
+  max-height: 300px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 5px;
+  list-style: none;
+  background: var(--page-bg-solid);
+  border: 1px solid var(--edge-strong);
+  border-radius: 12px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+  animation: dd-in 0.14s ease-out;
 }
-:root[data-theme='light'] .ffield select.is-on { border-color: var(--forest); }
+:root[data-theme='light'] .dd__list { background: #fffefa; box-shadow: 0 14px 34px rgba(2, 68, 58, 0.16); }
+
+@keyframes dd-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+.dd__opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.dd__opt.is-cur { background: var(--glass-strong); color: var(--ink); }
+.dd__opt.is-sel { color: var(--ink); font-weight: 700; }
+.dd__opt.is-sel::before {
+  content: '';
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--golden-wheat);
+  flex: none;
+}
+:root[data-theme='light'] .dd__opt.is-sel::before { background: var(--forest); }
+.dd__optlabel { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dd__count { flex: none; font-size: 0.74rem; font-variant-numeric: tabular-nums; color: var(--ink-faint); }
 
 @media (max-width: 1000px) {
   .filters__fields { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }

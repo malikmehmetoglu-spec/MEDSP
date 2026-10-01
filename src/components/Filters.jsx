@@ -1,3 +1,5 @@
+import Dropdown from './Dropdown';
+
 /*
   شريط المرشّحات: الفترة الزمنية + المديرية + المركز،
   ومرشّحات إضافية يحدّدها كل تقرير (extra).
@@ -101,43 +103,32 @@ export default function Filters({
       </div>
 
       <div className="filters__fields" style={{ '--n': 2 + extra.length }}>
-        <label className="ffield">
+        <div className="ffield">
           <span className="ffield__label">المديرية</span>
-          <select className={directorate ? 'is-on' : ''} value={directorate ?? ''}
-            onChange={(e) => onDirectorate(e.target.value || null)}>
-            <option value="">كل المديريات</option>
-            {directorates.map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
-        </label>
+          <Dropdown label="المديرية" placeholder="كل المديريات" value={directorate}
+            onChange={onDirectorate}
+            options={directorates.map((name) => ({ value: name, label: name }))} />
+        </div>
 
-        <label className="ffield">
+        <div className="ffield">
           <span className="ffield__label">المركز</span>
-          <select className={center ? 'is-on' : ''} value={center ?? ''}
-            onChange={(e) => onCenter(e.target.value || null)}>
-            <option value="">كل المراكز</option>
-            {centers.map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
-        </label>
+          <Dropdown label="المركز" placeholder="كل المراكز" value={center}
+            onChange={onCenter}
+            options={centers.map((name) => ({ value: name, label: name }))} />
+        </div>
 
         {extra.map((f) => (
-          <label className="ffield" key={f.dim}>
+          <div className="ffield" key={f.dim}>
             <span className="ffield__label">{f.label}</span>
-            <select className={f.value ? 'is-on' : ''} value={f.value ?? ''}
-              onChange={(e) => onExtra(f.dim, e.target.value || null)}>
-              <option value="">{f.all ?? 'الكل'}</option>
-              {/* القيمة المختارة تبقى ظاهرة حتى لو اختفت من الخيارات */}
-              {f.value && !f.options.some((o) => o.label === f.value) && (
-                <option value={f.value}>{f.value}</option>
-              )}
-              {f.options.map((o) => (
-                <option key={o.label} value={o.label}>{o.label} ({o.count.toLocaleString('en-US')})</option>
-              ))}
-            </select>
-          </label>
+            <Dropdown label={f.label} placeholder={f.all ?? 'الكل'} value={f.value}
+              onChange={(v) => onExtra(f.dim, v)}
+              options={[
+                /* القيمة المختارة تبقى ظاهرة حتى لو اختفت من الخيارات */
+                ...(f.value && !f.options.some((o) => o.label === f.value)
+                  ? [{ value: f.value, label: f.value }] : []),
+                ...f.options.map((o) => ({ value: o.label, label: o.label, count: o.count })),
+              ]} />
+          </div>
         ))}
       </div>
     </div>

@@ -8,6 +8,7 @@ import SyriaMap from '../components/SyriaMap';
 import Figure from '../components/Figure';
 import Icon from '../components/Icon';
 import { loadOps, summarizeOps } from './opsSource';
+import Dropdown from '../components/Dropdown';
 import { governorateIndex, matchGovernorate } from '../admin/importer/parse';
 
 /*
@@ -496,14 +497,12 @@ function FilterBar({ fields, responses, values, onChange, names, shown }) {
   return (
     <div className="pfilters">
       {fields.map((n) => (
-        <label className="pfilters__field" key={n.name}>
-          <span>{n.type === 'admin_area' ? 'المحافظة' : n.label}</span>
-          <select className={`pfilters__select${values[n.name] ? ' is-on' : ''}`} value={values[n.name] || ''}
-            onChange={(e) => onChange({ ...values, [n.name]: e.target.value || undefined })}>
-            <option value="">الكل</option>
-            {optionsFor(n).map((o) => <option key={o.value} value={o.value}>{o.label} ({o.n})</option>)}
-          </select>
-        </label>
+        <div className="ffield pfilters__field" key={n.name}>
+          <span className="ffield__label">{n.type === 'admin_area' ? 'المحافظة' : n.label}</span>
+          <Dropdown label={n.type === 'admin_area' ? 'المحافظة' : n.label} value={values[n.name] || null}
+            onChange={(v) => onChange({ ...values, [n.name]: v || undefined })}
+            options={optionsFor(n).map((o) => ({ value: o.value, label: o.label, count: o.n }))} />
+        </div>
       ))}
       <span className="pfilters__count">
         {active ? <>يعرض <b>{fmt(shown)}</b> من {fmt(responses.length)}</> : <>كل السجلات ({fmt(responses.length)})</>}
