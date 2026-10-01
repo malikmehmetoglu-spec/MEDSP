@@ -262,6 +262,9 @@ export const REPORT_VIEWS = {
   'cold-rescue': {
     icon: 'staff',
     eyebrow: 'إجمالي عمليات الإنقاذ البارد',
+    filters: [
+      { dim: 'kind', label: 'نوع عملية الإنقاذ', all: 'كل الأنواع', multi: true },
+    ],
     stats: (d) => [etaStat(d), durationStat(d), crewStat(d)],
     panels: [
       { dim: 'kind', tone: 'gold', span: 'wide' },
@@ -286,6 +289,9 @@ export const REPORT_VIEWS = {
   attacks: {
     icon: 'flame',
     eyebrow: 'إجمالي الهجمات المسجّلة',
+    filters: [
+      { dim: 'kind', label: 'نوع الهجوم', all: 'كل الأنواع', multi: true },
+    ],
     stats: (d) => [
       etaStat(d),
       {
