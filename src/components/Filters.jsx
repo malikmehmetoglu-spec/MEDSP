@@ -28,9 +28,9 @@ export default function Filters({
 }) {
   const presets = [
     { id: 'all', name: 'كامل الفترة', from: bounds.from, to: bounds.to },
-    { id: '7', name: 'آخر ٧ أيام', from: shift(bounds.to, 6), to: bounds.to },
-    { id: '14', name: 'آخر ١٤ يوماً', from: shift(bounds.to, 13), to: bounds.to },
-    { id: '30', name: 'آخر ٣٠ يوماً', from: shift(bounds.to, 29), to: bounds.to },
+    { id: '7', name: 'آخر 7 أيام', from: shift(bounds.to, 6), to: bounds.to },
+    { id: '14', name: 'آخر 14 يوماً', from: shift(bounds.to, 13), to: bounds.to },
+    { id: '30', name: 'آخر 30 يوماً', from: shift(bounds.to, 29), to: bounds.to },
   ];
 
   const activePreset = presets.find((p) => p.from === range.from && p.to === range.to);

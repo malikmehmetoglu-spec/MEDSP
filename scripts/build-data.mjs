@@ -28,11 +28,16 @@ const outDir = path.join(root, '..', 'public', 'data');
 const REF_FILE = 'syr_admin_boundaries.xlsx';
 
 const num = (v) => {
-  const n = Number(String(v ?? '').trim());
+  const n = Number(latinDigits(String(v ?? '').trim()));
   return Number.isFinite(n) ? n : 0;
 };
 
-const clean = (v) => String(v ?? '').trim();
+/* الأرقام العربية-الهندية (٠-٩ و۰-۹) تُحوَّل إلى أرقام لاتينية في كل نص يُعرض */
+const latinDigits = (s) => s
+  .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+  .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06F0))
+  .replace(/\u066A/g, '%');
+const clean = (v) => latinDigits(String(v ?? '').trim());
 
 /* ---------- الملف المرجعي: ترميز المنطقة ← إحداثيات ---------- */
 

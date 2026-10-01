@@ -79,7 +79,7 @@ export default function Donut({
       <div className="donut__inner">
       <div className="donut__ring">
         <svg viewBox="0 0 160 160" className="donut__svg" role="img"
-          aria-label={segs.map((s) => `${s.label} ${pct(s.share)}٪`).join('، ')}>
+          aria-label={segs.map((s) => `${s.label} ${pct(s.share)}%`).join('، ')}>
           <circle cx="80" cy="80" r={R} fill="none" className="donut__track" strokeWidth={SW} />
           <g transform="rotate(-90 80 80)">
             {segs.map((s) => {

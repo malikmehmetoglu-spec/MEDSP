@@ -34,7 +34,7 @@ const TYPE_HINT = {
   note: 'نص إرشادي بلا إجابة',
   integer: 'أشخاص، وحدات، أيام',
   decimal: 'مساحة، نسبة، وزن',
-  range: 'تقييم من ١ إلى ٥',
+  range: 'تقييم من 1 إلى 5',
   select_one: 'إجابة واحدة من قائمة',
   select_multiple: 'عدة إجابات من قائمة',
   rank: 'ترتيب حسب الأولوية',
@@ -431,7 +431,7 @@ function CalcEditor({ node, candidates, set }) {
 
       <div className="bx-row">
         <label className="bx-field"><span>الوحدة (اختياري)</span>
-          <input className="bx-input" value={node.unit || ''} placeholder="فرد، سنة، ٪"
+          <input className="bx-input" value={node.unit || ''} placeholder="فرد، سنة، %"
             onChange={(e) => set({ unit: e.target.value })} />
         </label>
       </div>
