@@ -11,7 +11,7 @@
   بلا شبكة يتولاه صندوق الصادر في الصفحة نفسها.
 */
 
-const VERSION = 'medsp-v1';
+const VERSION = 'medsp-v2';
 
 /*
   ignoreVary: سكربتات Vite تُطلب بوضع crossorigin فتحمل ترويسة Origin،
@@ -67,6 +67,25 @@ self.addEventListener('fetch', (event) => {
         return res;
       } catch {
         return (await caches.match('./index.html', MATCH)) || (await caches.match('./', MATCH)) || Response.error();
+      }
+    })());
+    return;
+  }
+
+  /*
+    ملفات البيانات (data/*.json): الشبكة أولاً ثم المحفوظة.
+    أسماؤها ثابتة بلا بصمة، فعرض المحفوظ أولاً كان يقدّم بيانات قديمة
+    للكود الجديد بعد كل نشر (مثل مرشّح بلا خيارات).
+  */
+  if (url.pathname.includes('/data/') && url.pathname.endsWith('.json')) {
+    event.respondWith((async () => {
+      const c = await caches.open(VERSION);
+      try {
+        const res = await Promise.race([fetch(req), timeout(8000)]);
+        if (res.ok) c.put(req, res.clone());
+        return res;
+      } catch {
+        return (await c.match(req, MATCH)) || Response.error();
       }
     })());
     return;
