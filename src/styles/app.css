@@ -909,9 +909,7 @@
 /* ===== شريط المرشّحات ===== */
 
 .filters {
-  /* فوق البطاقات التالية حتى لا تغطي القائمة المنسدلة */
   position: relative;
-  z-index: 30;
   margin-top: 22px;
   padding: 14px 20px 16px;
   background: var(--glass);
@@ -1025,6 +1023,13 @@
   color: var(--ink-faint);
   letter-spacing: 0.01em;
 }
+
+/*
+  يرتفع الشريط فوق البطاقات التالية فقط أثناء فتح قائمة منسدلة،
+  فلا يغطي قوائم التنقّل العلوية (مثل قائمة التقارير) في باقي الوقت.
+*/
+.filters:has(.dd.is-open),
+.pfilters:has(.dd.is-open) { z-index: 30; }
 
 /* ===== القائمة المنسدلة الموحّدة (Dropdown) — تُفتح لأسفل دائماً ===== */
 .dd { position: relative; min-width: 0; }

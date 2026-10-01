@@ -1515,7 +1515,6 @@ button.adminbar__exit { background: none; border: 0; border-bottom: 1px solid va
 /* ===================== الفلاتر ===================== */
 .pfilters {
   position: relative;
-  z-index: 30;
   display: flex;
   align-items: flex-end;
   flex-wrap: wrap;

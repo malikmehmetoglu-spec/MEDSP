@@ -14,10 +14,10 @@ const pct = (part, total) => (total ? Math.round((part / total) * 100) : 0);
 const etaStat = (d) => ({
   icon: 'clock',
   tone: 'teal',
-  label: 'وسيط زمن الوصول',
-  value: d.metrics.eta.median,
+  label: 'متوسط زمن الوصول',
+  value: d.metrics.eta.avg,
   unit: 'دقيقة',
-  note: 'نصف البلاغات وصلت خلال هذه المدة أو أقل',
+  note: `محسوب من ${fmt(d.metrics.eta.count)} بلاغاً سُجّل فيه زمن الوصول`,
   share: 100,
 });
 
@@ -34,8 +34,8 @@ const crewStat = (d) => ({
 const durationStat = (d) => ({
   icon: 'target',
   tone: 'gold',
-  label: 'وسيط مدة العملية',
-  value: d.metrics.duration.median,
+  label: 'متوسط مدة العملية',
+  value: d.metrics.duration.avg,
   unit: 'دقيقة',
   note: `محسوب من ${fmt(d.metrics.duration.count)} عملية`,
   share: pct(d.metrics.duration.count, d.total),
@@ -109,8 +109,8 @@ export const REPORT_VIEWS = {
       {
         icon: 'target',
         tone: 'gold',
-        label: 'وسيط زمن النقل للمشفى',
-        value: d.metrics.toHospital.median,
+        label: 'متوسط زمن النقل للمشفى',
+        value: d.metrics.toHospital.avg,
         unit: 'دقيقة',
         note: `مسجّل في ${fmt(d.metrics.toHospital.count)} حالة`,
         share: pct(d.metrics.toHospital.count, d.total),

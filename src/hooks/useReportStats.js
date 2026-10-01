@@ -22,14 +22,13 @@ function rank(counts, labels) {
     .sort((a, b) => b.value - a.value);
 }
 
-/* الوسيط أصدق من المتوسط لأزمنة الاستجابة: حالة واحدة شاذة تضخّم المتوسط */
-function median(values) {
+/*
+  المتوسط الحسابي للقيم المسجّلة (الأصفار = غير مسجّل فلا تدخل).
+  القيم الشاذة الكبيرة مقصوصة مسبقاً عند بناء البيانات (cap).
+*/
+function mean(values) {
   if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2
-    ? sorted[mid]
-    : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+  return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
 }
 
 /*
@@ -80,7 +79,7 @@ function aggregate(rows, { dict, dims, metrics }) {
       anomalies: metric.anomalies ?? 0,
       sum: metricSums[i],
       count: metricValues[i].length,
-      median: median(metricValues[i]),
+      avg: mean(metricValues[i]),
     };
   });
 
