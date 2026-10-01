@@ -365,6 +365,7 @@ const DROWNING = {
     { key: 'mission', title: 'بحث أم انتشال', column: 'بحث/انتشال' },
     { key: 'warnings', title: 'وجود لوحات تحذيرية', column: 'هل يوجود تحذيرات أو لوحات إرشادية في مكان الحادث' },
     { key: 'firstAid', title: 'الإسعافات الأولية المقدمة', column: 'الإسعافات الأولية المقدمة' },
+    { key: 'place', title: 'مكان الغرق', column: 'نوع العملية' },
   ],
   metrics: [
     { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'], cap: 1440 },

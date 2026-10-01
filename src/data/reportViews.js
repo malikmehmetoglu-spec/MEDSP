@@ -138,6 +138,10 @@ export const REPORT_VIEWS = {
   services: {
     icon: 'area',
     eyebrow: 'إجمالي الأعمال الخدمية',
+    filters: [
+      { dim: 'sector', label: 'قطاع الخدمة', all: 'كل القطاعات' },
+      { dim: 'target', label: 'المكان المستهدف', all: 'كل الأماكن' },
+    ],
     /*
       الصف الأول: الأنقاض المرحّلة بالأعمال الاعتيادية (رقم يُطلب كثيراً في
       التقارير)، ثم قطاع الخدمة بعرض بطاقتين.
@@ -216,6 +220,10 @@ export const REPORT_VIEWS = {
   drowning: {
     icon: 'civilian',
     eyebrow: 'إجمالي حالات الغرق',
+    filters: [
+      { dim: 'place', label: 'مكان الغرق', all: 'كل الأماكن' },
+      { dim: 'cause', label: 'سبب الغرق', all: 'كل الأسباب' },
+    ],
     unit: 'حالة',
     stats: (d) => [
       etaStat(d),
