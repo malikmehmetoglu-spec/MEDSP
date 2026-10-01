@@ -156,7 +156,7 @@ function checkType(node, value) {
     if (node.minSelect && n < node.minSelect) return `اختر ${node.minSelect} على الأقل`;
     if (node.maxSelect && n > node.maxSelect) return `اختر ${node.maxSelect} كحد أقصى`;
   }
-  if (node.type === 'admin_area') {
+  if (node.type === 'admin_area' && node.level !== 'governorate') {
     if (value?.governorate && !value?.subdistrict) return 'اختر الناحية أيضاً';
   }
   return null;

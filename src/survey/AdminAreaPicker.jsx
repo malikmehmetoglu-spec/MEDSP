@@ -33,7 +33,9 @@ function loadAreas() {
   return inflight;
 }
 
-export default function AdminAreaPicker({ value, onChange, onBlur, invalid }) {
+export default function AdminAreaPicker({ node, value, onChange, onBlur, invalid }) {
+  /* level: 'governorate' — قائمة المحافظات وحدها بلا ناحية */
+  const govOnly = node?.level === 'governorate';
   const [areas, setAreas] = useState(cache);
   const [status, setStatus] = useState(cache ? 'ready' : 'loading');
 
@@ -63,9 +65,9 @@ export default function AdminAreaPicker({ value, onChange, onBlur, invalid }) {
   }
 
   return (
-    <div className="q-area">
+    <div className={`q-area${govOnly ? ' q-area--single' : ''}`}>
       <label className="q-area__part">
-        <span className="q-area__label">المحافظة</span>
+        {!govOnly && <span className="q-area__label">المحافظة</span>}
         <select
           className="q-input q-input--select"
           value={current.governorate}
@@ -80,7 +82,7 @@ export default function AdminAreaPicker({ value, onChange, onBlur, invalid }) {
         </select>
       </label>
 
-      <label className="q-area__part">
+      {!govOnly && <label className="q-area__part">
         <span className="q-area__label">الناحية</span>
         <select
           className="q-input q-input--select"
@@ -97,7 +99,7 @@ export default function AdminAreaPicker({ value, onChange, onBlur, invalid }) {
             <option key={s.code} value={s.code}>{s.name}</option>
           ))}
         </select>
-      </label>
+      </label>}
     </div>
   );
 }

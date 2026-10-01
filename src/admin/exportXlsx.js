@@ -19,6 +19,9 @@ function columnsFor(node, areas) {
   const L = node.label || node.name;
   switch (node.type) {
     case 'admin_area':
+      if (node.level === 'governorate') {
+        return [{ head: L, get: (v) => (v?.governorate ? areas?.gov?.get(v.governorate)?.name || v.governorate : '') }];
+      }
       return [
         { head: `${L} — المحافظة`, get: (v) => (v?.governorate ? areas?.gov?.get(v.governorate)?.name || v.governorate : '') },
         { head: `${L} — الناحية`, get: (v) => (v?.subdistrict ? areas?.sub?.get(v.subdistrict)?.name || v.subdistrict : '') },

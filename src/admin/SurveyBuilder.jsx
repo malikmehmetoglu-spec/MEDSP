@@ -24,7 +24,7 @@ const PALETTE = [
   { label: 'أرقام', types: ['integer', 'decimal', 'range'] },
   { label: 'اختيارات', types: ['select_one', 'select_multiple', 'rank'] },
   { label: 'زمن', types: ['date', 'time', 'datetime'] },
-  { label: 'مكان', types: ['admin_area', 'geopoint'] },
+  { label: 'مكان', types: ['governorate', 'admin_area', 'geopoint'] },
   { label: 'أخرى', types: ['image', 'repeat', 'calculate'] },
 ];
 
@@ -41,6 +41,7 @@ const TYPE_HINT = {
   date: 'يوم وشهر وسنة',
   time: 'ساعة ودقيقة',
   datetime: 'تاريخ ووقت',
+  governorate: 'قائمة المحافظات السورية',
   admin_area: 'محافظة ثم ناحية',
   geopoint: 'إحداثيات GPS',
   image: 'التقاط صورة',
@@ -89,7 +90,20 @@ function withList(pages, name, fn) {
   return next;
 }
 
+/*
+  «محافظة» في لوحة الأنواع هو سؤال admin_area بمستوى المحافظة فقط،
+  فيُخزَّن بنفس الصيغة ({ governorate: 'SY02' }) وتعمل معه التقارير
+  والخرائط والفلاتر كما هي.
+*/
+const PSEUDO = {
+  governorate: { label: 'محافظة', make: (names) => ({ name: makeName(names, 'governorate'), type: 'admin_area', level: 'governorate', label: '' }) },
+};
+const typeLabel = (node) => (node.type === 'admin_area' && node.level === 'governorate'
+  ? PSEUDO.governorate.label : QUESTION_TYPES[node.type]?.label);
+const typeIcon = (node) => (node.type === 'admin_area' && node.level === 'governorate' ? 't_governorate' : `t_${node.type}`);
+
 function newNode(type, names) {
+  if (PSEUDO[type]) return PSEUDO[type].make(names);
   const node = { name: makeName(names, type), type, label: '' };
   if (HAS_CHOICES(type)) node.choices = [];
   if (type === 'range') { node.min = 1; node.max = 5; }
@@ -301,7 +315,7 @@ function LogicEditor({ node, prior, set }) {
               }}>
               {broken && <option value="">⚠ سؤال محذوف أو نُقل بعد هذا السؤال</option>}
               {prior.map((p) => (
-                <option key={p.name} value={p.name}>{p.label || `(سؤال بلا نص — ${QUESTION_TYPES[p.type]?.label})`}</option>
+                <option key={p.name} value={p.name}>{p.label || `(سؤال بلا نص — ${typeLabel(p)})`}</option>
               ))}
             </select>
             <select className="bx-input bx-select bx-rule__op" value={r.op}
@@ -473,13 +487,13 @@ function QuestionCard({ node, index, prior, isFirst, isLast }) {
         onClick={() => b.select(self ? null : node.name)}
         onKeyDown={(e) => { if (e.key === 'Enter' && e.target === e.currentTarget) b.select(self ? null : node.name); }}>
         <span className="bx-card__n">{index}</span>
-        <span className="bx-card__icon"><Icon name={`t_${node.type}`} /></span>
+        <span className="bx-card__icon"><Icon name={typeIcon(node)} /></span>
         <span className="bx-card__text">
           <span className={`bx-card__title${node.label ? '' : ' is-empty'}`}>
             {node.label || 'سؤال بلا نص'}
           </span>
           <span className="bx-card__meta">
-            <span>{QUESTION_TYPES[node.type]?.label}</span>
+            <span>{typeLabel(node)}</span>
             {node.required && <span className="bx-chip bx-chip--req">مطلوب</span>}
             {HAS_CHOICES(node.type) && <span className="bx-chip">{(node.choices || []).length} خيارات</span>}
             {node.type === 'repeat' && <span className="bx-chip">{(node.children || []).length} أسئلة</span>}
@@ -723,7 +737,7 @@ function Palette({ onPick, target, onClear }) {
           {g.types.map((t) => (
             <button key={t} type="button" className="bx-pal__item" onClick={() => onPick(t)}>
               <Icon name={`t_${t}`} className="bx-pal__icon" />
-              <span className="bx-pal__name">{QUESTION_TYPES[t].label}</span>
+              <span className="bx-pal__name">{PSEUDO[t]?.label ?? QUESTION_TYPES[t].label}</span>
               <span className="bx-pal__hint">{TYPE_HINT[t]}</span>
             </button>
           ))}

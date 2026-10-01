@@ -427,6 +427,8 @@
   margin-inline-start: 29px;
 }
 
+.q-area--single { grid-template-columns: minmax(0, 320px); }
+
 .q-area__part {
   display: grid;
   gap: 5px;
