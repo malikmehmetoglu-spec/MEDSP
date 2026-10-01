@@ -98,15 +98,15 @@ export function DimPanel({ dim, tone = 'teal', max, span, donutAt = 3, part, sel
 */
 export default function ReportShell({ report, basemap, view }) {
   const [range, setRange] = useState({ from: report.from, to: report.to });
-  const [directorate, setDirectorate] = useState(null);
-  const [center, setCenter] = useState(null);
+  const [directorate, setDirectorate] = useState([]);
+  const [center, setCenter] = useState([]);
   /* مرشّحات الأبعاد الخاصة بالتقرير (مثل سبب الحريق في تقرير الإطفاء) */
   const [dimFilters, setDimFilters] = useState({});
   /* الفلترة المتقاطعة: فئة واحدة مميَّزة في كل مرة */
   const [highlight, setHighlight] = useState(null);
 
-  const multiDims = (view.filters ?? []).filter((f) => f.multi).map((f) => f.dim);
-  const data = useReportStats(report, range, { directorate, center, dims: dimFilters, multi: multiDims }, highlight);
+  const splitDims = (view.filters ?? []).filter((f) => f.split).map((f) => f.dim);
+  const data = useReportStats(report, range, { directorate, center, dims: dimFilters, split: splitDims }, highlight);
   /* البطاقات العلوية تعرض قيم المميَّز، والإجمالي يُذكر تحتها */
   const shown = data.part ?? data;
   const pick = (dim) => (value) => setHighlight(value == null ? null : { dim, value });
@@ -118,13 +118,13 @@ export default function ReportShell({ report, basemap, view }) {
 
   const pickDirectorate = (value) => {
     setDirectorate(value);
-    setCenter(null);
+    setCenter([]);
   };
 
   const reset = () => {
     setRange({ from: report.from, to: report.to });
-    setDirectorate(null);
-    setCenter(null);
+    setDirectorate([]);
+    setCenter([]);
     setDimFilters({});
     setHighlight(null);
   };

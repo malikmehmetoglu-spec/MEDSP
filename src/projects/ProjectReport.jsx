@@ -482,8 +482,8 @@ function FilterBar({ fields, responses, values, onChange, names, shown }) {
       }
     }
     const opts = [...seen.values()];
-    if (values[n.name] && !seen.has(values[n.name])) {
-      opts.push({ value: values[n.name], label: values[n.name], n: 0 });
+    for (const w of wantList(values[n.name])) {
+      if (!seen.has(w)) opts.push({ value: w, label: w, n: 0 });
     }
     /* الخيارات بترتيبها في الاستبيان إن وُجد، وإلا أبجدياً */
     if (n.choices) {
@@ -492,15 +492,15 @@ function FilterBar({ fields, responses, values, onChange, names, shown }) {
     }
     return opts.sort((a, b) => a.label.localeCompare(b.label, 'ar'));
   };
-  const active = Object.values(values).filter(Boolean).length;
+  const active = Object.values(values).filter((v) => wantList(v).length).length;
 
   return (
     <div className="pfilters">
       {fields.map((n) => (
         <div className="ffield pfilters__field" key={n.name}>
           <span className="ffield__label">{n.type === 'admin_area' ? 'المحافظة' : n.label}</span>
-          <Dropdown label={n.type === 'admin_area' ? 'المحافظة' : n.label} value={values[n.name] || null}
-            onChange={(v) => onChange({ ...values, [n.name]: v || undefined })}
+          <Dropdown multi label={n.type === 'admin_area' ? 'المحافظة' : n.label} value={wantList(values[n.name])}
+            onChange={(v) => onChange({ ...values, [n.name]: v.length ? v : undefined })}
             options={optionsFor(n).map((o) => ({ value: o.value, label: o.label, count: o.n }))} />
         </div>
       ))}
@@ -514,14 +514,17 @@ function FilterBar({ fields, responses, values, onChange, names, shown }) {
   );
 }
 
+/* قيمة الفلتر قائمة (تحديد متعدد): يطابق السجل إن طابق أياً منها */
+const wantList = (w) => [].concat(w ?? []).map(String).filter(Boolean);
+
 function matches(r, fields, values) {
   return fields.every((n) => {
-    const want = values[n.name];
-    if (!want) return true;
+    const want = wantList(values[n.name]);
+    if (!want.length) return true;
     const v = r.answers?.[n.name];
-    if (n.type === 'admin_area') return v?.governorate === want;
-    if (Array.isArray(v)) return v.map(String).includes(want);
-    return String(v) === want;
+    if (n.type === 'admin_area') return want.includes(String(v?.governorate));
+    if (Array.isArray(v)) return v.map(String).some((x) => want.includes(x));
+    return want.includes(String(v));
   });
 }
 
@@ -722,7 +725,7 @@ export default function ProjectReport({ project, basemap }) {
     return summarizeOps(opsData, {
       types: opsCfg.types,
       govOf: (name) => matchGovernorate(name, govIdx)?.code || name,
-      filter: { gov: govFilterField ? filters[govFilterField.name] : undefined },
+      filter: { gov: govFilterField ? wantList(filters[govFilterField.name]) : [] },
     });
   }, [opsCfg, opsData, govIdx, filters, govFilterField]);
 
@@ -751,7 +754,7 @@ export default function ProjectReport({ project, basemap }) {
     return summarizeOps(opsData, {
       types: opsCfg.types,
       govOf: (name) => matchGovernorate(name, govIdx)?.code || name,
-      filter: { gov: govFilterField ? filters[govFilterField.name] : undefined },
+      filter: { gov: govFilterField ? wantList(filters[govFilterField.name]) : [] },
       highlight,
     });
   }, [opsCfg, opsData, govIdx, filters, govFilterField, highlight, view]);

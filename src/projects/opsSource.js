@@ -52,7 +52,9 @@ export function summarizeOps(data, { types, govOf, filter = {}, highlight = null
     if (!want.has(norm(dimValues.kind[r[kindAt]]))) continue;
     const govName = data.dict.govs[r[1]];
     const code = govOf?.(govName) || govName;
-    if (filter.gov && code !== filter.gov) continue;
+    /* filter.gov: رمز محافظة أو قائمة رموز (تحديد متعدد) */
+    const govs = [].concat(filter.gov ?? []);
+    if (govs.length && !govs.includes(code)) continue;
 
     /* الفلترة المتقاطعة: نحسب المجموعة المميَّزة وحدها */
     if (highlight) {

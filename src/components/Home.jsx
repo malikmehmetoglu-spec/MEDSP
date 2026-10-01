@@ -47,20 +47,20 @@ function OpCard({ name, op, value, onOpen }) {
 
 export default function Home({ report, basemap, onOpen }) {
   const [range, setRange] = useState({ from: report.from, to: report.to });
-  const [directorate, setDirectorate] = useState(null);
-  const [center, setCenter] = useState(null);
+  const [directorate, setDirectorate] = useState([]);
+  const [center, setCenter] = useState([]);
 
   const data = useReportStats(report, range, { directorate, center });
 
   const pickDirectorate = (value) => {
     setDirectorate(value);
-    setCenter(null);
+    setCenter([]);
   };
 
   const reset = () => {
     setRange({ from: report.from, to: report.to });
-    setDirectorate(null);
-    setCenter(null);
+    setDirectorate([]);
+    setCenter([]);
   };
 
   const byOp = data.dims.operation.data;

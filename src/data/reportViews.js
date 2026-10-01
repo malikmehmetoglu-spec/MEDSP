@@ -173,7 +173,7 @@ export const REPORT_VIEWS = {
     eyebrow: 'إجمالي حوادث السير',
     filters: [
       { dim: 'crashType', label: 'نوع حادث السير', all: 'كل الأنواع' },
-      { dim: 'vehicle', label: 'نوع المركبة', all: 'كل المركبات', multi: true },
+      { dim: 'vehicle', label: 'نوع المركبة', all: 'كل المركبات', split: true },
       { dim: 'cause', label: 'سبب الحادث', all: 'كل الأسباب' },
     ],
     unit: 'حادث',
@@ -263,7 +263,7 @@ export const REPORT_VIEWS = {
     icon: 'staff',
     eyebrow: 'إجمالي عمليات الإنقاذ البارد',
     filters: [
-      { dim: 'kind', label: 'نوع عملية الإنقاذ', all: 'كل الأنواع', multi: true },
+      { dim: 'kind', label: 'نوع عملية الإنقاذ', all: 'كل الأنواع' },
     ],
     stats: (d) => [etaStat(d), durationStat(d), crewStat(d)],
     panels: [
@@ -290,7 +290,7 @@ export const REPORT_VIEWS = {
     icon: 'flame',
     eyebrow: 'إجمالي الهجمات المسجّلة',
     filters: [
-      { dim: 'kind', label: 'نوع الهجوم', all: 'كل الأنواع', multi: true },
+      { dim: 'kind', label: 'نوع الهجوم', all: 'كل الأنواع' },
     ],
     stats: (d) => [
       etaStat(d),

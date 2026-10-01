@@ -100,24 +100,25 @@ function aggregate(rows, { dict, dims, metrics }) {
 
 /* highlight: { dim: 'كود البعد' أو 'gov', value: 'النص' } */
 export default function useReportStats(report, range, filters = {}, highlight = null) {
-  const { directorate = null, center = null, dims: dimFilters = null, multi = [] } = filters;
-  const dimKey = JSON.stringify([dimFilters ?? {}, multi]);
+  const { directorate = null, center = null, dims: dimFilters = null, split = [] } = filters;
+  /* كل المرشّحات تقبل قيمة واحدة أو قائمة قيم (تحديد متعدد) */
+  const dimKey = JSON.stringify([dimFilters ?? {}, split, [].concat(directorate ?? []), [].concat(center ?? [])]);
 
   return useMemo(() => {
     const { dict, dims, records } = report;
     /* القيم تُقرأ من مفتاحها النصي حتى لا يُعاد الحساب لكل كائن جديد بنفس المحتوى */
-    const [dimSel, multiList] = JSON.parse(dimKey);
+    const [dimSel, splitList, dirList, centerList] = JSON.parse(dimKey);
     const { from, to } = range;
 
-    const dirIdx = directorate ? dict.directorates.indexOf(directorate) : -1;
-    const centerIdx = center ? dict.centers.indexOf(center) : -1;
+    const dirIdx = new Set(dirList.map((d) => dict.directorates.indexOf(d)));
+    const centerIdx = new Set(centerList.map((c) => dict.centers.indexOf(c)));
 
     /*
       مرشّحات الأبعاد: { مفتاح البعد: نص أو قائمة نصوص }.
-      البعد متعدد القيم (multi) يخزّن السجل الواحد قيماً مثل «سيارة,شاحنة»،
+      البعد المجزّأ (split) يخزّن السجل الواحد قيماً مثل «سيارة,شاحنة»،
       فيُقسَّم ويطابق السجلُ إن احتوى أياً من الخيارات المحدّدة.
     */
-    const multiSet = new Set(multiList);
+    const multiSet = new Set(splitList);
     const tokens = (label) => String(label ?? '').split(/[,،]/).map((x) => x.trim()).filter(Boolean);
     const active = Object.entries(dimSel)
       .filter(([, v]) => (Array.isArray(v) ? v.length : v))
@@ -139,8 +140,8 @@ export default function useReportStats(report, range, filters = {}, highlight = 
       if (!day) return false;
       if (from && day < from) return false;
       if (to && day > to) return false;
-      if (directorate && r[DIR] !== dirIdx) return false;
-      if (center && r[CENTER] !== centerIdx) return false;
+      if (dirIdx.size && !dirIdx.has(r[DIR])) return false;
+      if (centerIdx.size && !centerIdx.has(r[CENTER])) return false;
       return true;
     };
     const scoped = records.filter(inScope);
@@ -169,7 +170,7 @@ export default function useReportStats(report, range, filters = {}, highlight = 
     /* المراكز المتاحة تتقلص تبعاً للمديرية المختارة */
     const centerSet = new Set();
     for (const r of records) {
-      if (directorate && r[DIR] !== dirIdx) continue;
+      if (dirIdx.size && !dirIdx.has(r[DIR])) continue;
       if (r[CENTER] >= 0) centerSet.add(dict.centers[r[CENTER]]);
     }
 
@@ -195,5 +196,5 @@ export default function useReportStats(report, range, filters = {}, highlight = 
       dimOptions,
       availableCenters: [...centerSet].sort((a, b) => a.localeCompare(b, 'ar')),
     };
-  }, [report, range, directorate, center, dimKey, highlight]);
+  }, [report, range, dimKey, highlight]);
 }

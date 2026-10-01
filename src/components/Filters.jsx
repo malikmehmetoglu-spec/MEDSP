@@ -35,7 +35,8 @@ export default function Filters({
 
   const activePreset = presets.find((p) => p.from === range.from && p.to === range.to);
   const isFullRange = range.from === bounds.from && range.to === bounds.to;
-  const dirty = !isFullRange || directorate || center || extra.some((f) => (Array.isArray(f.value) ? f.value.length : f.value));
+  const has = (v) => (Array.isArray(v) ? v.length > 0 : Boolean(v));
+  const dirty = !isFullRange || has(directorate) || has(center) || extra.some((f) => has(f.value));
 
   /*
     لا تُصحَّح القيمة أثناء الكتابة — التصحيح الفوري كان يعيد الحقل
@@ -105,14 +106,14 @@ export default function Filters({
       <div className="filters__fields" style={{ '--n': 2 + extra.length }}>
         <div className="ffield">
           <span className="ffield__label">المديرية</span>
-          <Dropdown label="المديرية" placeholder="كل المديريات" value={directorate}
+          <Dropdown multi label="المديرية" placeholder="كل المديريات" value={directorate}
             onChange={onDirectorate}
             options={directorates.map((name) => ({ value: name, label: name }))} />
         </div>
 
         <div className="ffield">
           <span className="ffield__label">المركز</span>
-          <Dropdown label="المركز" placeholder="كل المراكز" value={center}
+          <Dropdown multi label="المركز" placeholder="كل المراكز" value={center}
             onChange={onCenter}
             options={centers.map((name) => ({ value: name, label: name }))} />
         </div>
@@ -121,7 +122,7 @@ export default function Filters({
           <div className="ffield" key={f.dim}>
             <span className="ffield__label">{f.label}</span>
             <Dropdown label={f.label} placeholder={f.all ?? 'الكل'} value={f.value}
-              multi={f.multi}
+              multi
               onChange={(v) => onExtra(f.dim, v)}
               options={[
                 /* القيم المختارة تبقى ظاهرة حتى لو اختفت من الخيارات */
