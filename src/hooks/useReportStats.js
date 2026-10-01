@@ -101,7 +101,8 @@ function aggregate(rows, { dict, dims, metrics }) {
 
 /* highlight: { dim: 'كود البعد' أو 'gov', value: 'النص' } */
 export default function useReportStats(report, range, filters = {}, highlight = null) {
-  const { directorate = null, center = null } = filters;
+  const { directorate = null, center = null, dims: dimFilters = null } = filters;
+  const dimKey = JSON.stringify(dimFilters ?? {});
 
   return useMemo(() => {
     const { dict, dims, metrics, records } = report;
@@ -110,7 +111,16 @@ export default function useReportStats(report, range, filters = {}, highlight = 
     const dirIdx = directorate ? dict.directorates.indexOf(directorate) : -1;
     const centerIdx = center ? dict.centers.indexOf(center) : -1;
 
-    const rows = records.filter((r) => {
+    /* مرشّحات الأبعاد: { مفتاح البعد: النص المختار } → [عمود السجل, رقم القيمة] */
+    const active = Object.entries(dimFilters ?? {})
+      .filter(([, v]) => v)
+      .map(([key, v]) => {
+        const pos = dims.findIndex((d) => d.key === key);
+        return pos < 0 ? null : { key, col: BASE + pos, idx: dims[pos].values.indexOf(v) };
+      })
+      .filter(Boolean);
+
+    const inScope = (r) => {
       const day = r[DAY];
       if (!day) return false;
       if (from && day < from) return false;
@@ -118,6 +128,26 @@ export default function useReportStats(report, range, filters = {}, highlight = 
       if (directorate && r[DIR] !== dirIdx) return false;
       if (center && r[CENTER] !== centerIdx) return false;
       return true;
+    };
+    const scoped = records.filter(inScope);
+    const passes = (r, skip) => active.every((f) => f.key === skip || r[f.col] === f.idx);
+    const rows = scoped.filter((r) => passes(r));
+
+    /*
+      خيارات كل مرشّح بُعد تُحسب من السجلات المطابقة لبقية المرشّحات،
+      فلا تظهر قيمة تُفرغ التقرير.
+    */
+    const dimOptions = {};
+    dims.forEach((dim, pos) => {
+      const counts = new Map();
+      for (const r of scoped) {
+        if (!passes(r, dim.key)) continue;
+        const v = r[BASE + pos];
+        if (v >= 0 && dim.values[v]) counts.set(v, (counts.get(v) ?? 0) + 1);
+      }
+      dimOptions[dim.key] = [...counts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([v, count]) => ({ label: dim.values[v], count }));
     });
 
     /* المراكز المتاحة تتقلص تبعاً للمديرية المختارة */
@@ -146,7 +176,8 @@ export default function useReportStats(report, range, filters = {}, highlight = 
       ...base,
       part,
       directorates: dict.directorates,
+      dimOptions,
       availableCenters: [...centerSet].sort((a, b) => a.localeCompare(b, 'ar')),
     };
-  }, [report, range, directorate, center, highlight]);
+  }, [report, range, directorate, center, dimKey, highlight]);
 }

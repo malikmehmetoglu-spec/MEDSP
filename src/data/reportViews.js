@@ -48,6 +48,12 @@ export const REPORT_VIEWS = {
   fire: {
     icon: 'flame',
     eyebrow: 'إجمالي الحرائق المسجّلة',
+    /* مرشّحات إضافية خاصة بتقرير الإطفاء — كل واحد يقابل بُعداً من الأبعاد */
+    filters: [
+      { dim: 'target', label: 'المكان المستهدف', all: 'كل الأماكن' },
+      { dim: 'cause', label: 'سبب الحريق', all: 'كل الأسباب' },
+      { dim: 'placeType', label: 'مكان العملية', all: 'كل الأماكن' },
+    ],
     unit: 'حريق',
     stats: (d) => {
       const known = d.dims.cause.coverage - d.dims.cause.excluded;
