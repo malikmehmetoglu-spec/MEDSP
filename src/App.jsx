@@ -15,6 +15,7 @@ import AdminApp from './admin/AdminApp';
 import FillPage from './projects/FillPage';
 import AuthGate from './admin/AuthGate';
 import MapsPage from './components/MapsPage';
+import MonthlyReport from './components/MonthlyReport';
 
 export default function App() {
   const { theme, toggle: toggleTheme } = useTheme();
@@ -105,6 +106,7 @@ export default function App() {
     else if (route.page === 'projects') page = 'المشاريع الإحصائية';
     else if (route.page === 'project' && currentProject) page = currentProject.name;
     else if (route.page === 'admin') page = 'مساحة العمل';
+    else if (route.page === 'monthly') page = 'التقرير الشهري';
     else if (route.page === 'maps') page = 'خريطة الأخطار المتعددة';
     document.title = page ? `${page} — ${site}` : `${site} — وزارة الطوارئ وإدارة الكوارث`;
   }, [route, active.name, currentProject, unknownOp]);
@@ -155,6 +157,14 @@ export default function App() {
       <MainNav route={route} ops={ops} projects={projects.list} projectsStatus={projects.status} />
 
       <main>
+        {route.page === 'monthly' && (
+          <section className="shell">
+            <div className="report__head"><h1>التقرير الشهري</h1></div>
+            <p className="report__summary">الأشكال الإحصائية للتقرير الشهري، جاهزة للتحميل كصور.</p>
+            <MonthlyReport />
+          </section>
+        )}
+
         {route.page === 'maps' && (
           <section className="shell">
             <div className="report__head"><h1>خريطة الأخطار المتعددة</h1></div>

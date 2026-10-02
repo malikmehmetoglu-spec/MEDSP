@@ -1846,3 +1846,32 @@ button.bars__hit { cursor: pointer; }
 .mapsview__card .mcard__facts dt { font-size: .74rem; }
 .mapsview__card .mcard__facts dd { font-size: .88rem; }
 .mapsview__close { width: 26px; height: 26px; font-size: 17px; top: 8px; }
+
+/* ===== التقرير الشهري ===== */
+.mfilters .filters__fields { border-top: 0; padding-top: 0; max-width: 520px; }
+.mreport__lead { display: flex; align-items: center; gap: 8px; margin: 18px 0 14px; font-size: var(--caption); color: var(--ink-soft); }
+.mreport__lead b { color: var(--ink); }
+.mgrid { display: grid; align-items: start; grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr)); gap: 16px; }
+.mchart {
+  display: grid; gap: 14px; align-content: start;
+  padding: 18px 20px 20px;
+  background: var(--page-bg-solid);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+}
+.mchart__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.mchart__head h3 { margin: 0; font-size: var(--h3); color: var(--ink); line-height: 1.4; }
+.mchart__period { margin: 4px 0 0; font-size: 0.78rem; color: var(--ink-faint); }
+.mchart__dl {
+  flex: none; display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 8px;
+  border: 1px solid var(--edge-strong); background: transparent;
+  font: inherit; font-size: 0.78rem; color: var(--ink-soft); cursor: pointer;
+}
+.mchart__dl:hover { color: var(--ink); background: var(--glass-strong); }
+.mchart__none {
+  margin: 0; padding: 34px 0; text-align: center;
+  border: 1px dashed var(--edge-strong); border-radius: var(--radius-sm);
+  color: var(--ink-faint); font-size: 0.9rem;
+}
+.mchart.is-empty { opacity: 0.8; }

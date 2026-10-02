@@ -127,6 +127,12 @@ export default function MainNav({ route, ops, projects, projectsStatus }) {
             <span className="mainnav__caret" aria-hidden="true" />
           </button>
 
+          <a href={href.monthly()}
+            className={`categories__item${route.page === 'monthly' ? ' is-active' : ''}`}
+            aria-current={route.page === 'monthly' ? 'page' : undefined}>
+            التقرير الشهري
+          </a>
+
           <a href={href.maps()}
             className={`categories__item${route.page === 'maps' ? ' is-active' : ''}`}
             aria-current={route.page === 'maps' ? 'page' : undefined}>

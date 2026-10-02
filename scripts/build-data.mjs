@@ -181,7 +181,8 @@ function buildReport(rows, places, { operation, dims, metrics }) {
   for (const row of subset) {
     const raw = row['التاريخ'];
     const date = raw instanceof Date ? raw : new Date(raw);
-    const day = Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
+    /* +12 ساعة: التاريخ يُقرأ كمنتصف ليل محلي، فتحويله إلى UTC كان يرجعه يوماً (31 أيار بدل 1 حزيران) */
+    const day = Number.isNaN(date.getTime()) ? '' : new Date(date.getTime() + 12 * 3600e3).toISOString().slice(0, 10);
 
     const code = clean(row['ترميز المنطقة']);
     const place = places.get(code);
@@ -301,6 +302,12 @@ const AMBULANCE = {
     { key: 'referral', title: 'الإحالة', column: 'احالة' },
   ],
   metrics: [
+    { key: 'benMen', title: 'مستفيدون رجال', columns: ['عدد المستفيدين الرجال'] },
+    { key: 'benWomen', title: 'مستفيدات نساء', columns: ['عدد المستفيدين النساء'] },
+    { key: 'benKids', title: 'مستفيدون أطفال', columns: ['عدد المستفيدين الأطفال الذكور', 'عدد المستفيدين الأطفال الاناث'] },
+    { key: 'injMen', title: 'مصابون رجال', columns: ['عدد المصابين الرجال'] },
+    { key: 'injWomen', title: 'مصابات نساء', columns: ['عدد المصابين النساء'] },
+    { key: 'injKids', title: 'مصابون أطفال', columns: ['عدد المصابين الأطفال'] },
     { key: 'eta', title: 'زمن الوصول للموقع', columns: ['زمن الوصول للموقع بالدقائق'], cap: 1440 },
     { key: 'toHospital', title: 'زمن النقل للمشفى', columns: ['زمن الوصول للمشفى بالدقائق'], cap: 1440 },
     { key: 'crew', title: 'الكادر المشارك', columns: ['عدد الكادر المشارك'], cap: 500 },
@@ -348,6 +355,12 @@ const TRAFFIC = {
     { key: 'destination', title: 'جهة نقل المصابين', column: 'نوع مكان الاسعاف الى', note: 'مسجّلة في جزء من الحوادث' },
   ],
   metrics: [
+    { key: 'injMen', title: 'مصابون رجال', columns: ['عدد المصابين الرجال'] },
+    { key: 'injWomen', title: 'مصابات نساء', columns: ['عدد المصابين النساء'] },
+    { key: 'injKids', title: 'مصابون أطفال', columns: ['عدد المصابين الأطفال'] },
+    { key: 'deadMen', title: 'وفيات رجال', columns: ['عدد الشهداء الرجال'] },
+    { key: 'deadWomen', title: 'وفيات نساء', columns: ['عدد الشهداء النساء'] },
+    { key: 'deadKids', title: 'وفيات أطفال', columns: ['عدد الشهداء الأطفال'] },
     {
       key: 'injured',
       title: 'المصابون',

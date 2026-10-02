@@ -20,6 +20,7 @@ export function parseRoute(hash) {
   if ((m = path.match(/^\/s\/([\w-]+)/))) return { page: 'fill', id: m[1] };
   if (path.startsWith('/admin')) return { page: 'admin' };
   if (path.startsWith('/maps')) return { page: 'maps' };
+  if (path.startsWith('/monthly')) return { page: 'monthly' };
   if ((m = path.match(/^\/ops\/([\w-]+)/))) return { page: 'ops', id: m[1] };
   if ((m = path.match(/^\/projects\/([\w-]+)/))) return { page: 'project', id: m[1] };
   if (path.startsWith('/projects')) return { page: 'projects' };
@@ -31,6 +32,7 @@ export const href = {
   ops: (id) => `#/ops/${id}`,
   projects: () => '#/projects',
   maps: () => '#/maps',
+  monthly: () => '#/monthly',
   project: (id) => `#/projects/${id}`,
 };
 
