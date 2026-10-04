@@ -16,6 +16,13 @@ import FillPage from './projects/FillPage';
 import AuthGate from './admin/AuthGate';
 import MapsPage from './components/MapsPage';
 import MonthlyReport from './components/MonthlyReport';
+import RubbleTransfer, { RUBBLE_PROJECT } from './projects/RubbleTransfer';
+
+/* مشروع ثابت (بيانات جاهزة لا من قاعدة البيانات) يظهر أول قائمة المشاريع */
+const STATIC_PROJECTS = [{
+  ...RUBBLE_PROJECT, static: true,
+  responses: new Array(RUBBLE_PROJECT.surveysCount), surveys: [{}, {}],
+}];
 
 export default function App() {
   const { theme, toggle: toggleTheme } = useTheme();
@@ -40,8 +47,8 @@ export default function App() {
   /* المشاريع المنشورة — لقائمة التنقل ولصفحات المشاريع */
   useEffect(() => {
     listPublishedProjects()
-      .then((list) => setProjects({ status: 'ready', list }))
-      .catch(() => setProjects({ status: 'error', list: [] }));
+      .then((list) => setProjects({ status: 'ready', list: [...STATIC_PROJECTS, ...list] }))
+      .catch(() => setProjects({ status: 'ready', list: STATIC_PROJECTS }));
   }, []);
 
   useEffect(() => {
@@ -197,7 +204,9 @@ export default function App() {
                 {currentProject.description && (
                   <p className="report__summary">{currentProject.description}</p>
                 )}
-                <ProjectReport project={currentProject} basemap={base.basemap} />
+                {currentProject.static
+                  ? <RubbleTransfer basemap={base.basemap} />
+                  : <ProjectReport project={currentProject} basemap={base.basemap} />}
               </>
             )}
           </section>

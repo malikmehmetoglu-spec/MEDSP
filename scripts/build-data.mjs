@@ -578,4 +578,11 @@ function write(name, payload) {
   console.log(`  ✓ ${name} (${kb} كيلوبايت)`);
 }
 
+/* مشروع ترحيل الأنقاض: بيانات جاهزة (مراحل + استبيانات KoBo) تُنسخ كما هي */
+function copyStatic() {
+  const src = path.join(root, '..', 'data', 'rubble-transfer.json');
+  if (fs.existsSync(src)) fs.copyFileSync(src, path.join(outDir, 'rubble-transfer.json'));
+}
+
 run();
+copyStatic();
