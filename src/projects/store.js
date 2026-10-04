@@ -433,3 +433,10 @@ export async function listPublishedProjects() {
   fail(error);
   return data || [];
 }
+
+/* إجابات استبيان ترحيل الأنقاض المعتمدة — تُدمج في تقرير «مشروع ترحيل الأنقاض» */
+export async function rubbleTransferFeed() {
+  const { data, error } = await supabase.rpc('rubble_transfer_feed');
+  fail(error);
+  return data || [];
+}

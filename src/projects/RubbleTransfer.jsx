@@ -6,6 +6,7 @@ import Figure from '../components/Figure';
 import Icon from '../components/Icon';
 import Dropdown from '../components/Dropdown';
 import SyriaMap from '../components/SyriaMap';
+import { rubbleTransferFeed } from './store';
 
 /*
   مشروع ترحيل الأنقاض — إدارة تقييم الأضرار والتعافي.
@@ -27,7 +28,11 @@ const norm = (s) => String(s ?? '').trim().replace(/[إأآ]/g, 'ا').replace(/�
   .replace(/\s+/g, ' ');
 const govKey = (g) => { const n = norm(g); return n === 'ريف حلب' ? 'حلب' : n; };
 const GOV_LABEL = { ادلب: 'إدلب', حماه: 'حماة', 'ريف دمشق': 'ريف دمشق' };
-const govName = (g) => GOV_LABEL[govKey(g)] ?? govKey(g).replace(/ه$/, 'ة');
+const govName = (raw) => {
+  /* إجابات المنصة تحمل رمز المحافظة (SY07) */
+  const g = (/^SY\d/.test(raw || '') && govNames?.get(raw)) || raw;
+  return GOV_LABEL[govKey(g)] ?? govKey(g).replace(/ه$/, 'ة');
+};
 /* اسم الجهة المنفذة: يُدمج «شركة الفاتح» و«شركة الفاتح للانشاءات» وأخطاء الإملاء الشائعة */
 const coKey = (raw) => {
   const n = norm(raw);
@@ -41,15 +46,17 @@ const coKey = (raw) => {
     .sort().join(' ');
 };
 
+let govNames = null;
+
 const PHASES = [
-  { key: 'المرحلة الأولى', title: 'المهمة الأولى', scope: 'إزالة الأنقاض من المنشآت العامة والطرق الرئيسية في إدلب وحماة واللاذقية.' },
-  { key: 'المرحلة الثانية', title: 'المهمة الثانية', scope: 'ترحيل الأنقاض من الطرق الحيوية في ريف حلب وإدلب واللاذقية ودير الزور.' },
-  { key: 'المرحلة الثالثة', title: 'المهمة الثالثة', scope: 'مشاريع درعا وريف دمشق (حرستا) وحمص وحماة وريف حلب وإدلب.' },
+  { key: 'المرحلة الأولى', title: 'المرحلة الأولى', scope: 'إزالة الأنقاض من المنشآت العامة والطرق الرئيسية في إدلب وحماة واللاذقية.' },
+  { key: 'المرحلة الثانية', title: 'المرحلة الثانية', scope: 'ترحيل الأنقاض من الطرق الحيوية في ريف حلب وإدلب واللاذقية ودير الزور.' },
+  { key: 'المرحلة الثالثة', title: 'المرحلة الثالثة', scope: 'مشاريع درعا وريف دمشق (حرستا) وحمص وحماة وريف حلب وإدلب.' },
 ];
 
 const TABS = [
   { id: 'overview', label: 'نظرة عامة' },
-  { id: 'govs', label: 'المحافظات والمهام' },
+  { id: 'govs', label: 'المحافظات والمراحل' },
   { id: 'spatial', label: 'التوزيع الجغرافي' },
   { id: 'surveys', label: 'الاستبيانات الميدانية' },
   { id: 'contractors', label: 'الجهات المنفذة' },
@@ -76,7 +83,7 @@ function Overview({ t, phases, go }) {
         <div className="hero__primary">
           <span className="hero__eyebrow"><Icon name="area" /> إجمالي الأنقاض المخطط ترحيلها</span>
           <Figure value={t.planned} className="hero__figure" />
-          <span className="hero__sub">متر مكعب في {fmt(t.govs)} محافظات و{fmt(t.regions)} منطقة، ضمن ثلاث مهام تنفيذية</span>
+          <span className="hero__sub">متر مكعب في {fmt(t.govs)} محافظات و{fmt(t.regions)} منطقة، ضمن ثلاث مراحل تنفيذية</span>
         </div>
         <div className="hero__side">
           <Stat icon="target" tone="forest" label="المنفَّذ فعلياً" value={t.executed} unit="م³"
@@ -84,7 +91,7 @@ function Overview({ t, phases, go }) {
           <Stat icon="clock" tone="gold" label="المتبقي للترحيل" value={Math.max(0, t.planned - t.executed)} unit="م³"
             note="الكميات غير المنجزة بعد" share={100 - pct(t.executed, t.planned)} />
           <Stat icon="t_integer" tone="teal" label="استبيانات ميدانية موثّقة" value={t.surveys} unit="استبيان"
-            note={`${fmt(t.surveyVol)} م³ موثّقة ميدانياً`} share={100} />
+            note={`${fmt(t.surveyVol)} م³ موثّقة ميدانياً${t.live ? `، منها ${fmt(t.live)} من استبيان المنصة` : ''}`} share={100} />
         </div>
       </section>
 
@@ -95,7 +102,7 @@ function Overview({ t, phases, go }) {
           <p>تهدف الخطة الوطنية لإدارة وترحيل الأنقاض إلى إزالة الركام وفتح الطرق والشرايين الحيوية في المناطق السكنية والخدمية المتضررة، تمهيداً لإعادة تأهيل البنية التحتية وتسهيل العودة الكريمة والآمنة للسكان.</p>
           <p>تعتمد المنظومة على رقابة ميدانية عبر استبيانات KoBoToolbox الرقمية لتوثيق كل موقع وكمية، مع نقل الأنقاض إلى مكبات معتمدة تمهيداً لفرزها وإعادة تدويرها هندسياً.</p>
           <div className="rt-intro__actions">
-            <button type="button" className="rt-btn rt-btn--primary" onClick={() => go('govs')}>موقف المحافظات والمهام</button>
+            <button type="button" className="rt-btn rt-btn--primary" onClick={() => go('govs')}>موقف المحافظات والمراحل</button>
             <button type="button" className="rt-btn" onClick={() => go('spatial')}>الخريطة والتوزيع الجغرافي</button>
           </div>
         </div>
@@ -113,8 +120,8 @@ function Overview({ t, phases, go }) {
       </div>
 
       <div className="rt-sechead">
-        <span className="rt-kicker">حالة المهام التنفيذية</span>
-        <h2>خطة المهام الثلاث لترحيل الأنقاض (2026)</h2>
+        <span className="rt-kicker">حالة المراحل التنفيذية</span>
+        <h2>خطة المراحل الثلاث لترحيل الأنقاض (2026)</h2>
       </div>
       <div className="rt-phases">
         {phases.map((p) => {
@@ -163,16 +170,16 @@ function Governorates({ govs }) {
               <div><dt>الإنجاز</dt><dd className="is-gold">{g.rate}%</dd></div>
             </dl>
             <button type="button" className="rt-toggle" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : g.key)}>
-              {isOpen ? 'إخفاء' : 'عرض'} تفاصيل المناطق والمهام ({g.regions.length})
+              {isOpen ? 'إخفاء' : 'عرض'} تفاصيل المناطق والمراحل ({g.regions.length})
             </button>
             {isOpen && (
               <div className="rt-tablewrap">
                 <table className="rt-table">
-                  <thead><tr><th>المهمة</th><th>المنطقة</th><th>المخطط م³</th><th>المنفَّذ م³</th><th>الإنجاز</th><th>الحالة والملاحظات</th></tr></thead>
+                  <thead><tr><th>المرحلة</th><th>المنطقة</th><th>المخطط م³</th><th>المنفَّذ م³</th><th>الإنجاز</th><th>الحالة والملاحظات</th></tr></thead>
                   <tbody>
                     {g.regions.map((r, i) => (
                       <tr key={i}>
-                        <td>{r.phase.replace('المرحلة', 'المهمة')}</td>
+                        <td>{r.phase}</td>
                         <td><b>{r.region}</b></td>
                         <td className="num">{fmt(r.planned)}</td>
                         <td className="num is-strong">{fmt(r.executed)}</td>
@@ -252,6 +259,7 @@ function Spatial({ govs, surveys, basemap }) {
 /* ---------------- الاستبيانات ---------------- */
 
 const PAGE = 25;
+const projLabel = (s) => `المشروع ${['', 'الأول', 'الثاني', 'الثالث'][s.p] || ''}`;
 
 function Surveys({ surveys }) {
   const [f, setF] = useState({ gov: [], p: [], nature: [], q: '' });
@@ -266,7 +274,7 @@ function Surveys({ surveys }) {
   const list = useMemo(() => {
     const q = norm(f.q);
     return surveys.filter((s) => (!f.gov.length || f.gov.includes(govName(s.gov)))
-      && (!f.p.length || f.p.includes(`المشروع ${s.p === 1 ? 'الأول' : 'الثاني'}`))
+      && (!f.p.length || f.p.includes(projLabel(s)))
       && (!f.nature.length || f.nature.includes(s.nature))
       && (!q || norm([s.co, s.by, s.area, s.town, s.village, s.addr, s.id].join(' ')).includes(q)));
   }, [surveys, f]);
@@ -283,7 +291,7 @@ function Surveys({ surveys }) {
           <div className="ffield"><span className="ffield__label">المحافظة</span>
             <Dropdown multi placeholder="كل المحافظات" value={f.gov} onChange={set('gov')} options={opts((s) => govName(s.gov))} /></div>
           <div className="ffield"><span className="ffield__label">المشروع الميداني</span>
-            <Dropdown multi placeholder="كل المشاريع" value={f.p} onChange={set('p')} options={opts((s) => `المشروع ${s.p === 1 ? 'الأول' : 'الثاني'}`)} /></div>
+            <Dropdown multi placeholder="كل المشاريع" value={f.p} onChange={set('p')} options={opts((s) => projLabel(s))} /></div>
           <div className="ffield"><span className="ffield__label">طبيعة الموقع</span>
             <Dropdown multi placeholder="كل المواقع" value={f.nature} onChange={set('nature')} options={opts((s) => s.nature)} /></div>
           <label className="ffield"><span className="ffield__label">بحث سريع</span>
@@ -305,7 +313,7 @@ function Surveys({ surveys }) {
             {rows.map((s) => (
               <tr key={`${s.p}-${s.id}`} onClick={() => setView(s)} tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && setView(s)}>
                 <td className="num">{s.id}</td>
-                <td><span className={`rt-badge rt-badge--p${s.p}`}>المشروع {s.p === 1 ? 'الأول' : 'الثاني'}</span></td>
+                <td><span className={`rt-badge rt-badge--p${s.p}`}>{projLabel(s)}</span></td>
                 <td><b>{govName(s.gov)}</b></td>
                 <td>{[s.area, s.town, s.village].filter(Boolean).join(' — ')}</td>
                 <td>{s.nature}</td>
@@ -356,7 +364,7 @@ function SurveyModal({ s, onClose }) {
           <div>
             <span className="rt-kicker">استبيان ميداني رقم #{s.id}</span>
             <h3>{[s.village || s.town, s.area].filter(Boolean).join(' — ')}</h3>
-            <p>المشروع {s.p === 1 ? 'الأول' : 'الثاني'} — محافظة {govName(s.gov)}</p>
+            <p>{projLabel(s)} — محافظة {govName(s.gov)}</p>
           </div>
           <button type="button" className="rt-modal__x" onClick={onClose} aria-label="إغلاق">✕</button>
         </header>
@@ -372,6 +380,7 @@ function SurveyModal({ s, onClose }) {
           <F k="الأسر المستفيدة" v={s.fam ? fmt(s.fam) : null} />
           <F k="تاريخ رفع البيانات" v={s.date} />
           <F k="الإحداثيات" v={s.lat ? `${s.lat}, ${s.lon}` : null} />
+          <F k="المصدر" v={s.live ? `استبيان المنصة${s.hasPhotos ? ' — الصور في مساحة العمل' : ''}` : 'KoBoToolbox'} />
         </dl>
         {photos.length > 0 && (
           <div className="rt-modal__photos">
@@ -470,15 +479,41 @@ function Recycling({ executed }) {
   );
 }
 
+/* إجابة من استبيان المنصة ← صف بنفس شكل بيانات KoBo */
+function fromResponse(r, i) {
+  const a = r.answers || {};
+  const code = a.rt_gov?.governorate || '';
+  return {
+    id: `م-${i + 1}`, p: Number(a.rt_phase) || 3, live: true,
+    date: a.rt_date || String(r.submittedAt || '').slice(0, 10),
+    by: a.rt_collector || '', co: a.rt_contractor || 'غير محدد', nature: a.rt_nature || '',
+    addr: a.rt_address || '', gov: code, area: a.rt_area || '',
+    town: a.rt_town || '', village: a.rt_village || '',
+    lat: Number(a.rt_point?.lat) || 0, lon: Number(a.rt_point?.lng) || 0,
+    vol: Number(a.rt_volume) || 0, dump: a.rt_dump || '', dist: a.rt_distance || '',
+    hours: Number(a.rt_hours) || null, fam: Number(a.rt_families) || null, photos: [],
+    hasPhotos: Boolean(r.photos),
+  };
+}
+
 /* ---------------- الصفحة ---------------- */
 
 export default function RubbleTransfer({ basemap }) {
+  if (basemap && !govNames) govNames = new Map((basemap.governorates || []).map((g) => [g.code, g.name]));
   const [data, setData] = useState(null);
   const [error, setError] = useState(false);
   const [tab, setTab] = useState('overview');
 
   useEffect(() => {
-    fetch('data/rubble-transfer.json').then((r) => r.json()).then(setData).catch(() => setError(true));
+    /*
+      البيانات الأساسية (KoBo) من الملف، ثم تُضاف إليها الإجابات المعتمدة من
+      استبيان المنصة. إن تعذّر الاتصال بقاعدة البيانات يبقى التقرير بالبيانات الأساسية.
+    */
+    Promise.all([
+      fetch('data/rubble-transfer.json').then((r) => r.json()),
+      rubbleTransferFeed().catch(() => []),
+    ]).then(([base, live]) => setData({ ...base, live: live.length, surveys: [...base.surveys, ...live.map(fromResponse)] }))
+      .catch(() => setError(true));
   }, []);
 
   const model = useMemo(() => {
@@ -502,6 +537,7 @@ export default function RubbleTransfer({ basemap }) {
       planned: data.phases.reduce((a, r) => a + r.planned, 0),
       executed: Math.round(data.phases.reduce((a, r) => a + r.executed, 0)),
       surveys: data.surveys.length,
+      live: data.live || 0,
       surveyVol: data.surveys.reduce((a, s) => a + s.vol, 0),
       govs: govs.length,
       regions: data.phases.filter((r) => r.planned > 0).length,
