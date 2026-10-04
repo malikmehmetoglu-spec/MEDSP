@@ -1836,3 +1836,4 @@ button.cmp__row { width: 100%; font: inherit; color: inherit; background: none; 
 .cmp__row.is-on { background: var(--glass-strong); border-radius: 8px; }
 .cmp__row.is-on .cmp__label { font-weight: 700; color: var(--ink); }
 .dtable tbody tr.is-dim { opacity: 0.35; }
+a.pedit__publish { display: inline-flex; align-items: center; text-decoration: none; }

@@ -18,6 +18,14 @@ import SurveyPage from '../survey/SurveyPage';
   لا تُدخَل بيانات حقيقية قبل بنائها.
 */
 
+/*
+  استبيان مرتبط بتقرير ثابت (مثل «مشروع ترحيل الأنقاض»): إجاباته المعتمدة تظهر
+  في ذلك التقرير مباشرة، فلا معنى لنشره كمشروع مستقل.
+*/
+const linkedFeed = (surveys) => (surveys.some((s) => s.report?.feed === 'rubble-transfer'
+  || JSON.stringify(s.pages || []).includes('"rt_volume"'))
+  ? { name: 'مشروع ترحيل الأنقاض', href: '#/projects/rubble-transfer' } : null);
+
 /* استبيان ميداني */
 const TABS = [
   { id: 'build', label: 'بناء الاستبيان' },
@@ -108,7 +116,9 @@ function ProjectList({ projects, counts, onOpen, onCreate, onDelete }) {
             <article className="pcard" key={p.id}>
               <div className="pcard__head">
                 <h3>{p.name}</h3>
-                {p.published
+                {c.linked
+                  ? <span className="tag tag--approved">يصب في «{c.linked.name}»</span>
+                  : p.published
                   ? <span className="tag tag--approved">منشور</span>
                   : <span className="tag">غير منشور</span>}
               </div>
@@ -120,7 +130,12 @@ function ProjectList({ projects, counts, onOpen, onCreate, onDelete }) {
                   : <><span>{c.surveys} استبيان</span><span>{c.approved} معتمد</span></>}
                 {c.pending > 0 && <span className="pcard__pending">{c.pending} بانتظار المراجعة</span>}
               </div>
-              {!p.published && (
+              {c.linked && (
+                <p className="pcard__why">
+                  الإجابات المعتمدة تظهر مباشرة في تقرير «{c.linked.name}» العام — لا يحتاج نشراً.
+                </p>
+              )}
+              {!p.published && !c.linked && (
                 <p className="pcard__why">
                   {p.kind === 'data' && c.approved === 0
                     ? 'لا يظهر للعامة: ارفع ملف البيانات ثم انشر.'
@@ -270,6 +285,7 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged, initialTab = 'bu
   if (!project) return <p className="results__empty">جارٍ التحميل…</p>;
 
   const isData = project.kind === 'data';
+  const linked = linkedFeed(surveys);
   const pending = isData ? 0 : responses.filter((r) => r.status === 'pending').length;
 
   return (
@@ -283,15 +299,20 @@ function ProjectEditor({ projectId, basemap, onBack, onChanged, initialTab = 'bu
               <span className="tag">{isData ? 'مشروع بيانات' : 'استبيان ميداني'}</span>
               {pending > 0 && <span className="tag tag--pending">{pending} بانتظار المراجعة</span>}
               {project.published && <span className="tag tag--approved">منشور</span>}
+              {linked && <span className="tag tag--approved">مرتبط بتقرير «{linked.name}»</span>}
             </div>
           </div>
-          <button
+          {linked ? (
+            <a className="pedit__publish is-live" href={linked.href} target="_blank" rel="noreferrer">
+              فتح التقرير المرتبط ↗
+            </a>
+          ) : <button
             type="button"
             className={`pedit__publish${project.published ? ' is-live' : ''}`}
             onClick={togglePublish}
           >
             {project.published ? 'إلغاء النشر' : 'نشر على الصفحة الرئيسية'}
-          </button>
+          </button>}
         </div>
       </header>
 
@@ -477,6 +498,7 @@ export default function AdminApp({ basemap, me }) {
       const rows = all.filter((r) => ids.has(r.surveyId));
       map[p.id] = {
         surveys: ids.size,
+        linked: linkedFeed(surveys.filter((s) => s.projectId === p.id)),
         pending: rows.filter((r) => r.status === 'pending').length,
         approved: rows.filter((r) => r.status === 'approved').length,
       };
