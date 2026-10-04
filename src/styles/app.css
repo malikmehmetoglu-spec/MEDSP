@@ -2084,3 +2084,161 @@ button.bars__hit { cursor: pointer; }
 @media print {
   .rt-tabsbar, .mainnav, .masthead, .footer { display: none !important; }
 }
+
+/* ===================== ترحيل الأنقاض — العرض الجديد (rx-) ===================== */
+.rx { display: grid; gap: 34px; }
+.rx h2, .rx h3, .rx p { margin: 0; }
+.rx-block { display: grid; gap: 16px; }
+.rx-head { display: grid; gap: 4px; }
+.rx-head h2 { font-size: var(--h2); color: var(--ink); }
+.rx-head p { font-size: 0.86rem; color: var(--ink-faint); }
+.rx-card { display: grid; gap: 12px; align-content: start; padding: 18px 20px; border-radius: var(--radius); border: 1px solid var(--edge); background: var(--glass); }
+.rx-card h3 { font-size: 0.95rem; color: var(--ink); }
+
+/* الملخص: حلقة + أرقام + قراءات */
+.rx-top {
+  display: grid; gap: 22px; align-items: center;
+  grid-template-columns: 200px minmax(0, 1fr) minmax(0, 1.25fr);
+  padding: 26px; border-radius: calc(var(--radius) + 6px);
+  border: 1px solid var(--edge);
+  background:
+    radial-gradient(600px 220px at 100% 0%, rgba(53,179,173,0.12), transparent 70%),
+    radial-gradient(500px 220px at 0% 100%, rgba(212,164,67,0.14), transparent 70%),
+    var(--glass);
+}
+.rx-ring { width: 100%; max-width: 200px; display: block; }
+.rx-ring__track { fill: none; stroke: var(--surface-track); stroke-width: 16; }
+.rx-ring__val { fill: none; stroke-width: 16; stroke-linecap: round; transition: stroke-dasharray 0.8s ease; }
+.rx-ring__num { text-anchor: middle; font-size: 34px; font-weight: 800; fill: var(--ink); font-family: inherit; }
+.rx-ring__cap { text-anchor: middle; font-size: 12px; fill: var(--ink-faint); font-family: inherit; }
+.rx-top__nums { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.rx-num { display: grid; gap: 2px; padding: 12px 14px; border-radius: 14px; background: var(--glass-strong); border-inline-start: 4px solid var(--c); }
+.rx-num--a { --c: #4f8fdc; } .rx-num--b { --c: #2f9e74; } .rx-num--c { --c: #e0735a; } .rx-num--d { --c: #d4a443; }
+.rx-num span { font-size: 0.76rem; color: var(--ink-faint); }
+.rx-num b { font-size: 1.45rem; font-weight: 800; color: var(--ink); line-height: 1.2; font-variant-numeric: tabular-nums; }
+.rx-num em { font-style: normal; font-size: 0.72rem; color: var(--ink-faint); }
+.rx-insights { display: grid; gap: 10px; }
+.rx-insights h3 { font-size: 0.95rem; color: var(--ink); }
+.rx-insights ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.rx-insights li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.86rem; line-height: 1.7; color: var(--ink-soft); }
+.rx-insights b { color: var(--ink); }
+.rx-insights__ic {
+  flex: none; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center;
+  font-size: 0.78rem; font-weight: 800; color: #fff; background: var(--c);
+}
+
+/* شريط المراحل */
+.rx-ribbon { display: flex; gap: 6px; height: 46px; }
+.rx-ribbon__seg { position: relative; min-width: 70px; border-radius: 12px; overflow: hidden; background: color-mix(in srgb, var(--c) 18%, transparent); }
+.rx-ribbon__fill { position: absolute; inset-block: 0; inset-inline-start: 0; background: var(--c); border-radius: inherit; transition: width 0.8s ease; }
+.rx-ribbon__pct { position: relative; display: grid; place-items: center; height: 100%; font-weight: 800; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.35); }
+.rx-phases { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.rx-phases article { display: flex; gap: 10px; align-items: flex-start; }
+.rx-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; margin-top: 6px; background: var(--c); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 22%, transparent); }
+.rx-phases h3 { font-size: 0.98rem; color: var(--ink); }
+.rx-phases h3 small { font-size: 0.72rem; font-weight: 600; color: var(--c); margin-inline-start: 6px; }
+.rx-phases p { font-size: 0.8rem; color: var(--ink-faint); line-height: 1.6; }
+.rx-phases p b { color: var(--ink); }
+
+/* مصفوفة المحافظات × المراحل */
+.rx-legend { display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.74rem; }
+.rx-legend span { padding: 3px 10px; border-radius: 999px; }
+.rx-matrix { display: grid; gap: 6px; }
+.rx-matrix__row { display: grid; grid-template-columns: minmax(110px, 1.2fr) repeat(4, minmax(0, 1fr)); gap: 6px; align-items: stretch; }
+.rx-matrix__row--head span { font-size: 0.76rem; font-weight: 700; color: var(--ink-faint); text-align: center; padding: 4px; }
+.rx-matrix__row--head span:first-child { text-align: start; }
+.rx-matrix__gov {
+  display: grid; gap: 2px; text-align: start; padding: 8px 12px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--edge); background: var(--glass); font: inherit; font-weight: 700; color: var(--ink);
+}
+.rx-matrix__gov small { font-weight: 400; font-size: 0.72rem; color: var(--ink-faint); }
+.rx-matrix__gov[aria-expanded='true'] { border-color: var(--golden-wheat); }
+.rx-cell { display: grid; place-items: center; align-content: center; gap: 1px; padding: 8px 4px; border-radius: 10px; font-weight: 800; font-size: 0.92rem; font-variant-numeric: tabular-nums; }
+.rx-cell small { font-size: 0.66rem; font-weight: 500; opacity: 0.8; }
+.rx-cell--none { color: var(--ink-faint); background: transparent; border: 1px dashed var(--edge); font-weight: 400; }
+.h0, .rx-cell--h0 { background: rgba(140,140,140,0.16); color: var(--ink-soft); }
+.h1, .rx-cell--h1 { background: #f1c6b8; color: #8a3520; }
+.h2, .rx-cell--h2 { background: #f3dca3; color: #7a5a12; }
+.h3, .rx-cell--h3 { background: #9fd6c9; color: #135d52; }
+.h4, .rx-cell--h4 { background: #2f9e74; color: #fff; }
+.rx-cell--total { outline: 2px solid var(--edge-strong); outline-offset: -2px; }
+.rx-regions { list-style: none; margin: 4px 0 8px; padding: 10px 14px; display: grid; gap: 8px; border-radius: 12px; background: var(--glass-strong); }
+.rx-regions li { display: grid; grid-template-columns: minmax(110px, 1fr) minmax(80px, 1.4fr) auto; gap: 4px 12px; align-items: center; font-size: 0.84rem; color: var(--ink); }
+.rx-regions em { grid-column: 1 / -1; font-style: normal; font-size: 0.74rem; color: var(--ink-faint); }
+.rx-regions__n { font-size: 0.78rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.rx-mini { height: 8px; border-radius: 999px; background: var(--surface-track); overflow: hidden; }
+.rx-mini span { display: block; height: 100%; background: var(--c); border-radius: inherit; }
+
+/* الميدان */
+.rx-field { display: grid; gap: 14px; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+.rx-card--map { padding: 10px; }
+.rx-col { display: grid; gap: 14px; align-content: start; }
+.rx-stack { display: flex; height: 14px; border-radius: 999px; overflow: hidden; gap: 2px; }
+.rx-stack span { min-width: 3px; }
+.rx-keys { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rx-keys li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; font-size: 0.82rem; color: var(--ink-soft); }
+.rx-keys i { width: 10px; height: 10px; border-radius: 3px; }
+.rx-keys b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.rx-keys small { color: var(--ink-faint); font-size: 0.72rem; min-width: 80px; text-align: end; }
+.rx-tiles { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.rx-tile { display: grid; gap: 2px; padding: 14px; border-radius: 14px; color: #fff; background: linear-gradient(150deg, var(--c), color-mix(in srgb, var(--c) 70%, #000)); }
+.rx-tile span { font-size: 0.82rem; opacity: 0.92; }
+.rx-tile b { font-size: 1.4rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.rx-tile small { font-size: 0.7rem; opacity: 0.8; }
+
+/* الجهات */
+.rx-cos { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.rx-cos li { display: grid; grid-template-columns: 30px minmax(160px, 1.3fr) minmax(0, 2fr) auto; gap: 12px; align-items: center; padding: 10px 14px; border-radius: 14px; background: var(--glass); border: 1px solid var(--edge); }
+.rx-cos__n { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #fff; background: var(--c); }
+.rx-cos__name { display: grid; font-weight: 700; color: var(--ink); font-size: 0.9rem; }
+.rx-cos__name small { font-weight: 400; font-size: 0.72rem; color: var(--ink-faint); }
+.rx-cos__bar { height: 12px; border-radius: 999px; background: var(--surface-track); overflow: hidden; }
+.rx-cos__bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--c), color-mix(in srgb, var(--c) 60%, #fff)); }
+.rx-cos b { font-size: 1rem; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rx-cos b small { font-size: 0.72rem; font-weight: 500; color: var(--ink-faint); }
+.rx-more {
+  justify-self: center; padding: 9px 18px; border-radius: 999px; border: 1px solid var(--edge-strong);
+  background: var(--glass); font: inherit; font-size: 0.84rem; color: var(--ink-soft); cursor: pointer;
+}
+.rx-more:hover { color: var(--ink); background: var(--glass-strong); }
+
+/* سجل المواقع */
+.rx-reg__bar { display: grid; gap: 10px; }
+.rx-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.rx-chips button {
+  padding: 6px 12px; border-radius: 999px; font: inherit; font-size: 0.82rem; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--c, #888) 45%, transparent); color: var(--ink);
+  background: color-mix(in srgb, var(--c, #888) 10%, transparent);
+}
+.rx-chips button small { color: var(--ink-faint); }
+.rx-chips button.is-on { background: var(--c, var(--forest)); border-color: var(--c, var(--forest)); color: #fff; font-weight: 700; }
+.rx-chips button.is-on small { color: rgba(255,255,255,0.85); }
+.rx-sites { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); }
+.rx-site {
+  display: grid; grid-template-columns: 90px minmax(0, 1fr) auto; gap: 12px; align-items: center; text-align: start;
+  padding: 10px 12px; border-radius: 14px; border: 1px solid var(--edge); background: var(--glass); font: inherit; cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.rx-site:hover { border-color: var(--golden-wheat); transform: translateY(-1px); }
+.rx-site__vol { display: grid; place-items: center; padding: 8px 4px; border-radius: 10px; font-weight: 800; font-size: 1.05rem; color: #135d52; background: #cfeee6; font-variant-numeric: tabular-nums; }
+.rx-site__vol small { font-size: 0.66rem; font-weight: 500; }
+.rx-site__main { display: grid; gap: 2px; min-width: 0; }
+.rx-site__main b { color: var(--ink); font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rx-site__main small { color: var(--ink-faint); font-size: 0.74rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rx-site__tag { font-size: 0.7rem; color: var(--accent-text); white-space: nowrap; }
+
+@media (max-width: 1000px) {
+  .rx-top { grid-template-columns: 160px minmax(0, 1fr); }
+  .rx-insights { grid-column: 1 / -1; }
+  .rx-field, .rx-phases { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .rx-top { grid-template-columns: minmax(0, 1fr); justify-items: stretch; }
+  .rx-ring { margin-inline: auto; max-width: 170px; }
+  .rx-matrix__row { grid-template-columns: 90px repeat(4, minmax(0, 1fr)); font-size: 0.8rem; }
+  .rx-cos li { grid-template-columns: 30px minmax(0, 1fr) auto; }
+  .rx-cos__bar { grid-column: 2 / -1; }
+}
+@media print { .rx-print, .rx-more, .rx-reg__bar { display: none !important; } }
+.rx-num .rx-num__v { font-size: 1.5rem; font-weight: 800; color: var(--ink); line-height: 1.25; text-align: start; }
+.rx-ribbon__pct.is-low { color: var(--ink); text-shadow: none; }

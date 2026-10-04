@@ -1,10 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Stat, Panel } from '../components/ReportShell';
-import BarChart from '../components/BarChart';
-import Donut from '../components/Donut';
 import Figure from '../components/Figure';
-import Icon from '../components/Icon';
-import Dropdown from '../components/Dropdown';
 import SyriaMap from '../components/SyriaMap';
 import { rubbleTransferFeed } from './store';
 
@@ -48,159 +43,206 @@ const coKey = (raw) => {
 
 let govNames = null;
 
-const PHASES = [
-  { key: 'المرحلة الأولى', title: 'المرحلة الأولى', scope: 'إزالة الأنقاض من المنشآت العامة والطرق الرئيسية في إدلب وحماة واللاذقية.' },
-  { key: 'المرحلة الثانية', title: 'المرحلة الثانية', scope: 'ترحيل الأنقاض من الطرق الحيوية في ريف حلب وإدلب واللاذقية ودير الزور.' },
-  { key: 'المرحلة الثالثة', title: 'المرحلة الثالثة', scope: 'مشاريع درعا وريف دمشق (حرستا) وحمص وحماة وريف حلب وإدلب.' },
-];
 
-const TABS = [
-  { id: 'overview', label: 'نظرة عامة' },
-  { id: 'govs', label: 'المحافظات والمراحل' },
-  { id: 'spatial', label: 'التوزيع الجغرافي' },
-  { id: 'surveys', label: 'الاستبيانات الميدانية' },
-  { id: 'contractors', label: 'الجهات المنفذة' },
-  { id: 'rca', label: 'تدوير الخرسانة' },
-];
 
-const status = (p) => (p >= 100 ? { cls: 'done', text: 'منجزة' } : p > 0 ? { cls: 'live', text: 'قيد التنفيذ' } : { cls: 'prep', text: 'إعداد وتجهيز' });
+/* لوحة ألوان المشروع: لون ثابت لكل فئة حتى يُعرف الشيء بلونه في كل الأقسام */
+const PAL = ['#2f9e74', '#d4a443', '#e0735a', '#4f8fdc', '#8d6bc9', '#35b3ad', '#d2668f', '#86a23c'];
+const PHASE_COLOR = ['#35b3ad', '#d4a443', '#8d6bc9'];
+const PHASE_KEYS = ['المرحلة الأولى', 'المرحلة الثانية', 'المرحلة الثالثة'];
+const projLabel = (s) => `المشروع ${['', 'الأول', 'الثاني', 'الثالث'][s.p] || ''}`;
 
-function Progress({ value }) {
-  const s = status(value);
+/* درجة الإنجاز → لون الخلية في المصفوفة */
+const heat = (r, planned) => {
+  if (!planned) return 'none';
+  if (r >= 100) return 'h4';
+  if (r >= 60) return 'h3';
+  if (r >= 20) return 'h2';
+  if (r > 0) return 'h1';
+  return 'h0';
+};
+
+function sumBy(list, key, val = () => 1) {
+  const m = new Map();
+  for (const x of list) { const k = key(x); if (k) m.set(k, (m.get(k) || 0) + val(x)); }
+  return [...m.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
+}
+
+/* ---------------- حلقة الإنجاز ---------------- */
+
+function Ring({ value }) {
+  const r = 70;
+  const c = 2 * Math.PI * r;
   return (
-    <span className={`rt-bar rt-bar--${s.cls}`}>
-      <span className="rt-bar__fill" style={{ width: `${Math.min(100, value)}%` }} />
-    </span>
+    <svg className="rx-ring" viewBox="0 0 180 180" role="img" aria-label={`نسبة الإنجاز ${value}%`}>
+      <defs>
+        <linearGradient id="rxg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#35b3ad" /><stop offset="1" stopColor="#d4a443" />
+        </linearGradient>
+      </defs>
+      <circle cx="90" cy="90" r={r} className="rx-ring__track" />
+      <circle cx="90" cy="90" r={r} className="rx-ring__val" stroke="url(#rxg)"
+        strokeDasharray={`${(Math.min(100, value) / 100) * c} ${c}`} transform="rotate(-90 90 90)" />
+      <text x="90" y="88" className="rx-ring__num">{value}%</text>
+      <text x="90" y="112" className="rx-ring__cap">من الخطة منجز</text>
+    </svg>
   );
 }
 
-/* ---------------- نظرة عامة ---------------- */
+/* ---------------- قراءات ذكية ---------------- */
 
-function Overview({ t, phases, go }) {
+function insights({ govs, surveys, t, contractors }) {
+  const out = [];
+  const active = govs.filter((g) => g.planned > 0);
+  const best = [...active].sort((a, b) => b.rate - a.rate)[0];
+  if (best) out.push({ tone: 0, icon: '▲', text: <>محافظة <b>{best.name}</b> الأعلى إنجازاً بنسبة <b>{best.rate}%</b> من مخططها.</> });
+
+  const remaining = active.map((g) => ({ ...g, rem: Math.max(0, g.planned - g.executed) })).sort((a, b) => b.rem - a.rem);
+  const remTotal = remaining.reduce((a, g) => a + g.rem, 0) || 1;
+  const top3 = remaining.slice(0, 3);
+  out.push({ tone: 2, icon: '◎', text: <><b>{pct(top3.reduce((a, g) => a + g.rem, 0), remTotal)}%</b> من الكميات المتبقية تتركز في {top3.map((g) => g.name).join(' و')} — هنا يجب أن يتجه الجهد القادم.</> });
+
+  const idle = active.filter((g) => g.executed === 0);
+  if (idle.length) out.push({ tone: 3, icon: '◷', text: <>{idle.length} محافظات لم يبدأ فيها التنفيذ بعد ({idle.map((g) => g.name).join('، ')}) بمخطط <b>{fmt(idle.reduce((a, g) => a + g.planned, 0))} م³</b>.</> });
+
+  const roads = surveys.filter((s) => /طريق/.test(s.nature)).length;
+  out.push({ tone: 5, icon: '⇢', text: <><b>{pct(roads, surveys.length)}%</b> من المواقع الموثقة طرق رئيسية وفرعية، أي أن فتح الطرق هو العمل الغالب ميدانياً.</> });
+
+  const local = surveys.filter((s) => s.dump && !/معتمد/.test(s.dump));
+  const localVol = local.reduce((a, s) => a + s.vol, 0);
+  if (local.length) out.push({ tone: 2, icon: '!', text: <><b>{pct(localVol, t.surveyVol)}%</b> من الأنقاض الموثقة نُقلت إلى مواقع مقترحة محلياً لا إلى مكبات معتمدة — يستحق متابعة بيئية.</> });
+
+  const top5 = contractors.slice(0, 5).reduce((a, c) => a + c.vol, 0);
+  out.push({ tone: 4, icon: '★', text: <>أكبر خمس جهات منفذة رحّلت <b>{pct(top5, t.surveyVol)}%</b> من الكميات الموثقة، وتتصدرها <b>{contractors[0]?.name}</b>.</> });
+
+  out.push({ tone: 1, icon: '≈', text: <>متوسط الكمية في الموقع الواحد <b>{fmt(t.surveyVol / (surveys.length || 1))} م³</b>.</> });
+  return out;
+}
+
+/* ---------------- الصفحة: الأقسام ---------------- */
+
+function Summary({ t, items }) {
+  return (
+    <section className="rx-top">
+      <div className="rx-top__ring">
+        <Ring value={pct(t.executed, t.planned)} />
+      </div>
+      <div className="rx-top__nums">
+        <div className="rx-num rx-num--a"><span>المخطط ترحيله</span><Figure value={t.planned} className="rx-num__v" /><em>م³</em></div>
+        <div className="rx-num rx-num--b"><span>تم ترحيله</span><Figure value={t.executed} className="rx-num__v" /><em>م³</em></div>
+        <div className="rx-num rx-num--c"><span>بانتظار الترحيل</span><Figure value={Math.max(0, t.planned - t.executed)} className="rx-num__v" /><em>م³</em></div>
+        <div className="rx-num rx-num--d"><span>مواقع موثّقة ميدانياً</span><Figure value={t.surveys} className="rx-num__v" /><em>{t.live ? `منها ${fmt(t.live)} من استبيان المنصة` : 'موقع'}</em></div>
+      </div>
+      <div className="rx-insights">
+        <h3>ماذا تقول الأرقام؟</h3>
+        <ul>
+          {items.map((x, i) => (
+            <li key={i} style={{ '--c': PAL[x.tone] }}><span className="rx-insights__ic">{x.icon}</span><p>{x.text}</p></li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+function PhaseRibbon({ phases }) {
+  const total = phases.reduce((a, p) => a + p.planned, 0) || 1;
+  return (
+    <section className="rx-block">
+      <header className="rx-head"><h2>مسار المراحل الثلاث</h2><p>عرض كل مرحلة يتناسب مع حجمها المخطط، والجزء الملوّن هو ما أُنجز منها.</p></header>
+      <div className="rx-ribbon">
+        {phases.map((p, i) => (
+          <div key={p.key} className="rx-ribbon__seg" style={{ flexGrow: p.planned / total, '--c': PHASE_COLOR[i] }}>
+            <span className="rx-ribbon__fill" style={{ width: `${Math.min(100, p.rate)}%` }} />
+            <span className={`rx-ribbon__pct${p.rate < 50 ? ' is-low' : ''}`}>{p.rate}%</span>
+          </div>
+        ))}
+      </div>
+      <div className="rx-phases">
+        {phases.map((p, i) => (
+          <article key={p.key} style={{ '--c': PHASE_COLOR[i] }}>
+            <span className="rx-dot" />
+            <div>
+              <h3>{p.title} <small>{p.rate >= 100 ? 'منجزة' : p.executed > 0 ? 'قيد التنفيذ' : 'إعداد وتجهيز'}</small></h3>
+              <p><b>{fmt(p.executed)}</b> من {fmt(p.planned)} م³ — {p.govs.join('، ')}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Matrix({ govs }) {
+  const [open, setOpen] = useState(null);
+  return (
+    <section className="rx-block">
+      <header className="rx-head">
+        <h2>المحافظات عبر المراحل</h2>
+        <p>كل خلية نسبة الإنجاز في محافظة ضمن مرحلة. اضغط اسم المحافظة لرؤية مناطقها.</p>
+      </header>
+      <div className="rx-legend">
+        <span className="h0">لم يبدأ</span><span className="h1">أقل من 20%</span><span className="h2">20–59%</span><span className="h3">60–99%</span><span className="h4">مكتمل</span>
+      </div>
+      <div className="rx-matrix" role="table">
+        <div className="rx-matrix__row rx-matrix__row--head" role="row">
+          <span role="columnheader">المحافظة</span>
+          {PHASE_KEYS.map((k, i) => <span key={k} role="columnheader" style={{ color: PHASE_COLOR[i] }}>{k}</span>)}
+          <span role="columnheader">الإجمالي</span>
+        </div>
+        {govs.map((g) => (
+          <div key={g.key} className="rx-matrix__group">
+            <div className="rx-matrix__row" role="row">
+              <button type="button" className="rx-matrix__gov" aria-expanded={open === g.key} onClick={() => setOpen(open === g.key ? null : g.key)}>
+                {g.name}<small>{fmt(g.planned)} م³</small>
+              </button>
+              {PHASE_KEYS.map((k) => {
+                const rs = g.regions.filter((r) => r.phase === k);
+                const pl = rs.reduce((a, r) => a + r.planned, 0);
+                const ex = rs.reduce((a, r) => a + r.executed, 0);
+                const r = pct(ex, pl);
+                return (
+                  <span key={k} role="cell" className={`rx-cell rx-cell--${heat(r, pl)}`} title={pl ? `${fmt(ex)} من ${fmt(pl)} م³` : 'غير مشمولة'}>
+                    {pl ? <>{r}%<small>{fmt(pl)}</small></> : '—'}
+                  </span>
+                );
+              })}
+              <span role="cell" className={`rx-cell rx-cell--total rx-cell--${heat(g.rate, g.planned)}`}>{g.rate}%</span>
+            </div>
+            {open === g.key && (
+              <ul className="rx-regions">
+                {g.regions.filter((r) => r.planned > 0).map((r, i) => (
+                  <li key={i} style={{ '--c': PHASE_COLOR[PHASE_KEYS.indexOf(r.phase)] }}>
+                    <b>{r.region}</b>
+                    <span className="rx-mini"><span style={{ width: `${Math.min(100, pct(r.executed, r.planned))}%` }} /></span>
+                    <span className="rx-regions__n">{fmt(r.executed)} / {fmt(r.planned)}</span>
+                    {r.notes && <em>{r.notes}</em>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Stack({ data, total, unit }) {
   return (
     <>
-      <section className="hero">
-        <div className="hero__primary">
-          <span className="hero__eyebrow"><Icon name="area" /> إجمالي الأنقاض المخطط ترحيلها</span>
-          <Figure value={t.planned} className="hero__figure" />
-          <span className="hero__sub">متر مكعب في {fmt(t.govs)} محافظات و{fmt(t.regions)} منطقة، ضمن ثلاث مراحل تنفيذية</span>
-        </div>
-        <div className="hero__side">
-          <Stat icon="target" tone="forest" label="المنفَّذ فعلياً" value={t.executed} unit="م³"
-            note={`${pct(t.executed, t.planned)}% من المخطط`} share={pct(t.executed, t.planned)} />
-          <Stat icon="clock" tone="gold" label="المتبقي للترحيل" value={Math.max(0, t.planned - t.executed)} unit="م³"
-            note="الكميات غير المنجزة بعد" share={100 - pct(t.executed, t.planned)} />
-          <Stat icon="t_integer" tone="teal" label="استبيانات ميدانية موثّقة" value={t.surveys} unit="استبيان"
-            note={`${fmt(t.surveyVol)} م³ موثّقة ميدانياً${t.live ? `، منها ${fmt(t.live)} من استبيان المنصة` : ''}`} share={100} />
-        </div>
-      </section>
-
-      <div className="rt-intro">
-        <div className="rt-intro__text">
-          <span className="rt-kicker">الإطار التنفيذي للمشروع</span>
-          <h2>إدارة وترحيل الأنقاض لدعم التعافي وإعادة الإعمار</h2>
-          <p>تهدف الخطة الوطنية لإدارة وترحيل الأنقاض إلى إزالة الركام وفتح الطرق والشرايين الحيوية في المناطق السكنية والخدمية المتضررة، تمهيداً لإعادة تأهيل البنية التحتية وتسهيل العودة الكريمة والآمنة للسكان.</p>
-          <p>تعتمد المنظومة على رقابة ميدانية عبر استبيانات KoBoToolbox الرقمية لتوثيق كل موقع وكمية، مع نقل الأنقاض إلى مكبات معتمدة تمهيداً لفرزها وإعادة تدويرها هندسياً.</p>
-          <div className="rt-intro__actions">
-            <button type="button" className="rt-btn rt-btn--primary" onClick={() => go('govs')}>موقف المحافظات والمراحل</button>
-            <button type="button" className="rt-btn" onClick={() => go('spatial')}>الخريطة والتوزيع الجغرافي</button>
-          </div>
-        </div>
-        <aside className="rt-goals">
-          <h3><Icon name="target" /> الأهداف الرئيسية</h3>
-          <ul>
-            <li>فتح الطرق الرئيسية والفرعية وإزالة عوائق الحركة</li>
-            <li>ترحيل أنقاض المنشآت العامة والمدارس والمرافق الخدمية</li>
-            <li>التوثيق الرقمي الجغرافي الدقيق لمواقع العمل</li>
-            <li>نقل الأنقاض إلى المكبات المعتمدة وتهذيبها هندسياً</li>
-            <li>سحق الخرسانة وإعادة تدويرها (RCA) لرصف الطرق والردم</li>
-            <li>دعم جهود التعافي المبكر وتمكين المجتمعات المحلية</li>
-          </ul>
-        </aside>
+      <div className="rx-stack">
+        {data.map((d, i) => <span key={d.label} style={{ flexGrow: d.value, background: PAL[i % PAL.length] }} title={`${d.label}: ${fmt(d.value)}`} />)}
       </div>
-
-      <div className="rt-sechead">
-        <span className="rt-kicker">حالة المراحل التنفيذية</span>
-        <h2>خطة المراحل الثلاث لترحيل الأنقاض (2026)</h2>
-      </div>
-      <div className="rt-phases">
-        {phases.map((p) => {
-          const s = status(p.rate);
-          return (
-            <article className={`rt-phase rt-phase--${s.cls}`} key={p.key}>
-              <header>
-                <h3>{p.title}</h3>
-                <span className={`rt-badge rt-badge--${s.cls}`}>{s.text} ({p.rate}%)</span>
-              </header>
-              <p>{p.scope}</p>
-              <dl>
-                <div><dt>المخطط</dt><dd>{fmt(p.planned)} م³</dd></div>
-                <div><dt>المنفَّذ</dt><dd className="is-strong">{fmt(p.executed)} م³</dd></div>
-              </dl>
-              <Progress value={p.rate} />
-              <span className="rt-phase__meta">{p.govs.join('، ')} — {fmt(p.regions)} منطقة</span>
-            </article>
-          );
-        })}
-      </div>
+      <ul className="rx-keys">
+        {data.map((d, i) => (
+          <li key={d.label}><i style={{ background: PAL[i % PAL.length] }} />{d.label}<b>{pct(d.value, total)}%</b><small>{fmt(d.value)} {unit}</small></li>
+        ))}
+      </ul>
     </>
   );
 }
 
-/* ---------------- المحافظات ---------------- */
-
-function Governorates({ govs }) {
-  const [open, setOpen] = useState(null);
-  return (
-    <div className="rt-govs">
-      {govs.map((g) => {
-        const s = status(g.rate);
-        const isOpen = open === g.key;
-        return (
-          <article className="rt-gov" key={g.key}>
-            <header>
-              <h3><Icon name="t_governorate" /> محافظة {g.name}</h3>
-              <span className={`rt-badge rt-badge--${s.cls}`}>{g.rate >= 100 ? 'مكتملة' : g.executed > 0 ? `جاري العمل ${g.rate}%` : 'إعداد المناقصات'}</span>
-            </header>
-            <Progress value={g.rate} />
-            <dl className="rt-gov__stats">
-              <div><dt>المخطط</dt><dd>{fmt(g.planned)} م³</dd></div>
-              <div><dt>المنفَّذ</dt><dd className="is-strong">{fmt(g.executed)} م³</dd></div>
-              <div><dt>المتبقي</dt><dd>{fmt(Math.max(0, g.planned - g.executed))} م³</dd></div>
-              <div><dt>الإنجاز</dt><dd className="is-gold">{g.rate}%</dd></div>
-            </dl>
-            <button type="button" className="rt-toggle" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : g.key)}>
-              {isOpen ? 'إخفاء' : 'عرض'} تفاصيل المناطق والمراحل ({g.regions.length})
-            </button>
-            {isOpen && (
-              <div className="rt-tablewrap">
-                <table className="rt-table">
-                  <thead><tr><th>المرحلة</th><th>المنطقة</th><th>المخطط م³</th><th>المنفَّذ م³</th><th>الإنجاز</th><th>الحالة والملاحظات</th></tr></thead>
-                  <tbody>
-                    {g.regions.map((r, i) => (
-                      <tr key={i}>
-                        <td>{r.phase}</td>
-                        <td><b>{r.region}</b></td>
-                        <td className="num">{fmt(r.planned)}</td>
-                        <td className="num is-strong">{fmt(r.executed)}</td>
-                        <td className="num">{pct(r.executed, r.planned)}%</td>
-                        <td className="rt-note">{r.notes || (r.executed >= r.planned && r.planned ? 'تم الإنجاز' : r.executed ? 'قيد العمل' : '—')}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </article>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ---------------- التوزيع الجغرافي ---------------- */
-
-function Spatial({ govs, surveys, basemap }) {
+function Field({ surveys, basemap, t }) {
   const locations = useMemo(() => {
     const m = new Map();
     for (const s of surveys) {
@@ -212,137 +254,119 @@ function Spatial({ govs, surveys, basemap }) {
     }
     return [...m.values()].sort((a, b) => b.count - a.count);
   }, [surveys]);
-
-  const by = (key, value = () => 1) => {
-    const m = new Map();
-    for (const s of surveys) { const k = key(s); if (k) m.set(k, (m.get(k) || 0) + value(s)); }
-    return [...m.entries()].map(([label, v]) => ({ label, key: label, value: Math.round(v) })).sort((a, b) => b.value - a.value);
-  };
+  const nature = sumBy(surveys, (s) => s.nature, (s) => s.vol);
+  const dump = sumBy(surveys, (s) => s.dump.replace(/\s+/g, ' '), (s) => s.vol);
+  const gov = sumBy(surveys, (s) => govName(s.gov), (s) => s.vol);
+  const areas = sumBy(surveys, (s) => s.area && `${s.area}`, (s) => s.vol).slice(0, 6);
 
   return (
-    <div className="panels">
-      {basemap && (
-        <Panel span="full" title="مواقع العمل الموثّقة ميدانياً" note={`${fmt(locations.length)} موقعاً من ${fmt(surveys.length)} استبياناً`}>
-          <SyriaMap basemap={basemap} locations={locations} noun="الاستبيانات" />
-        </Panel>
-      )}
-      <Panel span="wide" title="ترتيب نسب الإنجاز الفعلي بالمحافظات" note="المنفَّذ ÷ المخطط">
-        <ul className="rt-rank">
-          {[...govs].sort((a, b) => b.rate - a.rate).map((g) => (
-            <li key={g.key}>
-              <span className="rt-rank__name">{g.name}</span>
-              <Progress value={g.rate} />
-              <span className="rt-rank__val">{g.rate}%</span>
-            </li>
+    <section className="rx-block">
+      <header className="rx-head"><h2>من الميدان</h2><p>ما وثّقته الاستمارات: أين عملنا، وماذا رحّلنا، وإلى أين.</p></header>
+      <div className="rx-field">
+        {basemap && (
+          <div className="rx-card rx-card--map">
+            <SyriaMap basemap={basemap} locations={locations} noun="المواقع" />
+          </div>
+        )}
+        <div className="rx-col">
+          <div className="rx-card">
+            <h3>الكميات حسب المحافظة</h3>
+            <Stack data={gov} total={t.surveyVol} unit="م³" />
+          </div>
+          <div className="rx-card">
+            <h3>نوع الموقع</h3>
+            <Stack data={nature} total={t.surveyVol} unit="م³" />
+          </div>
+          <div className="rx-card">
+            <h3>وجهة الأنقاض</h3>
+            <Stack data={dump} total={t.surveyVol} unit="م³" />
+          </div>
+        </div>
+      </div>
+      <div className="rx-card">
+        <h3>المناطق الأكثر ترحيلاً</h3>
+        <div className="rx-tiles">
+          {areas.map((a, i) => (
+            <div key={a.label} className="rx-tile" style={{ '--c': PAL[i % PAL.length] }}>
+              <span>{a.label}</span><b>{fmt(a.value)}</b><small>م³</small>
+            </div>
           ))}
-        </ul>
-      </Panel>
-      <Panel title="مسافات النقل إلى المكبات" note="عدد الاستبيانات">
-        <Donut data={by((s) => s.dist && s.dist.replace('كم', ' كم'))} tone="gold" caption="استبيان" />
-      </Panel>
-      <Panel span="wide" title="الكميات الموثّقة ميدانياً حسب المحافظة" note="م³ من الاستبيانات">
-        <BarChart data={by((s) => govName(s.gov), (s) => s.vol)} tone="forest" showShare />
-      </Panel>
-      <Panel title="طبيعة مواقع العمل" note="عدد الاستبيانات">
-        <Donut data={by((s) => s.nature)} tone="teal" caption="استبيان" />
-      </Panel>
-      <Panel span="wide" title="أكثر المناطق نشاطاً" note="م³ موثّقة ميدانياً">
-        <BarChart data={by((s) => s.area && `${s.area} (${govName(s.gov)})`, (s) => s.vol)} tone="teal" max={10} showShare />
-      </Panel>
-      <Panel title="جهة ترحيل الأنقاض" note="عدد الاستبيانات">
-        <Donut data={by((s) => s.dump.replace(/\s+/g, ' '))} tone="forest" caption="استبيان" />
-      </Panel>
-    </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
-/* ---------------- الاستبيانات ---------------- */
+function Contractors({ list, total }) {
+  const [all, setAll] = useState(false);
+  const top = list[0]?.vol || 1;
+  const shown = all ? list : list.slice(0, 8);
+  const rest = list.slice(8);
+  return (
+    <section className="rx-block">
+      <header className="rx-head"><h2>من نفّذ العمل؟</h2><p>الجهات حسب الكميات المرحّلة الموثقة. دُمجت التسميات المختلفة للجهة الواحدة.</p></header>
+      <ol className="rx-cos">
+        {shown.map((c, i) => (
+          <li key={c.name} style={{ '--c': PAL[i % PAL.length] }}>
+            <span className="rx-cos__n">{i + 1}</span>
+            <span className="rx-cos__name">{c.name}<small>{fmt(c.count)} موقعاً · {[...c.govs].join('، ')}</small></span>
+            <span className="rx-cos__bar"><span style={{ width: `${(c.vol / top) * 100}%` }} /></span>
+            <b>{fmt(c.vol)}<small> م³ · {pct(c.vol, total)}%</small></b>
+          </li>
+        ))}
+      </ol>
+      {rest.length > 0 && (
+        <button type="button" className="rx-more" onClick={() => setAll(!all)}>
+          {all ? 'عرض أهم 8 جهات فقط' : `وبقية الجهات (${rest.length}) مجتمعةً ${pct(rest.reduce((a, c) => a + c.vol, 0), total)}% — عرض الكل`}
+        </button>
+      )}
+    </section>
+  );
+}
 
-const PAGE = 25;
-const projLabel = (s) => `المشروع ${['', 'الأول', 'الثاني', 'الثالث'][s.p] || ''}`;
-
-function Surveys({ surveys }) {
-  const [f, setF] = useState({ gov: [], p: [], nature: [], q: '' });
-  const [page, setPage] = useState(1);
+function Registry({ surveys }) {
+  const [q, setQ] = useState('');
+  const [gov, setGov] = useState(null);
+  const [n, setN] = useState(12);
   const [view, setView] = useState(null);
-
-  const opts = (key) => {
-    const m = new Map();
-    for (const s of surveys) { const k = key(s); if (k) m.set(k, (m.get(k) || 0) + 1); }
-    return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([v, n]) => ({ value: v, label: v, count: n }));
-  };
+  const govs = sumBy(surveys, (s) => govName(s.gov));
   const list = useMemo(() => {
-    const q = norm(f.q);
-    return surveys.filter((s) => (!f.gov.length || f.gov.includes(govName(s.gov)))
-      && (!f.p.length || f.p.includes(projLabel(s)))
-      && (!f.nature.length || f.nature.includes(s.nature))
-      && (!q || norm([s.co, s.by, s.area, s.town, s.village, s.addr, s.id].join(' ')).includes(q)));
-  }, [surveys, f]);
-  const pages = Math.max(1, Math.ceil(list.length / PAGE));
-  const rows = list.slice((page - 1) * PAGE, page * PAGE);
-  const set = (k) => (v) => { setF((x) => ({ ...x, [k]: v })); setPage(1); };
-  const vol = list.reduce((a, s) => a + s.vol, 0);
-  const dirty = f.gov.length || f.p.length || f.nature.length || f.q;
+    const k = norm(q);
+    return surveys.filter((s) => (!gov || govName(s.gov) === gov)
+      && (!k || norm([s.co, s.by, s.area, s.town, s.village, s.addr, s.id].join(' ')).includes(k)))
+      .sort((a, b) => b.vol - a.vol);
+  }, [surveys, q, gov]);
 
   return (
-    <>
-      <div className="filters">
-        <div className="filters__fields rt-sfilters">
-          <div className="ffield"><span className="ffield__label">المحافظة</span>
-            <Dropdown multi placeholder="كل المحافظات" value={f.gov} onChange={set('gov')} options={opts((s) => govName(s.gov))} /></div>
-          <div className="ffield"><span className="ffield__label">المشروع الميداني</span>
-            <Dropdown multi placeholder="كل المشاريع" value={f.p} onChange={set('p')} options={opts((s) => projLabel(s))} /></div>
-          <div className="ffield"><span className="ffield__label">طبيعة الموقع</span>
-            <Dropdown multi placeholder="كل المواقع" value={f.nature} onChange={set('nature')} options={opts((s) => s.nature)} /></div>
-          <label className="ffield"><span className="ffield__label">بحث سريع</span>
-            <input className="rt-search" type="search" value={f.q} placeholder="الجهة، مدلي البيانات، القرية، رقم الاستبيان…"
-              onChange={(e) => set('q')(e.target.value)} /></label>
-        </div>
-      </div>
-
-      <div className="rt-tablehead">
-        <h3>الاستبيانات الميدانية المرفوعة (KoBoToolbox)</h3>
-        <span><b>{fmt(list.length)}</b> من {fmt(surveys.length)} استبياناً — <b>{fmt(vol)}</b> م³
-          {dirty ? <button type="button" className="filters__reset" onClick={() => { setF({ gov: [], p: [], nature: [], q: '' }); setPage(1); }}>إزالة المرشّحات</button> : null}</span>
-      </div>
-
-      <div className="rt-tablewrap rt-tablewrap--card">
-        <table className="rt-table rt-table--click">
-          <thead><tr><th>#</th><th>المشروع</th><th>المحافظة</th><th>المنطقة / البلدة</th><th>طبيعة الموقع</th><th>الكمية م³</th><th>الجهة المنفذة</th><th>جهة الترحيل</th><th>التاريخ</th></tr></thead>
-          <tbody>
-            {rows.map((s) => (
-              <tr key={`${s.p}-${s.id}`} onClick={() => setView(s)} tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && setView(s)}>
-                <td className="num">{s.id}</td>
-                <td><span className={`rt-badge rt-badge--p${s.p}`}>{projLabel(s)}</span></td>
-                <td><b>{govName(s.gov)}</b></td>
-                <td>{[s.area, s.town, s.village].filter(Boolean).join(' — ')}</td>
-                <td>{s.nature}</td>
-                <td className="num is-strong">{fmt(s.vol)}</td>
-                <td>{s.co}</td>
-                <td className="rt-note">{s.dump.replace(/\s+/g, ' ')}</td>
-                <td className="num">{s.date}</td>
-              </tr>
-            ))}
-            {rows.length === 0 && <tr><td colSpan={9} className="rt-empty">لا توجد استبيانات بهذه المرشّحات</td></tr>}
-          </tbody>
-        </table>
-      </div>
-
-      <nav className="rt-pager" aria-label="الصفحات">
-        <span>عرض {fmt(list.length ? (page - 1) * PAGE + 1 : 0)}–{fmt(Math.min(page * PAGE, list.length))} من {fmt(list.length)}</span>
-        <div>
-          <button type="button" disabled={page === 1} onClick={() => setPage(1)}>«</button>
-          <button type="button" disabled={page === 1} onClick={() => setPage(page - 1)}>‹</button>
-          {Array.from({ length: pages }, (_, i) => i + 1).filter((n) => Math.abs(n - page) <= 2).map((n) => (
-            <button type="button" key={n} className={n === page ? 'is-on' : ''} onClick={() => setPage(n)}>{n}</button>
+    <section className="rx-block">
+      <header className="rx-head"><h2>سجل المواقع</h2><p>مرتّبة من الأكبر كمية. اضغط أي موقع لتفاصيله.</p></header>
+      <div className="rx-reg__bar">
+        <input className="rt-search" type="search" value={q} placeholder="ابحث باسم الجهة أو القرية أو رقم الاستمارة…"
+          onChange={(e) => { setQ(e.target.value); setN(12); }} />
+        <div className="rx-chips">
+          <button type="button" className={!gov ? 'is-on' : ''} onClick={() => setGov(null)}>الكل <small>{fmt(surveys.length)}</small></button>
+          {govs.map((g, i) => (
+            <button type="button" key={g.label} style={{ '--c': PAL[i % PAL.length] }} className={gov === g.label ? 'is-on' : ''}
+              onClick={() => { setGov(gov === g.label ? null : g.label); setN(12); }}>{g.label} <small>{fmt(g.value)}</small></button>
           ))}
-          <button type="button" disabled={page === pages} onClick={() => setPage(page + 1)}>›</button>
-          <button type="button" disabled={page === pages} onClick={() => setPage(pages)}>»</button>
         </div>
-      </nav>
-
+      </div>
+      <div className="rx-sites">
+        {list.slice(0, n).map((s) => (
+          <button type="button" key={`${s.p}-${s.id}`} className="rx-site" onClick={() => setView(s)}>
+            <span className="rx-site__vol">{fmt(s.vol)}<small>م³</small></span>
+            <span className="rx-site__main">
+              <b>{[s.village || s.town, s.area].filter(Boolean).join(' — ')}</b>
+              <small>{govName(s.gov)} · {s.nature} · {s.co}</small>
+            </span>
+            <span className="rx-site__tag">{projLabel(s)}</span>
+          </button>
+        ))}
+        {list.length === 0 && <p className="rt-empty">لا نتائج.</p>}
+      </div>
+      {list.length > n && <button type="button" className="rx-more" onClick={() => setN(n + 24)}>عرض المزيد ({fmt(list.length - n)} متبقٍ)</button>}
       {view && <SurveyModal s={view} onClose={() => setView(null)} />}
-    </>
+    </section>
   );
 }
 
@@ -394,91 +418,6 @@ function SurveyModal({ s, onClose }) {
   );
 }
 
-/* ---------------- الجهات المنفذة ---------------- */
-
-function Contractors({ surveys }) {
-  const list = useMemo(() => {
-    const m = new Map();
-    for (const s of surveys) {
-      const k = coKey(s.co) || 'غير محدد';
-      const cur = m.get(k) || { names: new Map(), count: 0, vol: 0, hours: 0, govs: new Set() };
-      cur.names.set(s.co, (cur.names.get(s.co) || 0) + 1);
-      cur.count += 1; cur.vol += s.vol; cur.hours += s.hours || 0; cur.govs.add(govName(s.gov));
-      m.set(k, cur);
-    }
-    return [...m.values()].map((c) => ({ ...c, name: [...c.names.entries()].sort((a, b) => b[1] - a[1])[0][0] }))
-      .sort((a, b) => b.vol - a.vol);
-  }, [surveys]);
-  const top = list[0]?.vol || 1;
-  const total = list.reduce((a, c) => a + c.vol, 0) || 1;
-
-  return (
-    <>
-      <div className="rt-podium">
-        {list.slice(0, 3).map((c, i) => (
-          <article key={c.name} className={`rt-podium__item rt-podium__item--${i + 1}`}>
-            <span className="rt-podium__rank">{i + 1}</span>
-            <h3>{c.name}</h3>
-            <Figure value={Math.round(c.vol)} className="rt-podium__fig" />
-            <span>م³ — {fmt(c.count)} موقعاً — {pct(c.vol, total)}% من الإجمالي</span>
-          </article>
-        ))}
-      </div>
-      <div className="rt-tablewrap rt-tablewrap--card">
-        <table className="rt-table">
-          <thead><tr><th>#</th><th>الجهة المنفذة</th><th>المحافظات</th><th>المواقع</th><th>الأنقاض المرحّلة م³</th><th>الحصة</th><th>ساعات الآليات</th></tr></thead>
-          <tbody>
-            {list.map((c, i) => (
-              <tr key={c.name}>
-                <td className="num">{i + 1}</td>
-                <td><b>{c.name}</b>{c.names.size > 1 && <span className="rt-alias" title={[...c.names.keys()].join('، ')}> +{c.names.size - 1} تسمية</span>}</td>
-                <td className="rt-note">{[...c.govs].join('، ')}</td>
-                <td><span className="rt-badge rt-badge--done">{fmt(c.count)} موقع</span></td>
-                <td className="num is-strong">{fmt(c.vol)}</td>
-                <td className="rt-sharecell"><span className="rt-share"><span style={{ width: `${(c.vol / top) * 100}%` }} /></span>{pct(c.vol, total)}%</td>
-                <td className="num">{c.hours ? `${fmt(c.hours)} ساعة` : '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="rt-foot">دُمجت تسميات الجهة الواحدة المكتوبة بأكثر من صيغة (مثل «شركة الفاتح» و«شركة الفاتح للإنشاءات»). مرّر المؤشر على «+ تسمية» لرؤيتها.</p>
-    </>
-  );
-}
-
-/* ---------------- تدوير الخرسانة ---------------- */
-
-function Recycling({ executed }) {
-  const [rate, setRate] = useState(65);
-  const [price, setPrice] = useState(14);
-  const yieldM3 = Math.round(executed * (rate / 100));
-  return (
-    <div className="rt-rca">
-      <div className="rt-rca__text">
-        <span className="rt-kicker">الاقتصاد الدائري وإعادة الإعمار</span>
-        <h2>حاسبة تدوير الخرسانة والأنقاض (RCA)</h2>
-        <p>تعتمد المنظومة تقنيات فرز وسحق الأنقاض الميدانية لإنتاج ركام خرساني معاد تدويره (Recycled Concrete Aggregate) لاستخدامه في رصف الطرق والردم الهندسي وتصنيع البلوك، بما يحقق وفراً مالياً ويحمي المقالع الطبيعية.</p>
-        <label className="rt-slider">
-          <span>نسبة استرجاع الركام الخرساني <b>{rate}%</b></span>
-          <input type="range" min="30" max="90" value={rate} onChange={(e) => setRate(Number(e.target.value))} />
-        </label>
-        <label className="rt-slider">
-          <span>سعر المتر المكعب البديل من المقالع <b>${price} / م³</b></span>
-          <input type="range" min="5" max="30" value={price} onChange={(e) => setPrice(Number(e.target.value))} />
-        </label>
-        <p className="rt-foot">الحساب على الكمية المنفَّذة فعلياً: {fmt(executed)} م³.</p>
-      </div>
-      <aside className="rt-rca__out">
-        <h3>المردود الاقتصادي والبيئي المقدّر</h3>
-        <div><span>الركام المستخلص</span><b>{fmt(yieldM3)} م³</b></div>
-        <div><span>الوفورات المالية المقدّرة</span><b className="is-gold">${fmt(yieldM3 * price)}</b></div>
-        <div><span>خفض الانبعاثات الكربونية</span><b>~{fmt(yieldM3 * 0.012)} طن CO₂</b></div>
-      </aside>
-    </div>
-  );
-}
-
 /* إجابة من استبيان المنصة ← صف بنفس شكل بيانات KoBo */
 function fromResponse(r, i) {
   const a = r.answers || {};
@@ -502,7 +441,6 @@ export default function RubbleTransfer({ basemap }) {
   if (basemap && !govNames) govNames = new Map((basemap.governorates || []).map((g) => [g.code, g.name]));
   const [data, setData] = useState(null);
   const [error, setError] = useState(false);
-  const [tab, setTab] = useState('overview');
 
   useEffect(() => {
     /*
@@ -526,52 +464,44 @@ export default function RubbleTransfer({ basemap }) {
       gm.set(k, g);
     }
     const govs = [...gm.values()].map((g) => ({ ...g, rate: pct(g.executed, g.planned) })).sort((a, b) => b.planned - a.planned);
-    const phases = PHASES.map((p) => {
-      const rs = data.phases.filter((r) => r.phase === p.key);
+    const phases = PHASE_KEYS.map((key) => {
+      const rs = data.phases.filter((r) => r.phase === key);
       const planned = rs.reduce((a, r) => a + r.planned, 0);
       const executed = rs.reduce((a, r) => a + r.executed, 0);
-      return { ...p, planned, executed, rate: pct(executed, planned), regions: rs.length,
-        govs: [...new Set(rs.map((r) => r.gov.trim()))] };
+      return { key, title: key, planned, executed, rate: pct(executed, planned), govs: [...new Set(rs.map((r) => govName(r.gov)))] };
     });
+    const cm = new Map();
+    for (const s of data.surveys) {
+      const k = coKey(s.co) || 'غير محدد';
+      const c = cm.get(k) || { names: new Map(), count: 0, vol: 0, govs: new Set() };
+      c.names.set(s.co, (c.names.get(s.co) || 0) + 1);
+      c.count += 1; c.vol += s.vol; c.govs.add(govName(s.gov));
+      cm.set(k, c);
+    }
+    const contractors = [...cm.values()].map((c) => ({ ...c, name: [...c.names.entries()].sort((a, b) => b[1] - a[1])[0][0] }))
+      .sort((a, b) => b.vol - a.vol);
     const t = {
       planned: data.phases.reduce((a, r) => a + r.planned, 0),
       executed: Math.round(data.phases.reduce((a, r) => a + r.executed, 0)),
       surveys: data.surveys.length,
       live: data.live || 0,
       surveyVol: data.surveys.reduce((a, s) => a + s.vol, 0),
-      govs: govs.length,
-      regions: data.phases.filter((r) => r.planned > 0).length,
     };
-    return { govs, phases, t };
+    return { govs, phases, contractors, t, items: insights({ govs, surveys: data.surveys, t, contractors }) };
   }, [data]);
 
   if (error) return <div className="pending"><h3>تعذّر تحميل بيانات المشروع</h3><p>حدّث الصفحة وحاول مجدداً.</p></div>;
   if (!model) return <p className="results__empty">جارٍ التحميل…</p>;
 
-  const go = (id) => { setTab(id); window.scrollTo({ top: 0, behavior: 'smooth' }); };
-
   return (
-    <div className="rt">
-      <div className="rt-tabsbar">
-        <div className="pedit__seg" role="tablist">
-          {TABS.map((x) => (
-            <button key={x.id} type="button" role="tab" aria-selected={tab === x.id}
-              className={`pedit__tab${tab === x.id ? ' is-on' : ''}`} onClick={() => go(x.id)}>
-              {x.label}
-              {x.id === 'surveys' && <span className="pedit__count">{fmt(model.t.surveys)}</span>}
-              {x.id === 'govs' && <span className="pedit__count">{model.govs.length}</span>}
-            </button>
-          ))}
-        </div>
-        <button type="button" className="rt-btn rt-print" onClick={() => window.print()}>طباعة</button>
-      </div>
-
-      {tab === 'overview' && <Overview t={model.t} phases={model.phases} go={go} />}
-      {tab === 'govs' && <Governorates govs={model.govs} />}
-      {tab === 'spatial' && <Spatial govs={model.govs} surveys={data.surveys} basemap={basemap} />}
-      {tab === 'surveys' && <Surveys surveys={data.surveys} />}
-      {tab === 'contractors' && <Contractors surveys={data.surveys} />}
-      {tab === 'rca' && <Recycling executed={model.t.executed} />}
+    <div className="rx">
+      <Summary t={model.t} items={model.items} />
+      <PhaseRibbon phases={model.phases} />
+      <Matrix govs={model.govs} />
+      <Field surveys={data.surveys} basemap={basemap} t={model.t} />
+      <Contractors list={model.contractors} total={model.t.surveyVol} />
+      <Registry surveys={data.surveys} />
+      <button type="button" className="rx-more rx-print" onClick={() => window.print()}>طباعة التقرير</button>
     </div>
   );
 }
