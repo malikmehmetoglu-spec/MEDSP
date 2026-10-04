@@ -2246,3 +2246,89 @@ button.bars__hit { cursor: pointer; }
 
 :root[data-theme='light'] .map__dot { fill: rgba(176, 132, 40, 0.5); stroke: #fffaf0; }
 .rx-mapnote { margin: 0 4px 8px; font-size: 0.76rem; color: var(--ink-faint); }
+
+/* ===== ترحيل الأنقاض: الفلاتر والتفاعل ===== */
+.rx-filters {
+  position: sticky; top: 8px; z-index: 25;
+  display: grid; gap: 10px; padding: 14px 16px; border-radius: var(--radius);
+  border: 1px solid var(--edge); background: var(--surface-header); backdrop-filter: blur(16px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+}
+.rx-filters:has(.dd.is-open) { z-index: 40; }
+.rx-filters__grid { display: grid; gap: 10px; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@media (max-width: 1100px) { .rx-filters__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .rx-filters__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .rx-filters { position: static; } }
+.rx-active { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 0.8rem; color: var(--ink-faint); }
+.rx-active button {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; cursor: pointer;
+  font: inherit; font-size: 0.8rem; color: var(--ivory-mist); background: var(--forest); border: 0;
+}
+.rx-active button small { opacity: 0.7; }
+.rx-active button b { font-size: 0.7rem; opacity: 0.8; }
+.rx-active .rx-active__clear { background: transparent; color: #c0606f; border-bottom: 1px solid currentColor; border-radius: 0; padding: 0; }
+.rx-insights h3 small { font-weight: 400; font-size: 0.74rem; color: var(--accent-text); }
+
+/* عناصر قابلة للضغط: بلا مظهر زر افتراضي */
+.rx button { font: inherit; }
+.rx-ribbon__seg, .rx-phase, .rx-keys button, .rx-tile, .rx-cos button, .rx-cell, .rx-stack button { cursor: pointer; border: 0; transition: opacity 0.18s, transform 0.18s, box-shadow 0.18s; }
+.rx-ribbon__seg { padding: 0; }
+.rx-ribbon__seg.is-on { box-shadow: 0 0 0 3px var(--c); }
+.is-dim { opacity: 0.32; }
+.rx-phase { display: flex; gap: 10px; align-items: flex-start; text-align: start; padding: 6px; border-radius: 12px; background: transparent; }
+.rx-phase:hover { background: var(--glass); }
+.rx-phase__t { display: block; font-size: 0.98rem; color: var(--ink); }
+.rx-phase__t small { font-size: 0.72rem; font-weight: 600; color: var(--c); margin-inline-start: 6px; }
+.rx-phase__d { display: block; font-size: 0.8rem; color: var(--ink-faint); line-height: 1.6; }
+.rx-phase__d b { color: var(--ink); }
+.rx-matrix__row.is-on .rx-matrix__gov { border-color: var(--forest); box-shadow: 0 0 0 2px var(--golden-wheat); }
+.rx-matrix__govcell { display: flex; gap: 4px; }
+.rx-matrix__govcell .rx-matrix__gov { flex: 1; }
+.rx-matrix__exp { width: 30px; border-radius: 10px; border: 1px solid var(--edge); background: var(--glass); color: var(--ink-soft); cursor: pointer; transition: transform 0.2s; }
+.rx-matrix__exp[aria-expanded='true'] { transform: rotate(180deg); }
+button.rx-cell:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+.rx-stack button { padding: 0; min-width: 4px; }
+.rx-stack button:hover { filter: brightness(1.1); }
+.rx-keys button { width: 100%; display: grid; grid-template-columns: 10px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 4px 6px; border-radius: 8px; background: transparent; text-align: start; font-size: 0.82rem; color: var(--ink-soft); }
+.rx-keys button:hover, .rx-keys button.is-on { background: var(--glass-strong); }
+.rx-keys button.is-on { color: var(--ink); font-weight: 700; }
+.rx-keys li { display: block; }
+.rx-tile { text-align: start; }
+.rx-tile:hover { transform: translateY(-2px); }
+.rx-tile.is-on { box-shadow: 0 0 0 3px var(--golden-wheat); }
+.rx-cos li { display: block; padding: 0; border: 0; background: none; }
+.rx-cos li > button {
+  width: 100%; display: grid; grid-template-columns: 30px minmax(160px, 1.3fr) minmax(0, 2fr) auto; gap: 12px; align-items: center; text-align: start;
+  padding: 10px 14px; border-radius: 14px; background: var(--glass); border: 1px solid var(--edge);
+}
+.rx-cos li > button:hover { border-color: var(--c); }
+.rx-cos li > button.is-on { border-color: var(--c); box-shadow: 0 0 0 2px var(--c); }
+@media (max-width: 640px) { .rx-cos li > button { grid-template-columns: 30px minmax(0, 1fr) auto; } }
+.rx-trio { display: grid; gap: 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1000px) { .rx-trio { grid-template-columns: minmax(0, 1fr); } }
+
+/* الخريطة: لوحة داكنة قوية بصرياً للعرض على الشركاء، في الوضعين */
+.rx-mapcard {
+  position: relative; display: grid; gap: 0; overflow: hidden; border-radius: calc(var(--radius) + 4px);
+  background: radial-gradient(900px 400px at 70% 20%, #0f4a42, #062a26 70%);
+  border: 1px solid rgba(212,164,67,0.35);
+  box-shadow: 0 18px 40px rgba(2,40,35,0.25);
+}
+.rx-mapcard__legend {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding: 12px 18px;
+  font-size: 0.78rem; color: rgba(235,232,215,0.8); border-bottom: 1px solid rgba(212,164,67,0.2);
+}
+.rx-scale { display: inline-flex; border-radius: 4px; overflow: hidden; }
+.rx-scale i { width: 22px; height: 10px; }
+.rx-mapcard__dot { display: inline-flex; align-items: center; gap: 6px; }
+.rx-mapcard__dot i { width: 12px; height: 12px; border-radius: 50%; background: #f2b84b; box-shadow: 0 0 8px rgba(242,184,75,0.8); border: 1.5px solid #062a26; }
+.rx-mapcard__warn { color: #f0a58f; margin-inline-start: auto; }
+.rx-map .map__stage { border: 0; border-radius: 0; background: transparent; }
+.rx-map .map__legend { display: none; }
+.rx-map .geo--country { fill: #0b3a34; stroke: rgba(242,184,75,0.6); stroke-width: 1.6; }
+.rx-map .geo--gov { fill: rgba(255,255,255,0.04); stroke: rgba(235,232,215,0.55); stroke-width: 1.2; }
+.rx-map .geo--sub { stroke: rgba(235,232,215,0.18); }
+.rx-map .geo--water { fill: #2a7f95; stroke: none; }
+.rx-map .geo__label { fill: #ffffff !important; stroke: #062a26 !important; paint-order: stroke; }
+.rx-map .map__dot { fill: #f2b84b; fill-opacity: 0.85; stroke: #062a26; stroke-width: 1.2; filter: drop-shadow(0 0 4px rgba(242,184,75,0.55)); }
+.rx-map .map__dot--on { fill: #ffffff; stroke: #f2b84b; stroke-width: 2; }
+.rx-map .map__controls button { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.25); }

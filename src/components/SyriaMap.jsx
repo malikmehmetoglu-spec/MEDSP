@@ -43,25 +43,36 @@ function useBounds(basemap) {
 }
 
 /* noun: ما تمثّله النقاط، بصيغة الجمع المعرّفة (البلاغات، الاستمارات…) */
-export default function SyriaMap({ basemap, locations, noun = 'البلاغات', faded = null, onPickGovernorate = null }) {
+/*
+  خيارات إضافية:
+  fit       — { minLon, maxLon, minLat, maxLat } لتكبير الإطار على منطقة النقاط بدل كامل البلد
+  height    — ارتفاع ثابت بدل النسبة من العرض
+  govFill   — { رمز المحافظة: لون } لتلوين المحافظات (خريطة كثافة)
+  className — صنف إضافي لتغيير المظهر في صفحة بعينها
+*/
+export default function SyriaMap({
+  basemap, locations, noun = 'البلاغات', faded = null, onPickGovernorate = null,
+  fit = null, height = null, govFill = null, className = '',
+}) {
   const wrapRef = useRef(null);
   const [size, setSize] = useState({ width: 900, height: 560 });
   const [view, setView] = useState({ zoom: 1, x: 0, y: 0 });
   const [hovered, setHovered] = useState(null);
   const drag = useRef(null);
 
-  const bounds = useBounds(basemap);
+  const baseBounds = useBounds(basemap);
+  const bounds = fit || baseBounds;
 
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return undefined;
     const ro = new ResizeObserver(([entry]) => {
       const { width } = entry.contentRect;
-      setSize({ width, height: Math.max(380, Math.round(width * 0.62)) });
+      setSize({ width, height: height || Math.max(380, Math.round(width * 0.62)) });
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [height]);
 
   /* إسقاط مستطيل مع تصحيح لتقارب خطوط الطول */
   const project = useMemo(() => {
@@ -244,7 +255,7 @@ export default function SyriaMap({ basemap, locations, noun = 'البلاغات'
   );
 
   return (
-    <div className="map" ref={wrapRef}>
+    <div className={`map ${className}`} ref={wrapRef}>
       <div className="map__stage" style={{ height: size.height }}>
         <svg
           width={size.width}
@@ -287,6 +298,7 @@ export default function SyriaMap({ basemap, locations, noun = 'البلاغات'
                 key={f.code}
                 d={toPath(f.g)}
                 className="geo geo--gov"
+                style={govFill?.[f.code] ? { fill: govFill[f.code] } : undefined}
               />
             ))}
 
