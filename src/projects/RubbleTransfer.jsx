@@ -242,18 +242,42 @@ function Stack({ data, total, unit }) {
   );
 }
 
+/* هل النقطة داخل حدود سوريا؟ (ray casting على MultiPolygon من basemap.country) */
+function inside(poly, x, y) {
+  let hit = false;
+  for (const ring of poly) {
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i]; const [xj, yj] = ring[j];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) hit = !hit;
+    }
+  }
+  return hit;
+}
+function inSyria(basemap, lon, lat) {
+  const geoms = (basemap?.country || []).map((c) => c.g);
+  if (!geoms.length) return true;
+  return geoms.some((g) => (g.type === 'Polygon' ? [g.coordinates] : g.coordinates).some((poly) => inside(poly, lon, lat)));
+}
+
 function Field({ surveys, basemap, t }) {
   const locations = useMemo(() => {
     const m = new Map();
-    for (const s of surveys) {
+    for (const raw of surveys) {
+      let s = raw;
       if (!s.lat || !s.lon) continue;
+      /* إحداثيات خارج الحدود: إن كانت مقلوبة (خط الطول مكان العرض) تُصحَّح، وإلا تُستبعد من الخريطة */
+      if (!inSyria(basemap, s.lon, s.lat)) {
+        if (inSyria(basemap, s.lat, s.lon)) s = { ...s, lat: s.lon, lon: s.lat };
+        else continue;
+      }
       const code = `${s.lat.toFixed(3)},${s.lon.toFixed(3)}`;
       const cur = m.get(code) || { code, name: [s.village || s.town, s.area].filter(Boolean).join(' — '), governorate: govName(s.gov), lat: s.lat, lon: s.lon, count: 0 };
       cur.count += 1;
       m.set(code, cur);
     }
     return [...m.values()].sort((a, b) => b.count - a.count);
-  }, [surveys]);
+  }, [surveys, basemap]);
+  const outside = surveys.filter((s) => s.lat && s.lon && !inSyria(basemap, s.lon, s.lat) && !inSyria(basemap, s.lat, s.lon)).length;
   const nature = sumBy(surveys, (s) => s.nature, (s) => s.vol);
   const dump = sumBy(surveys, (s) => s.dump.replace(/\s+/g, ' '), (s) => s.vol);
   const gov = sumBy(surveys, (s) => govName(s.gov), (s) => s.vol);
@@ -265,6 +289,7 @@ function Field({ surveys, basemap, t }) {
       <div className="rx-field">
         {basemap && (
           <div className="rx-card rx-card--map">
+            {outside > 0 && <p className="rx-mapnote">{fmt(outside)} استمارة إحداثياتها خارج الحدود أو غير صحيحة — لم تُرسم على الخريطة.</p>}
             <SyriaMap basemap={basemap} locations={locations} noun="المواقع" />
           </div>
         )}
