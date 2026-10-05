@@ -2332,3 +2332,68 @@ button.rx-cell:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(
 .rx-map .map__dot { fill: #f2b84b; fill-opacity: 0.85; stroke: #062a26; stroke-width: 1.2; filter: drop-shadow(0 0 4px rgba(242,184,75,0.55)); }
 .rx-map .map__dot--on { fill: #ffffff; stroke: #f2b84b; stroke-width: 2; }
 .rx-map .map__controls button { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.25); }
+
+/* ===== الهاتف: الترويسة وشريط التنقل ===== */
+@media (max-width: 720px) {
+  .masthead__inner { gap: 10px; padding: 14px 0 12px; }
+  .masthead__emblem { height: 38px; }
+  .masthead__title { font-size: 1rem; line-height: 1.35; }
+  .masthead__parent { font-size: 0.72rem; }
+  .masthead__tools { gap: 6px; }
+  .masthead__login { padding: 6px 10px; font-size: 0.8rem; }
+  .theme-toggle { width: 32px; height: 32px; }
+
+  /* التبويبات في سطر واحد يُمرَّر أفقياً بدل أن تدفع الصفحة إلى خارج الشاشة */
+  .mainnav__bar {
+    overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+    gap: 4px; padding: 8px 0; margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter);
+    mask-image: linear-gradient(to left, #000 88%, transparent);
+  }
+  .mainnav__bar::-webkit-scrollbar { display: none; }
+  .mainnav .categories__item { flex: none; white-space: nowrap; padding: 7px 13px; font-size: 0.86rem; }
+  .mainnav__here { max-width: 11ch; }
+}
+
+/* ===== ترحيل الأنقاض على الهاتف ===== */
+.rx-filters__toggle { display: none; }
+@media (max-width: 640px) {
+  .rx { gap: 26px; }
+  .rx-filters { padding: 10px 12px; }
+  .rx-filters__toggle {
+    display: flex; justify-content: space-between; align-items: center; width: 100%;
+    padding: 6px 4px; border: 0; background: none; cursor: pointer; font: inherit; font-weight: 700; color: var(--ink);
+  }
+  .rx-filters__toggle b {
+    display: inline-grid; place-items: center; min-width: 20px; height: 20px; margin-inline-start: 8px; padding: 0 6px;
+    border-radius: 999px; font-size: 0.72rem; background: var(--forest); color: var(--ivory-mist);
+  }
+  .rx-filters:not(.is-open) .rx-filters__grid { display: none; }
+  .rx-top { padding: 18px 14px; gap: 16px; }
+  .rx-num { padding: 10px 12px; }
+  .rx-num .rx-num__v { font-size: 1.2rem; }
+  .rx-head h2 { font-size: 1.3rem; }
+  .rx-ribbon { height: 38px; }
+  .rx-ribbon__pct { font-size: 0.82rem; }
+
+  /* المصفوفة: أعمدة أضيق، وحجم الخطة يختفي من الخلايا ويبقى تحت اسم المحافظة */
+  .rx-matrix__row { grid-template-columns: minmax(78px, 1.3fr) repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .rx-matrix__row--head span { font-size: 0.66rem; padding: 2px; }
+  .rx-matrix__govcell { flex-direction: column; gap: 2px; }
+  .rx-matrix__gov { padding: 6px 8px; font-size: 0.82rem; }
+  .rx-matrix__exp { width: 100%; height: 20px; font-size: 0.7rem; }
+  .rx-cell { font-size: 0.78rem; padding: 6px 2px; border-radius: 8px; }
+  .rx-cell small { display: none; }
+  .rx-legend { font-size: 0.68rem; }
+  .rx-regions { padding: 8px 10px; }
+  .rx-regions li { grid-template-columns: minmax(0, 1fr) auto; }
+  .rx-regions .rx-mini { grid-column: 1 / -1; grid-row: 2; }
+
+  .rx-mapcard__legend { padding: 10px 12px; font-size: 0.72rem; gap: 6px 12px; }
+  .rx-mapcard__warn { margin-inline-start: 0; }
+  .rx-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rx-tile b { font-size: 1.15rem; }
+  .rx-cos li > button { padding: 10px 12px; gap: 8px 10px; }
+  .rx-site { grid-template-columns: 72px minmax(0, 1fr); }
+  .rx-site__tag { display: none; }
+  .rt-modal__box { padding: 18px; }
+}

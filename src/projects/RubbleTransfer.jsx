@@ -129,6 +129,7 @@ const matchPlan = (r, f) => (!f.gov.length || f.gov.includes(govName(r.gov)))
   && (!f.phase.length || f.phase.includes(r.phase));
 
 function FilterBar({ f, setF, surveys, toggle }) {
+  const [open, setOpen] = useState(false);
   const opts = (key) => {
     const pool = surveys.filter((s) => matchSurvey(s, f, key));
     const m = new Map();
@@ -142,7 +143,12 @@ function FilterBar({ f, setF, surveys, toggle }) {
   };
   const active = DIMS.flatMap((d) => f[d.key].map((v) => ({ dim: d, v })));
   return (
-    <div className="rx-filters">
+    <div className={`rx-filters${open ? ' is-open' : ''}`}>
+      {/* على الهاتف تُطوى الفلاتر خلف زر حتى لا تحتل الشاشة الأولى */}
+      <button type="button" className="rx-filters__toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span>الفلاتر{active.length ? <b>{active.length}</b> : null}</span>
+        <span aria-hidden="true">{open ? '▴' : '▾'}</span>
+      </button>
       <div className="rx-filters__grid">
         {DIMS.map((d) => (
           <div className="ffield" key={d.key}>
@@ -365,6 +371,7 @@ function placed(basemap, s) {
 const SCALE = ['#e6f2ee', '#bfe1d6', '#8cc9b8', '#55a996', '#2f8a77', '#126b5b'];
 
 function Field({ surveys, allSurveys, basemap, t, f, toggle }) {
+  const narrow = typeof window !== 'undefined' && window.innerWidth < 640;
   const pts = useMemo(() => {
     const m = new Map();
     let outside = 0;
@@ -415,7 +422,7 @@ function Field({ surveys, allSurveys, basemap, t, f, toggle }) {
             <span className="rx-mapcard__dot"><i /> موقع عمل (الحجم = عدد الاستمارات)</span>
             {pts.outside > 0 && <span className="rx-mapcard__warn">{fmt(pts.outside)} استمارة بإحداثيات خارج الحدود لم تُرسم</span>}
           </div>
-          <SyriaMap basemap={basemap} locations={pts.list} noun="الاستمارات" className="rx-map" height={520}
+          <SyriaMap basemap={basemap} locations={pts.list} noun="الاستمارات" className="rx-map" height={narrow ? 400 : 520}
             fit={fit} govFill={govFill} onPickGovernorate={(g) => toggle('gov', govName(g))} />
         </div>
       )}
