@@ -263,16 +263,35 @@
   overflow: hidden;
 }
 
-.hero__primary::before {
+.hero__primary::before,
+.hero__primary::after {
   content: '';
   position: absolute;
-  inset-block: -20%;
-  inset-inline-end: -60px;
-  width: 210px;
-  background-image: url('/brand/band.png');
-  background-size: auto 100%;
-  opacity: 0.09;
   pointer-events: none;
+}
+
+/*
+  زخرفة متجهة حادّة بدل الصورة النقطية: الشعار الرسمي كعلامة مائية كبيرة
+  في الزاوية (عبر mask فيأخذ لون الهوية في الوضعين)، فوق شبكة نقاط دقيقة تتلاشى.
+*/
+.hero__primary::before {
+  width: 230px;
+  aspect-ratio: 83.5 / 62.74;
+  inset-inline-end: -46px;
+  bottom: -34px;
+  background: linear-gradient(160deg, var(--golden-wheat), transparent 85%);
+  -webkit-mask: url('/brand/emblem.svg') center / contain no-repeat;
+  mask: url('/brand/emblem.svg') center / contain no-repeat;
+  opacity: 0.16;
+}
+
+.hero__primary::after {
+  inset: 0;
+  background-image: radial-gradient(circle, var(--golden-wheat) 1px, transparent 1.3px);
+  background-size: 16px 16px;
+  -webkit-mask-image: radial-gradient(120% 90% at 0% 100%, #000, transparent 60%);
+  mask-image: radial-gradient(120% 90% at 0% 100%, #000, transparent 60%);
+  opacity: 0.22;
 }
 
 .hero__eyebrow {
