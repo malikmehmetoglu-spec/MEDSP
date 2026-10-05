@@ -8,7 +8,7 @@ export default function Masthead({ theme, onToggleTheme, showLogin }) {
         <div className="shell masthead__inner">
           <img
             className="masthead__emblem"
-            src="brand/eagle.png"
+            src="brand/emblem.svg"
             alt="شعار الجمهورية العربية السورية"
           />
           <div className="masthead__titles">

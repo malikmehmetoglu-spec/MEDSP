@@ -11,7 +11,7 @@
   بلا شبكة يتولاه صندوق الصادر في الصفحة نفسها.
 */
 
-const VERSION = 'medsp-v2';
+const VERSION = 'medsp-v3';
 
 /*
   ignoreVary: سكربتات Vite تُطلب بوضع crossorigin فتحمل ترويسة Origin،
@@ -19,7 +19,7 @@ const VERSION = 'medsp-v2';
   وتفشل الصفحة بلا شبكة رغم أن الملفات محفوظة.
 */
 const MATCH = { ignoreVary: true };
-const SHELL = ['./', './index.html', './data/basemap.json', './brand/eagle.png'];
+const SHELL = ['./', './index.html', './data/basemap.json', './brand/emblem.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
