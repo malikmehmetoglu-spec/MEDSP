@@ -24,7 +24,7 @@ const PALETTE = [
   { label: 'أرقام', types: ['integer', 'decimal', 'range'] },
   { label: 'اختيارات', types: ['select_one', 'select_multiple', 'rank'] },
   { label: 'زمن', types: ['date', 'time', 'datetime'] },
-  { label: 'مكان', types: ['governorate', 'admin_area', 'geopoint'] },
+  { label: 'مكان', types: ['governorate', 'admin_area', 'admin_community', 'geopoint'] },
   { label: 'أخرى', types: ['image', 'repeat', 'calculate'] },
 ];
 
@@ -42,7 +42,8 @@ const TYPE_HINT = {
   time: 'ساعة ودقيقة',
   datetime: 'تاريخ ووقت',
   governorate: 'قائمة المحافظات السورية',
-  admin_area: 'محافظة ثم ناحية',
+  admin_area: 'محافظة ثم منطقة ثم ناحية',
+  admin_community: 'محافظة ثم منطقة ثم ناحية ثم قرية/بلدة',
   geopoint: 'إحداثيات GPS',
   image: 'التقاط صورة',
   repeat: 'أسئلة تتكرر لكل فرد أو أسرة',
@@ -97,10 +98,11 @@ function withList(pages, name, fn) {
 */
 const PSEUDO = {
   governorate: { label: 'محافظة', make: (names) => ({ name: makeName(names, 'governorate'), type: 'admin_area', level: 'governorate', label: '' }) },
+  admin_community: { label: 'محافظة ← منطقة ← ناحية ← قرية', make: (names) => ({ name: makeName(names, 'location'), type: 'admin_area', level: 'community', label: '' }) },
 };
 const typeLabel = (node) => (node.type === 'admin_area' && node.level === 'governorate'
-  ? PSEUDO.governorate.label : QUESTION_TYPES[node.type]?.label);
-const typeIcon = (node) => (node.type === 'admin_area' && node.level === 'governorate' ? 't_governorate' : `t_${node.type}`);
+  ? PSEUDO.governorate.label : node.type === 'admin_area' && node.level === 'community' ? PSEUDO.admin_community.label : QUESTION_TYPES[node.type]?.label);
+const typeIcon = (node) => (node.type === 'admin_area' && node.level === 'governorate' ? 't_governorate' : node.type === 'admin_area' ? 't_admin_area' : `t_${node.type}`);
 
 function newNode(type, names) {
   if (PSEUDO[type]) return PSEUDO[type].make(names);
@@ -736,7 +738,7 @@ function Palette({ onPick, target, onClear }) {
           <span className="bx-pal__label">{g.label}</span>
           {g.types.map((t) => (
             <button key={t} type="button" className="bx-pal__item" onClick={() => onPick(t)}>
-              <Icon name={`t_${t}`} className="bx-pal__icon" />
+              <Icon name={`t_${t === 'admin_community' ? 'admin_area' : t}`} className="bx-pal__icon" />
               <span className="bx-pal__name">{PSEUDO[t]?.label ?? QUESTION_TYPES[t].label}</span>
               <span className="bx-pal__hint">{TYPE_HINT[t]}</span>
             </button>

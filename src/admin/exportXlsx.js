@@ -24,7 +24,9 @@ function columnsFor(node, areas) {
       }
       return [
         { head: `${L} — المحافظة`, get: (v) => (v?.governorate ? areas?.gov?.get(v.governorate)?.name || v.governorate : '') },
-        { head: `${L} — الناحية`, get: (v) => (v?.subdistrict ? areas?.sub?.get(v.subdistrict)?.name || v.subdistrict : '') },
+        { head: `${L} — المنطقة`, get: (v) => v?.names?.district || '' },
+        { head: `${L} — الناحية`, get: (v) => (v?.subdistrict ? areas?.sub?.get(v.subdistrict)?.name || v.names?.subdistrict || v.subdistrict : '') },
+        ...(node.level === 'community' ? [{ head: `${L} — القرية / البلدة`, get: (v) => v?.names?.community || '' }] : []),
         { head: `${L} — رمز الناحية`, get: (v) => v?.subdistrict || '' },
       ];
     case 'geopoint':

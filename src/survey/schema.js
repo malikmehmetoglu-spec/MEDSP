@@ -42,7 +42,7 @@ export const QUESTION_TYPES = {
   datetime: { label: 'تاريخ ووقت', valueType: 'string' },
 
   /* ---------- جغرافيا ---------- */
-  admin_area: { label: 'محافظة وناحية', valueType: 'object' },
+  admin_area: { label: 'محافظة ← منطقة ← ناحية', valueType: 'object' },
   geopoint: { label: 'نقطة إحداثية', valueType: 'object' },
 
   /* ---------- مرفقات ---------- */

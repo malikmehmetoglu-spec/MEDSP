@@ -29,8 +29,8 @@ function display(value, node, areas) {
   }
   if (node?.type === 'admin_area') {
     const gov = areas?.gov?.get(value.governorate)?.name || value.governorate || '';
-    const sub = areas?.sub?.get(value.subdistrict)?.name || '';
-    return sub ? `${gov}، ${sub}` : gov;
+    const sub = areas?.sub?.get(value.subdistrict)?.name || value.names?.subdistrict || '';
+    return [gov, value.names?.district, sub, value.names?.community].filter(Boolean).join('، ');
   }
   if (node?.type === 'geopoint') {
     return value?.lat != null ? `${Number(value.lat).toFixed(5)}, ${Number(value.lng).toFixed(5)}` : '';
