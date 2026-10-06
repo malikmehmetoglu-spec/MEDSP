@@ -2430,7 +2430,7 @@ button.rx-cell:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(
 .rx-legend span.v1, .rx-legend span.v2, .rx-legend span.v3, .rx-legend span.v4 { width: 26px; padding: 3px 0; }
 .rx-regions__ph { font-weight: 400; font-size: 0.72rem; color: var(--ink-faint); }
 
-/* من الوطني إلى المحلي */
+/* الكميات حسب المستوى الإداري */
 .rx-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 0.86rem; }
 .rx-crumbs span { display: inline-flex; align-items: center; gap: 4px; }
 .rx-crumbs i { font-style: normal; color: var(--ink-faint); }
