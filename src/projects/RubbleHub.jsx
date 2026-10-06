@@ -98,7 +98,7 @@ function StageList({ stage, items }) {
               {x.output != null && <div><dt>{x.stage === 'investment' ? 'قيمة الاستثمار' : 'الناتج'}</dt><dd>{fmt(x.output)}{x.stage === 'investment' ? ' $' : ' م³'}</dd></div>}
               {x.budget != null && <div><dt>الكلفة</dt><dd>${fmt(x.budget)}</dd></div>}
               {x.partner && <div><dt>الجهة / الشريك</dt><dd>{x.partner}</dd></div>}
-              {(x.start || x.end) && <div><dt>المدة</dt><dd dir="ltr">{x.start || '…'} → {x.end || '…'}</dd></div>}
+              {(x.start || x.end) && (String(x.start).startsWith('تقرير') ? <div><dt>المصدر</dt><dd>{x.start}</dd></div> : <div><dt>المدة</dt><dd dir="ltr">{x.start || '…'} → {x.end || '…'}</dd></div>)}
             </dl>
             {x.progress != null && (
               <div className="hub-card__prog"><span className="hub-card__track"><span style={{ width: `${Math.min(100, x.progress)}%` }} /></span><b>{x.progress}%</b></div>
@@ -126,7 +126,7 @@ export default function RubbleHub({ basemap }) {
   const [pipe, setPipe] = useState({ items: [] });
   const [exec, setExec] = useState(null);
   const [surveys, setSurveys] = useState([]);
-  const [plan, setPlan] = useState({ planned: 0, executed: 0, asOf: null });
+  const [plan, setPlan] = useState({ planned: 0, executed: 0, asOf: null, rows: [] });
   const [registry, setRegistry] = useState({ dumps: [], entities: [] });
 
   useEffect(() => {
@@ -147,13 +147,20 @@ export default function RubbleHub({ basemap }) {
     ]).then(([d, live]) => {
       const all = [...(d.surveys || []), ...live.map(fromResponse)];
       const ph = d.phases || [];
-      setPlan({ planned: ph.reduce((a, r) => a + (r.planned || 0), 0), executed: ph.reduce((a, r) => a + (r.executed || 0), 0), asOf: d.planAsOf });
+      setPlan({ rows: ph, planned: ph.reduce((a, r) => a + (r.planned || 0), 0), executed: ph.reduce((a, r) => a + (r.executed || 0), 0), asOf: d.planAsOf });
       setSurveys(all); setExec({ n: all.length, vol: all.reduce((a, s) => a + (s.vol || 0), 0) });
     });
   }, []);
 
+  /* مشاريع خطة الترحيل التي لم يبدأ تنفيذها بعد ← مرحلة «التخطيط والدراسة» */
+  const planItems = useMemo(() => plan.rows.filter((r) => !(r.executed > 0)).map((r, i) => ({
+    id: `plan-${i}`, stage: 'planned', name: `ترحيل الأنقاض — ${r.phase} — ${r.gov}`, gov: r.gov,
+    volume: r.planned || null, status: r.planned ? 'لم يبدأ التنفيذ' : 'الكمية قيد التحديد', notes: r.notes,
+    start: plan.asOf ? `تقرير ${plan.asOf}` : '', photos: [[], [], []],
+  })), [plan]);
+
   const byStage = useMemo(() => Object.fromEntries(STAGES.map((s) => [s.id,
-    s.kinds ? pipe.items.filter((x) => s.kinds.includes(x.stage)) : []])), [pipe]);
+    s.kinds ? [...(s.id === 'planning' ? planItems : []), ...pipe.items.filter((x) => s.kinds.includes(x.stage))] : []])), [pipe, planItems]);
 
   const summary = (s) => {
     if (s.id === 'execution') return exec ? `${short(exec.vol)} م³ · ${fmt(exec.n)} موقعاً` : '…';
