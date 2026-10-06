@@ -100,13 +100,19 @@ export default function ReportShell({ report, basemap, view }) {
   const [range, setRange] = useState({ from: report.from, to: report.to });
   const [directorate, setDirectorate] = useState([]);
   const [center, setCenter] = useState([]);
+  /* المحافظة ← المنطقة ← الناحية: تغيير مستوى يمسح ما تحته */
+  const [geo, setGeo] = useState({ gov: [], area: [], sub: [] });
+  const pickGeo = (level, v) => setGeo((g) => ({
+    ...g, [level]: v,
+    ...(level === 'gov' ? { area: [], sub: [] } : level === 'area' ? { sub: [] } : {}),
+  }));
   /* مرشّحات الأبعاد الخاصة بالتقرير (مثل سبب الحريق في تقرير الإطفاء) */
   const [dimFilters, setDimFilters] = useState({});
   /* الفلترة المتقاطعة: فئة واحدة مميَّزة في كل مرة */
   const [highlight, setHighlight] = useState(null);
 
   const splitDims = (view.filters ?? []).filter((f) => f.split).map((f) => f.dim);
-  const data = useReportStats(report, range, { directorate, center, dims: dimFilters, split: splitDims }, highlight);
+  const data = useReportStats(report, range, { directorate, center, dims: dimFilters, split: splitDims, geo }, highlight);
   /* البطاقات العلوية تعرض قيم المميَّز، والإجمالي يُذكر تحتها */
   const shown = data.part ?? data;
   const pick = (dim) => (value) => setHighlight(value == null ? null : { dim, value });
@@ -125,12 +131,13 @@ export default function ReportShell({ report, basemap, view }) {
     setRange({ from: report.from, to: report.to });
     setDirectorate([]);
     setCenter([]);
+    setGeo({ gov: [], area: [], sub: [] });
     setDimFilters({});
     setHighlight(null);
   };
 
   /* تغيّر المرشّحات يلغي التمييز حتى لا يبقى على فئة لم تعد موجودة */
-  useEffect(() => { setHighlight(null); }, [range, directorate, center, dimFilters]);
+  useEffect(() => { setHighlight(null); }, [range, directorate, center, dimFilters, geo]);
 
   const dimTitle = highlight
     ? (highlight.dim === 'gov' ? 'المحافظة' : data.dims[highlight.dim]?.title)
@@ -149,6 +156,9 @@ export default function ReportShell({ report, basemap, view }) {
         onDirectorate={pickDirectorate}
         onCenter={setCenter}
         onReset={reset}
+        geo={geo}
+        onGeo={pickGeo}
+        geoOptions={data.geoOptions}
         extra={(view.filters ?? []).map((f) => ({
           ...f,
           value: dimFilters[f.dim] ?? null,

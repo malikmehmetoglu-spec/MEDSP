@@ -54,6 +54,7 @@ function loadPlaces() {
       lon: Number(row.point_x),
       governorate: clean(row.adm1_ar),
       district: clean(row.adm2_ar),
+      subdistrict: clean(row.adm3_ar),
     });
   }
 
@@ -195,6 +196,8 @@ function buildReport(rows, places, { operation, dims, metrics }) {
           code,
           name: place.name,
           governorate: place.governorate,
+          district: place.district,
+          subdistrict: place.subdistrict,
           lat: Number(place.lat.toFixed(4)),
           lon: Number(place.lon.toFixed(4)),
         };

@@ -100,14 +100,27 @@ function aggregate(rows, { dict, dims, metrics }) {
 
 /* highlight: { dim: 'كود البعد' أو 'gov', value: 'النص' } */
 export default function useReportStats(report, range, filters = {}, highlight = null) {
-  const { directorate = null, center = null, dims: dimFilters = null, split = [] } = filters;
+  const { directorate = null, center = null, dims: dimFilters = null, split = [], geo = null } = filters;
   /* كل المرشّحات تقبل قيمة واحدة أو قائمة قيم (تحديد متعدد) */
-  const dimKey = JSON.stringify([dimFilters ?? {}, split, [].concat(directorate ?? []), [].concat(center ?? [])]);
+  const dimKey = JSON.stringify([dimFilters ?? {}, split, [].concat(directorate ?? []), [].concat(center ?? []), geo ?? {}]);
 
   return useMemo(() => {
     const { dict, dims, records } = report;
     /* القيم تُقرأ من مفتاحها النصي حتى لا يُعاد الحساب لكل كائن جديد بنفس المحتوى */
-    const [dimSel, splitList, dirList, centerList] = JSON.parse(dimKey);
+    const [dimSel, splitList, dirList, centerList, geoSel] = JSON.parse(dimKey);
+    /*
+      التسلسل الجغرافي: المحافظة (عمود السجل) ← المنطقة ← الناحية (من الموقع المرمّز).
+      السجل بلا موقع مرمّز يُستبعد فقط إذا اختير منطقة أو ناحية.
+    */
+    const gSel = { gov: geoSel.gov || [], area: geoSel.area || [], sub: geoSel.sub || [] };
+    const geoOf = (r) => {
+      const site = r[SITE] >= 0 ? dict.sites[r[SITE]] : null;
+      return { gov: dict.govs[r[GOV]], area: site?.district, sub: site?.subdistrict };
+    };
+    const geoPass = (r, upto = 3) => {
+      const g = geoOf(r);
+      return ['gov', 'area', 'sub'].slice(0, upto).every((k) => !gSel[k].length || gSel[k].includes(g[k]));
+    };
     const { from, to } = range;
 
     const dirIdx = new Set(dirList.map((d) => dict.directorates.indexOf(d)));
@@ -144,7 +157,8 @@ export default function useReportStats(report, range, filters = {}, highlight = 
       if (centerIdx.size && !centerIdx.has(r[CENTER])) return false;
       return true;
     };
-    const scoped = records.filter(inScope);
+    const inTime = records.filter(inScope);
+    const scoped = inTime.filter((r) => geoPass(r));
     const passes = (r, skip) => active.every((f) => f.key === skip || f.allowed.has(r[f.col]));
     const rows = scoped.filter((r) => passes(r));
 
@@ -166,6 +180,18 @@ export default function useReportStats(report, range, filters = {}, highlight = 
         .sort((a, b) => b[1] - a[1])
         .map(([label, count]) => ({ label, count }));
     });
+
+    /* خيارات كل مستوى جغرافي من السجلات المطابقة لما فوقه فقط */
+    const geoOpts = (level, upto) => {
+      const m = new Map();
+      for (const r of inTime) {
+        if (!geoPass(r, upto)) continue;
+        const v = geoOf(r)[level];
+        if (v) m.set(v, (m.get(v) || 0) + 1);
+      }
+      return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([label, count]) => ({ label, count }));
+    };
+    const geoOptions = { gov: geoOpts('gov', 0), area: geoOpts('area', 1), sub: geoOpts('sub', 2) };
 
     /* المراكز المتاحة تتقلص تبعاً للمديرية المختارة */
     const centerSet = new Set();
@@ -194,6 +220,7 @@ export default function useReportStats(report, range, filters = {}, highlight = 
       part,
       directorates: dict.directorates,
       dimOptions,
+      geoOptions,
       availableCenters: [...centerSet].sort((a, b) => a.localeCompare(b, 'ar')),
     };
   }, [report, range, dimKey, highlight]);

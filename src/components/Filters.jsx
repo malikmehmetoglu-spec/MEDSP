@@ -1,5 +1,12 @@
 import Dropdown from './Dropdown';
 
+/* التسلسل الجغرافي: كل مستوى يتقلص بحسب ما فوقه */
+const GEO_LEVELS = [
+  { key: 'gov', label: 'المحافظة', all: 'كل المحافظات' },
+  { key: 'area', label: 'المنطقة', all: 'كل المناطق' },
+  { key: 'sub', label: 'الناحية', all: 'كل النواحي' },
+];
+
 /*
   شريط المرشّحات: الفترة الزمنية + المديرية + المركز،
   ومرشّحات إضافية يحدّدها كل تقرير (extra).
@@ -25,6 +32,9 @@ export default function Filters({
   onReset,
   extra = [],
   onExtra,
+  geo = null,
+  onGeo,
+  geoOptions = null,
 }) {
   const presets = [
     { id: 'all', name: 'كامل الفترة', from: bounds.from, to: bounds.to },
@@ -36,7 +46,8 @@ export default function Filters({
   const activePreset = presets.find((p) => p.from === range.from && p.to === range.to);
   const isFullRange = range.from === bounds.from && range.to === bounds.to;
   const has = (v) => (Array.isArray(v) ? v.length > 0 : Boolean(v));
-  const dirty = !isFullRange || has(directorate) || has(center) || extra.some((f) => has(f.value));
+  const dirty = !isFullRange || has(directorate) || has(center) || extra.some((f) => has(f.value))
+    || (geo && ['gov', 'area', 'sub'].some((k) => has(geo[k])));
 
   /*
     لا تُصحَّح القيمة أثناء الكتابة — التصحيح الفوري كان يعيد الحقل
@@ -103,7 +114,18 @@ export default function Filters({
         )}
       </div>
 
-      <div className="filters__fields" style={{ '--n': 2 + extra.length }}>
+      <div className="filters__fields" style={{ '--n': 2 + extra.length + (geo ? 3 : 0) }}>
+        {geo && GEO_LEVELS.map((g) => (
+          <div className="ffield" key={g.key}>
+            <span className="ffield__label">{g.label}</span>
+            <Dropdown multi label={g.label} placeholder={g.all} value={geo[g.key]}
+              onChange={(v) => onGeo(g.key, v)}
+              options={[
+                ...geo[g.key].filter((v) => !geoOptions?.[g.key]?.some((o) => o.label === v)).map((v) => ({ value: v, label: v })),
+                ...(geoOptions?.[g.key] || []).map((o) => ({ value: o.label, label: o.label, count: o.count })),
+              ]} />
+          </div>
+        ))}
         <div className="ffield">
           <span className="ffield__label">المديرية</span>
           <Dropdown multi label="المديرية" placeholder="كل المديريات" value={directorate}

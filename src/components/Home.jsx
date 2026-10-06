@@ -49,8 +49,14 @@ export default function Home({ report, basemap, onOpen }) {
   const [range, setRange] = useState({ from: report.from, to: report.to });
   const [directorate, setDirectorate] = useState([]);
   const [center, setCenter] = useState([]);
+  /* المحافظة ← المنطقة ← الناحية: تغيير مستوى يمسح ما تحته */
+  const [geo, setGeo] = useState({ gov: [], area: [], sub: [] });
+  const pickGeo = (level, v) => setGeo((g) => ({
+    ...g, [level]: v,
+    ...(level === 'gov' ? { area: [], sub: [] } : level === 'area' ? { sub: [] } : {}),
+  }));
 
-  const data = useReportStats(report, range, { directorate, center });
+  const data = useReportStats(report, range, { directorate, center, geo });
 
   const pickDirectorate = (value) => {
     setDirectorate(value);
@@ -61,6 +67,7 @@ export default function Home({ report, basemap, onOpen }) {
     setRange({ from: report.from, to: report.to });
     setDirectorate([]);
     setCenter([]);
+    setGeo({ gov: [], area: [], sub: [] });
   };
 
   const byOp = data.dims.operation.data;
@@ -79,6 +86,9 @@ export default function Home({ report, basemap, onOpen }) {
         onDirectorate={pickDirectorate}
         onCenter={setCenter}
         onReset={reset}
+        geo={geo}
+        onGeo={pickGeo}
+        geoOptions={data.geoOptions}
         count={data.total}
       />
 
