@@ -214,7 +214,8 @@ export default function RubbleHub({ basemap, initial }) {
         <button type="button" className={stage === 'overview' ? 'is-on' : ''} onClick={() => setStage('overview')}>
           لمحة عامة
         </button>
-        <button type="button" className={stage === 'atlas' ? 'is-on' : ''} onClick={() => setStage('atlas')}>
+        <button type="button" className={`hub-side__atlas${stage === 'atlas' ? ' is-on' : ''}`} onClick={() => setStage('atlas')}>
+          <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5c-2.6 0-4.5 2-4.5 4.4C3.5 9.3 8 14.5 8 14.5s4.5-5.2 4.5-8.6C12.5 3.5 10.6 1.5 8 1.5Z" fill="none" stroke="currentColor" strokeWidth="1.6" /><circle cx="8" cy="6" r="1.7" fill="currentColor" /></svg>
           كميات الأنقاض في سوريا
         </button>
         <button type="button" className={stage === 'gallery' ? 'is-on' : ''} onClick={() => setStage('gallery')}>

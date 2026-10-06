@@ -2769,3 +2769,9 @@ button.rx-cell:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(
   .gal-view{padding:8px;align-items:end}
   .atl-site__links a{flex:1;justify-content:center}
 }
+
+/* زر «كميات الأنقاض في سوريا» مميز عن بقية الأقسام */
+.hub-side button.hub-side__atlas{display:inline-flex;align-items:center;gap:6px;border:0;color:#fff;font-weight:700;
+  background:linear-gradient(120deg,#b8452f,#e0735a 55%,#d4a443);box-shadow:0 4px 14px rgba(224,115,90,.35);position:relative}
+.hub-side button.hub-side__atlas:hover{filter:brightness(1.08)}
+.hub-side button.hub-side__atlas.is-on{outline:2px solid #fff;outline-offset:2px;box-shadow:0 6px 20px rgba(224,115,90,.55)}
