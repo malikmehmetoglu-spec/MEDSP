@@ -685,6 +685,7 @@ function SurveyModal({ s, onClose }) {
           <F k="اسم المكب / الموقع" v={s.dumpName} />
           <F k="عدد الإيصالات" v={s.receipts ? fmt(s.receipts) : null} />
           <F k="عدد الآليات" v={s.machines ? fmt(s.machines) : null} />
+          <F k="الجهة المورّدة للآليات" v={s.supplier} />
           <F k="آليات التحميل" v={s.loaders ? fmt(s.loaders) : null} />
           <F k="أكبر سعة للآليات" v={s.capacity ? `${fmt(s.capacity)} م³` : null} />
           <F k="الرحلات إلى المكب" v={s.trips ? fmt(s.trips) : null} />
@@ -741,6 +742,7 @@ function fromResponse(r, i) {
     workers: Number(a.rt_workers) || null,
     fuel: Number(a.rt_fuel) || null,
     notes: a.rt_ops_notes || '',
+    supplier: a.rt_supplier_same === 'لا' ? (a.rt_supplier || '') : '',
   };
 }
 

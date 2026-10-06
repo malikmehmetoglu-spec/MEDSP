@@ -22,9 +22,16 @@ import SurveyPage from '../survey/SurveyPage';
   استبيان مرتبط بتقرير ثابت (مثل «مشروع ترحيل الأنقاض»): إجاباته المعتمدة تظهر
   في ذلك التقرير مباشرة، فلا معنى لنشره كمشروع مستقل.
 */
-const linkedFeed = (surveys) => (surveys.some((s) => s.report?.feed === 'rubble-transfer'
-  || JSON.stringify(s.pages || []).includes('"rt_volume"'))
-  ? { name: 'إدارة الأنقاض — التنفيذ', href: '#/rubble' } : null);
+const linkedFeed = (surveys) => {
+  const txt = (s) => JSON.stringify(s.pages || []);
+  if (surveys.some((s) => s.report?.feed === 'rubble-transfer' || txt(s).includes('"rt_volume"'))) {
+    return { name: 'إدارة الأنقاض — التنفيذ', href: '#/rubble' };
+  }
+  if (surveys.some((s) => s.report?.feed === 'rubble-entities' || txt(s).includes('"ent_roles"'))) {
+    return { name: 'إدارة الأنقاض — الجهات العاملة', href: '#/rubble' };
+  }
+  return null;
+};
 
 /* استبيان ميداني */
 const TABS = [

@@ -10,6 +10,20 @@ import { coKey } from './RubbleTransfer';
   المصدران: الاستمارات (تلقائياً) + data/rubble-registry/*.xlsx (تكميل وتصنيف).
 */
 
+/* مشروع «سجل الجهات العاملة» في مساحة العمل: سجلاته المعتمدة هي بطاقات الجهات */
+export const isEntityRegistry = (p) => (p.surveys || []).some((s) => s.report?.feed === 'rubble-entities'
+  || JSON.stringify(s.pages || []).includes('"ent_roles"'));
+const split = (v) => String(v ?? '').split(/[،,;\n]/).map((x) => x.trim()).filter(Boolean);
+export function entitiesFromProject(p) {
+  return (p.responses || []).map((r) => {
+    const a = r.answers || {};
+    return {
+      name: String(a.ent_name || '').trim(), aliases: split(a.ent_aliases), type: a.ent_type || '',
+      roles: [].concat(a.ent_roles || []), govs: [].concat(a.ent_govs || []), contact: a.ent_contact || '', notes: a.ent_notes || '',
+    };
+  }).filter((e) => e.name);
+}
+
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
 const norm = (s) => String(s ?? '').trim().replace(/[إأآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ');
 
@@ -51,6 +65,14 @@ export function Entities({ surveys, registry }) {
       x.vol += s.vol; x.sites += 1;
       if (s.gov) x.govs.add(s.gov);
       x.names.set(s.co, (x.names.get(s.co) || 0) + 1);
+    }
+    /* الجهة المورّدة للآليات من الاستمارة الرسمية ← دور «مورد آليات» */
+    for (const s of surveys) {
+      if (!s.supplier) continue;
+      const k0 = coKey(s.supplier);
+      const x = get(alias.get(k0) || k0, s.supplier);
+      x.roles.add('مورد آليات');
+      x.supplied = (x.supplied || 0) + 1;
     }
     for (const d of registry.dumps) if (d.operator) get(alias.get(coKey(d.operator)) || coKey(d.operator), d.operator).roles.add('مشغّل مكب');
     return [...m.values()].map((x) => ({
@@ -100,6 +122,7 @@ export function Entities({ surveys, registry }) {
             </div>
             <dl>
               {x.sites > 0 && <div><dt>أعمال الترحيل</dt><dd>{fmt(x.vol)} م³ · {fmt(x.sites)} موقعاً</dd></div>}
+              {x.supplied > 0 && <div><dt>توريد آليات</dt><dd>{fmt(x.supplied)} موقعاً</dd></div>}
               {x.govs.size > 0 && <div><dt>المحافظات</dt><dd>{[...x.govs].join('، ')}</dd></div>}
               {x.contact && <div><dt>التواصل</dt><dd>{x.contact}</dd></div>}
             </dl>

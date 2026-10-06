@@ -10,6 +10,7 @@ import useTheme from './hooks/useTheme';
 import ProjectsTab from './projects/ProjectsTab';
 import ProjectReport from './projects/ProjectReport';
 import { listPublishedProjects } from './projects/store';
+import { isEntityRegistry } from './projects/RubbleRegistry';
 import useRoute, { href } from './hooks/useRoute';
 import AdminApp from './admin/AdminApp';
 import FillPage from './projects/FillPage';
@@ -42,7 +43,8 @@ export default function App() {
   /* المشاريع المنشورة — لقائمة التنقل ولصفحات المشاريع */
   useEffect(() => {
     listPublishedProjects()
-      .then((list) => setProjects({ status: 'ready', list }))
+      /* سجل الجهات مشروع منشور تقنياً (لتُقرأ سجلاته)، لكنه يُعرض داخل «إدارة الأنقاض» لا كمشروع */
+      .then((list) => setProjects({ status: 'ready', list: list.filter((p) => !isEntityRegistry(p)) }))
       .catch(() => setProjects({ status: 'error', list: [] }));
   }, []);
 
