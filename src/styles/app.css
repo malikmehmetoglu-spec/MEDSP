@@ -2558,3 +2558,30 @@ button.rx-cell:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(
 .reg-dot { display: inline-flex; align-items: center; gap: 6px; }
 .reg-dot i { width: 12px; height: 12px; border-radius: 50%; background: var(--c); border: 1.5px solid #062a26; }
 .reg-map .map__dot { fill-opacity: 0.9; filter: none; }
+
+/* ===== حاسبة تقدير الأنقاض ===== */
+.calc { display: grid; gap: 16px; padding: 22px; border-radius: calc(var(--radius) + 4px); border: 1px solid var(--edge); background: var(--glass); border-top: 4px solid #4f8fdc; }
+.calc__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.calc__head h3 { margin: 8px 0 4px; font-size: 1.3rem; color: var(--ink); }
+.calc__head p { margin: 0; max-width: 620px; font-size: 0.86rem; line-height: 1.8; color: var(--ink-soft); }
+.calc__formula { padding: 10px 16px; border-radius: 12px; font-family: ui-monospace, monospace; font-size: 1.05rem; font-weight: 700; color: #fff; background: linear-gradient(135deg, #2f6fb8, #4f8fdc); }
+.calc__body { display: grid; gap: 18px; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+.calc__inputs { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.calc-f { display: grid; gap: 5px; }
+.calc-f .q-input { margin: 0; max-width: none; }
+.calc-f__l { font-size: 0.82rem; font-weight: 700; color: var(--ink); }
+.calc-f__l em { font-style: normal; font-weight: 400; color: var(--ink-faint); margin-inline-start: 6px; font-size: 0.74rem; }
+.calc-f small { font-size: 0.72rem; color: var(--ink-faint); }
+.calc__out { display: grid; gap: 6px; align-content: start; padding: 20px; border-radius: 16px; color: rgba(235,232,215,0.8); background: radial-gradient(400px 200px at 80% 0%, #1b5f8f, #0b2f48); }
+.calc__out > span { font-size: 0.82rem; }
+.calc__out > b { font-size: 2.6rem; font-weight: 900; color: #fff; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.calc__out > b em { font-style: normal; font-size: 1rem; margin-inline-start: 6px; color: rgba(255,255,255,0.7); }
+.calc__sub { margin: 0; font-family: ui-monospace, monospace; font-size: 0.82rem; color: #9fd0f5; }
+.calc__out dl { margin: 10px 0 0; display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.15); }
+.calc__out dl div { display: flex; justify-content: space-between; gap: 10px; font-size: 0.82rem; }
+.calc__out dd { margin: 0; font-weight: 700; color: #fff; }
+.calc__out.is-empty { place-content: center; text-align: center; }
+.calc__out.is-empty p { margin: 0; line-height: 1.8; }
+.calc__note { margin: 0; font-size: 0.74rem; color: var(--ink-faint); }
+@media (max-width: 900px) { .calc__body { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 520px) { .calc__inputs { grid-template-columns: minmax(0, 1fr); } }

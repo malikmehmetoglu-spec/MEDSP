@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import RubbleTransfer from './RubbleTransfer';
+import EstimateCalc from './EstimateCalc';
 import { Entities, Dumps, isEntityRegistry, entitiesFromProject } from './RubbleRegistry';
 import { listPublishedProjects, listEntities } from './store';
 
@@ -165,7 +166,12 @@ export default function RubbleHub({ basemap }) {
       {stage === 'dumps' && <Dumps surveys={surveys} registry={registry} basemap={basemap} />}
       {!current ? null : current.id === 'execution'
         ? <RubbleTransfer basemap={basemap} />
-        : <StageList key={current.id} stage={current} items={byStage[current.id]} />}
+        : (
+          <>
+            {current.id === 'assessment' && <EstimateCalc />}
+            <StageList key={current.id} stage={current} items={byStage[current.id]} />
+          </>
+        )}
     </div>
   );
 }
