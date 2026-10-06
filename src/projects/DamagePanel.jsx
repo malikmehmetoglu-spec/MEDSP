@@ -66,13 +66,22 @@ export default function DamagePanel({ surveys = [] }) {
     return out.map((o, i) => ({ ...o, rank: i + 1, level: o.score / max > 0.6 ? 'عاجلة' : o.score / max > 0.25 ? 'مرتفعة' : 'عادية' }));
   }, [list, surveys]);
 
+  /* معامل التصحيح لكل محافظة = المُرحّل فعلاً ÷ التقدير النظري (البند 6.1-ج) */
+  const correction = useMemo(() => {
+    const est = new Map(); const moved = new Map();
+    for (const r of rows || []) est.set(r.gov, (est.get(r.gov) || 0) + damageRubble(r).volume);
+    for (const x of surveys) moved.set(x.gov, (moved.get(x.gov) || 0) + (x.vol || 0));
+    return [...est.entries()].filter(([g]) => !govs.length || govs.includes(g)).map(([gov, v]) => ({ gov, v, moved: moved.get(gov) || 0, k: v ? (moved.get(gov) || 0) / v : null }))
+      .sort((a, b) => b.v - a.v);
+  }, [rows, surveys, govs]);
+
   if (rows === null) return null;
   if (!rows.length) {
     return (
       <div className="hub-empty dmg-empty" style={{ '--c': '#b3261e' }}>
         <h3>ربط بيانات الضرر بالأنقاض</h3>
         <p>بانتظار بيانات الضرر من وزارة الإدارة المحلية. تُضاف عبر القالب <b dir="ltr">data/rubble-damage/damage.xlsx</b>:
-          سطر لكل منطقة/ناحية ونوع مبنى بأعداد (مدمر كلياً، جسيم، متوسط، طفيف). عندها تظهر أصناف الضرر ونسبه،
+          سطر لكل منطقة/ناحية ونوع مبنى بأعداد (مدمر كلياً، شديد، متوسط، خفيف). عندها تظهر أصناف الضرر ونسبه،
           والأنقاض الناتجة عن كل فئة بالمعادلة المعتمدة، وترتيب أولويات المناطق.</p>
         <TemplateDownload id="damage" />
       </div>
@@ -108,8 +117,17 @@ export default function DamagePanel({ surveys = [] }) {
         ))}
       </div>
       <p className="dmg__note">إجمالي الأنقاض المقدّرة من الضرر: <b>{fmt(tot.v)} م³</b> (≈ {fmt(tot.v * 1.35)} طن).
-        نسبة التحول إلى أنقاض: {DAMAGE.map((d) => `${d.label} ${d.share * 100}%`).join(' · ')}.
+        المنهجية الأولى في الدليل المعتمد: الحجم الإنشائي (المساحة × الطوابق × 3 م) × معامل التحويل: {DAMAGE.map((d) => `${d.label} ${d.share}`).join(' · ')}.
         {tot.assumed && ' بعض الأسطر بلا مساحة/طوابق فاعتُمد 120 م² و3 طوابق.'}</p>
+
+      <div className="dmg__box">
+        <h4>معايرة التقدير: معامل التصحيح لكل محافظة</h4>
+        <table className="dmg__table"><thead><tr><th>المحافظة</th><th>التقدير النظري م³</th><th>المُرحّل فعلاً م³</th><th>معامل التصحيح</th></tr></thead>
+          <tbody>{correction.map((c) => (
+            <tr key={c.gov}><td>{c.gov}</td><td>{fmt(c.v)}</td><td>{fmt(c.moved)}</td><td>{c.moved ? c.k.toFixed(2) : '—'}</td></tr>
+          ))}</tbody></table>
+        <p className="dmg__note">الكمية النهائية = الكمية النظرية × معامل التصحيح. يكتمل المعامل كلما اكتمل الترحيل في المحافظة؛ قبل ذلك يمثّل نسبة الإنجاز.</p>
+      </div>
 
       <div className="dmg__grid">
         <div className="dmg__box">

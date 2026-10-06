@@ -178,12 +178,12 @@ export function Dumps({ surveys, registry, basemap }) {
       let hit = r.lat && r.lon ? out.find((d) => km(d, r) <= 1) : null;
       if (!hit) hit = out.find((d) => norm(d.name) === norm(r.name));
       if (hit) {
-        Object.assign(hit, { name: r.name, official: true, area: r.area, capacity: r.capacity, operator: r.operator, notes: r.notes });
+        Object.assign(hit, { name: r.name, official: true, area: r.area, capacity: r.capacity, height: r.height, operator: r.operator, notes: r.notes });
         if (r.status) hit.status = r.status;
         if (r.gov) hit.gov = r.gov;
       } else if (r.lat && r.lon) {
         out.push({ key: `r-${r.name}`, name: r.name, lat: r.lat, lon: r.lon, gov: r.gov, sites: 0, received: 0,
-          status: r.status || 'مقترح', areas: [], cos: 0, official: true, area: r.area, capacity: r.capacity, operator: r.operator, notes: r.notes });
+          status: r.status || 'مقترح', areas: [], cos: 0, official: true, area: r.area, capacity: r.capacity, height: r.height, operator: r.operator, notes: r.notes });
       }
     }
     return out.sort((a, b) => b.received - a.received);
@@ -243,6 +243,7 @@ export function Dumps({ surveys, registry, basemap }) {
                 <div><dt>المحافظة</dt><dd>{d.gov || '—'}</dd></div>
                 <div><dt>الإحداثيات</dt><dd dir="ltr">{d.lat.toFixed(5)}, {d.lon.toFixed(5)}</dd></div>
                 <div><dt>المساحة</dt><dd>{d.area != null ? `${fmt(d.area)} م²` : '—'}</dd></div>
+                {d.area != null && d.height != null && <div><dt>الأنقاض المتوضعة (المساحة × متوسط الارتفاع)</dt><dd>{fmt(d.area * d.height)} م³</dd></div>}
                 <div><dt>السعة التصميمية</dt><dd>{d.capacity != null ? `${fmt(d.capacity)} م³` : '—'}</dd></div>
                 <div><dt>المستقبل حتى تاريخه</dt><dd className="is-strong">{fmt(d.received)} م³</dd></div>
                 <div><dt>السعة المتبقية</dt><dd>{remaining != null ? `${fmt(remaining)} م³` : '—'}</dd></div>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { REF, CU_RANGE, BF_RANGE, engineering } from './rubbleMethod';
+import { REF, CU_RANGE, BF_RANGE, DAMAGE, engineering, damageMethod } from './rubbleMethod';
 
 /*
   حاسبة تقدير الأنقاض الموحّدة — الطريقة الهندسية من الدليل المعتمد.
@@ -19,24 +19,31 @@ function Field({ label, unit, hint, children }) {
 }
 
 export default function EstimateCalc() {
-  const [v, setV] = useState({ n: '', area: '', floors: '', height: '', cu: '', bf: '' });
+  const [v, setV] = useState({ n: '', area: '', floors: '', height: '', cu: '', bf: '', destroyed: '', severe: '', moderate: '', light: '' });
   const set = (k) => (e) => setV((x) => ({ ...x, [k]: e.target.value }));
+  /* المنهجية الثانية: n = المدمر كلياً + الشديد إن لم يُدخل n مباشرة */
   const r = engineering(v);
+  const r1 = damageMethod(v);
 
   return (
     <section className="calc">
       <header className="calc__head">
         <div>
-          <span className="rt-kicker">المنهجية المعتمدة · الطريقة الهندسية</span>
+          <span className="rt-kicker">الدليل المعتمد · المنهجيتان الأولى والثانية</span>
           <h3>حاسبة تقدير كميات الأنقاض</h3>
           <p>وفق «الدليل المختصر عن الآلية المعتمدة لتقدير كميات ترحيل الأنقاض — 2026». المعادلة والمعاملات موحّدة لكل الجهات العاملة.</p>
         </div>
-        <div className="calc__formula" dir="ltr">V = n × A × N × Cu × Bf</div>
+        <div className="calc__formula" dir="ltr">A × N × 3 × k &nbsp;|&nbsp; n × A × N × Cu × Bf</div>
       </header>
 
       <div className="calc__body">
         <div className="calc__inputs">
-          <Field label="عدد المباني المدمرة" unit="n · مبنى">
+          {DAMAGE.map((d) => (
+            <Field key={d.key} label={`عدد المباني: ${d.label}`} unit={`× ${d.share}`} hint={d.key === 'destroyed' ? 'المنهجية الأولى' : undefined}>
+              <input className="q-input" type="number" min="0" inputMode="numeric" value={v[d.key]} onChange={set(d.key)} placeholder="0" />
+            </Field>
+          ))}
+          <Field label="عدد المباني المدمرة" unit="n · مبنى" hint="المنهجية الثانية">
             <input className="q-input" type="number" min="0" inputMode="numeric" value={v.n} onChange={set('n')} placeholder="مثال: 12" />
           </Field>
           <Field label="مساحة المسقط الطابقي" unit="A · م²" hint="متوسط مساحة المبنى">
@@ -62,10 +69,24 @@ export default function EstimateCalc() {
           </Field>
         </div>
 
+        <div className="calc__outs">
+        <div className={`calc__out${r1 ? '' : ' is-empty'}`}>
+          {r1 ? (
+            <>
+              <span>المنهجية الأولى · حصر الأضرار</span>
+              <b>{fmt(r1.volume)}<em>م³</em></b>
+              <p className="calc__sub">الحجم الإنشائي للمبنى {fmt(r1.structural)} م³ × معامل التحويل</p>
+              <dl>
+                {DAMAGE.filter((d) => r1.by[d.key] > 0).map((d) => <div key={d.key}><dt>{d.label} (× {d.share})</dt><dd>{fmt(r1.by[d.key])} م³</dd></div>)}
+                <div><dt>الوزن التقريبي</dt><dd>{fmt(r1.weight)} طن</dd></div>
+              </dl>
+            </>
+          ) : <p>المنهجية الأولى: أدخل أعداد المباني حسب درجة الضرر مع المساحة وعدد الطوابق.</p>}
+        </div>
         <div className={`calc__out${r ? '' : ' is-empty'}`}>
           {r ? (
             <>
-              <span>حجم الأنقاض المقدّر</span>
+              <span>المنهجية الثانية · الهندسية</span>
               <b>{fmt(r.volume)}<em>م³</em></b>
               <p className="calc__sub" dir="ltr">
                 {fmt(r.used.n)} × {fmt(r.used.A, 0)} × {fmt(r.used.N)} × {r.used.Cu} × {r.used.Bf}
@@ -77,8 +98,9 @@ export default function EstimateCalc() {
               </dl>
             </>
           ) : (
-            <p>أدخل عدد المباني المدمرة ومساحة المسقط وعدد الطوابق لتظهر النتيجة.</p>
+            <p>المنهجية الثانية: أدخل عدد المباني المدمرة ومساحة المسقط وعدد الطوابق.</p>
           )}
+        </div>
         </div>
       </div>
 

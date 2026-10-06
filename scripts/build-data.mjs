@@ -688,7 +688,7 @@ function buildRegistry() {
   const dumps = readSheet(path.join(dir, 'dumps.xlsx')).map((r) => ({
     name: clean(r['اسم المكب']), gov: clean(r['المحافظة']),
     lat: n(r['خط العرض']), lon: n(r['خط الطول']),
-    status: clean(r['الحالة']), area: n(r['المساحة (م²)']), capacity: n(r['السعة التصميمية (م³)']),
+    status: clean(r['الحالة']), area: n(r['المساحة (م²)']), capacity: n(r['السعة التصميمية (م³)']), height: n(r['متوسط ارتفاع الأنقاض (م)']),
     operator: clean(r['الجهة المشغّلة']), notes: clean(r['ملاحظات']),
   })).filter((d) => d.name);
   const entities = readSheet(path.join(dir, 'entities.xlsx')).map((r) => ({
@@ -704,7 +704,7 @@ function buildDamage() {
   const n = (v) => { const x = Number(String(v ?? '').replace(/[^\d.]/g, '')); return Number.isFinite(x) && String(v).trim() !== '' ? x : 0; };
   const rows = readSheet(path.join(root, '..', 'data', 'rubble-damage', 'damage.xlsx')).map((r) => ({
     gov: clean(r['المحافظة']), area: clean(r['المنطقة']), town: clean(r['الناحية']), kind: clean(r['نوع المبنى / المنشأة']) || 'غير محدد',
-    destroyed: n(r['مدمر كلياً']), severe: n(r['أضرار جسيمة']), moderate: n(r['أضرار متوسطة']), light: n(r['أضرار طفيفة']),
+    destroyed: n(r['مدمر كلياً']), severe: n(r['ضرر شديد'] ?? r['أضرار جسيمة']), moderate: n(r['ضرر متوسط'] ?? r['أضرار متوسطة']), light: n(r['ضرر خفيف'] ?? r['أضرار طفيفة']),
     avgArea: n(r['متوسط مساحة المبنى (م²)']) || null, avgFloors: n(r['متوسط عدد الطوابق']) || null,
     source: clean(r['المصدر']), date: clean(r['تاريخ التقييم']).slice(0, 10), notes: clean(r['ملاحظات']),
   })).filter((r) => r.gov && (r.destroyed || r.severe || r.moderate || r.light));

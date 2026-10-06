@@ -2611,3 +2611,4 @@ button.rx-cell:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(
 .tpl__btn:hover{background:#185c37}
 .tpl__text{margin:0;font-size:.85rem;opacity:.8;line-height:1.6}
 @media (max-width:640px){.tpl{flex-direction:column;align-items:stretch}.tpl__btn{justify-content:center}}
+.calc__outs{display:flex;flex-direction:column;gap:12px}
