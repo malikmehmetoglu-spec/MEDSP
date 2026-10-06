@@ -44,3 +44,24 @@ export function engineering({ n, area, floors, height, cu, bf }) {
     used: { n: B, A, N, Cu: C, Bf: F, H },
   };
 }
+
+/*
+  ربط الضرر بالأنقاض: نسبة ما يتحول إلى أنقاض من حجم المبنى حسب فئة الضرر.
+  المدمر كلياً = 100%، والفئات الأخف نسبة تقديرية قابلة للتعديل حين تعتمد الوزارة قيمها.
+*/
+export const DAMAGE = [
+  { key: 'destroyed', label: 'مدمر كلياً', share: 1, weight: 4, color: '#b3261e' },
+  { key: 'severe', label: 'أضرار جسيمة', share: 0.5, weight: 3, color: '#e0742b' },
+  { key: 'moderate', label: 'أضرار متوسطة', share: 0.2, weight: 2, color: '#d4a443' },
+  { key: 'light', label: 'أضرار طفيفة', share: 0.05, weight: 1, color: '#7fae5a' },
+];
+export const DEFAULT_BUILDING = { area: 120, floors: 3 };
+
+/* أنقاض سطر أضرار واحد: Σ عدد الفئة × A × N × Cu × Bf × نسبة الفئة */
+export function damageRubble(row) {
+  const A = row.avgArea || DEFAULT_BUILDING.area;
+  const N = row.avgFloors || DEFAULT_BUILDING.floors;
+  const per = A * N * REF.cu * REF.bf;
+  const by = Object.fromEntries(DAMAGE.map((d) => [d.key, (row[d.key] || 0) * per * d.share]));
+  return { by, volume: Object.values(by).reduce((a, b) => a + b, 0), assumed: !row.avgArea || !row.avgFloors };
+}

@@ -699,7 +699,21 @@ function buildRegistry() {
   console.log(`  ✓ rubble-registry.json (${dumps.length} مكباً، ${entities.length} جهة في السجل)`);
 }
 
+/* بيانات الأضرار (وزارة الإدارة المحلية / المسوح): data/rubble-damage/damage.xlsx */
+function buildDamage() {
+  const n = (v) => { const x = Number(String(v ?? '').replace(/[^\d.]/g, '')); return Number.isFinite(x) && String(v).trim() !== '' ? x : 0; };
+  const rows = readSheet(path.join(root, '..', 'data', 'rubble-damage', 'damage.xlsx')).map((r) => ({
+    gov: clean(r['المحافظة']), area: clean(r['المنطقة']), town: clean(r['الناحية']), kind: clean(r['نوع المبنى / المنشأة']) || 'غير محدد',
+    destroyed: n(r['مدمر كلياً']), severe: n(r['أضرار جسيمة']), moderate: n(r['أضرار متوسطة']), light: n(r['أضرار طفيفة']),
+    avgArea: n(r['متوسط مساحة المبنى (م²)']) || null, avgFloors: n(r['متوسط عدد الطوابق']) || null,
+    source: clean(r['المصدر']), date: clean(r['تاريخ التقييم']).slice(0, 10), notes: clean(r['ملاحظات']),
+  })).filter((r) => r.gov && (r.destroyed || r.severe || r.moderate || r.light));
+  fs.writeFileSync(path.join(outDir, 'rubble-damage.json'), JSON.stringify({ rows }));
+  console.log(`  ✓ rubble-damage.json (${rows.length} سطر أضرار)`);
+}
+
 run();
 buildRubble();
 buildPipeline();
 buildRegistry();
+buildDamage();

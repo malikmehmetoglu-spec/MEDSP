@@ -2585,3 +2585,22 @@ button.rx-cell:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(
 .calc__note { margin: 0; font-size: 0.74rem; color: var(--ink-faint); }
 @media (max-width: 900px) { .calc__body { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 520px) { .calc__inputs { grid-template-columns: minmax(0, 1fr); } }
+
+/* ===== الضرر والأنقاض ===== */
+.dmg{background:var(--card,#fff);border-radius:14px;padding:16px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.dmg__head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.dmg__head h3{margin:0}
+.dmg__filters{display:flex;gap:8px;flex-wrap:nowrap;min-width:0}
+.dmg__cats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.dmg__cat{border-radius:12px;padding:12px;background:color-mix(in srgb,var(--c) 10%,transparent);border-top:4px solid var(--c);display:flex;flex-direction:column;gap:2px}
+.dmg__cat span{font-weight:700;color:var(--c)}.dmg__cat b{font-size:1.6rem}.dmg__cat em{font-style:normal;font-size:.85rem;opacity:.8}
+.dmg__bar{display:flex;height:14px;border-radius:7px;overflow:hidden;margin:14px 0 6px}
+.dmg__note{font-size:.85rem;opacity:.75;margin:6px 0}
+.dmg__grid{display:grid;grid-template-columns:1fr 1.4fr;gap:14px;margin-top:12px}
+.dmg__box h4{margin:0 0 8px}
+.dmg__table{width:100%;border-collapse:collapse;font-size:.88rem}
+.dmg__table th,.dmg__table td{padding:6px 8px;border-bottom:1px solid rgba(0,0,0,.07);text-align:right}
+.dmg__lvl{padding:2px 8px;border-radius:10px;font-size:.8rem;color:#fff}
+.dmg__lvl.is-عاجلة{background:#b3261e}.dmg__lvl.is-مرتفعة{background:#e0742b}.dmg__lvl.is-عادية{background:#7fae5a}
+.dmg-empty{margin-bottom:18px}
+@media (max-width:760px){.dmg__cats{grid-template-columns:repeat(2,1fr)}.dmg__grid{grid-template-columns:1fr}.dmg__box{overflow-x:auto}}
