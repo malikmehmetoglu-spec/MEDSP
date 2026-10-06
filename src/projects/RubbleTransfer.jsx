@@ -901,9 +901,12 @@ export default function RubbleTransfer({ basemap }) {
   const view = useMemo(() => {
     if (!data) return null;
     const surveys = data.surveys.filter((s) => matchSurvey(s, f));
-    const plan = data.phases.length > 0;
-    const rows = data.phases.filter((r) => matchPlan(r, f));
-    return { plan, surveys, ...build(rows, surveys, data.live || 0, plan) };
+    /* الخطة معتمدة على مستوى المحافظة × المرحلة فقط؛ أي فلتر أدق منها (منطقة، ناحية، جهة…)
+       لا يمكن أن يقابله مخطط، فتُحسب الأرقام من الاستمارات المطابقة (المنفّذ فعلاً) */
+    const deep = data.phases.length > 0 && DIMS.some((d) => !['gov', 'phase'].includes(d.key) && f[d.key]?.length);
+    const plan = data.phases.length > 0 && !deep;
+    const rows = plan ? data.phases.filter((r) => matchPlan(r, f)) : [];
+    return { plan, deep, surveys, ...build(rows, surveys, data.live || 0, plan) };
   }, [data, f]);
 
   if (error) return <div className="pending"><h3>تعذّر تحميل بيانات المشروع</h3><p>حدّث الصفحة وحاول مجدداً.</p></div>;
@@ -925,6 +928,10 @@ export default function RubbleTransfer({ basemap }) {
   return (
     <div className="rx">
       <FilterBar f={f} setF={setFp} surveys={data.surveys} toggle={toggle} />
+      {view.deep && (
+        <p className="rx-deep">الخطة (الكمية المخطط لها) معتمدة على مستوى المحافظة والمرحلة فقط، لذلك تعرض الأرقام عند الفلترة بالمنطقة أو الناحية أو الجهة
+          الكمياتِ المنفّذة فعلاً من استمارات المواقع المطابقة، دون نسب إنجاز.</p>
+      )}
       <Summary t={view.t} items={view.items} filtered={filtered} plan={view.plan} phases={view.phases} counts={view.counts} />
       <PhaseRibbon phases={view.phases} f={f} toggle={toggle} plan={view.plan} />
       <Levels surveys={view.surveys} f={f} setF={setFp} />

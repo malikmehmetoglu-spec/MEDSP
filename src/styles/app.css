@@ -2684,3 +2684,4 @@ button.rx-cell:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(
 .hub-card__parts li{padding:8px 10px;border-radius:10px;background:var(--edge);font-size:.88rem}
 .hub-card__parts small{display:block;margin-top:3px;color:var(--ink-soft);line-height:1.6}
 .hub-card__parts em{font-style:normal;font-weight:700}.hub-card__parts em.is-go{color:#2f9e74}.hub-card__parts em.is-wait{color:#e0742b}
+.rx-deep{margin:0 0 14px;padding:10px 14px;border-radius:12px;border:1px solid rgba(212,164,67,.5);background:rgba(212,164,67,.1);color:var(--ink);font-size:.9rem;line-height:1.7}
