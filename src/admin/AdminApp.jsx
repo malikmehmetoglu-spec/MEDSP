@@ -24,7 +24,7 @@ import SurveyPage from '../survey/SurveyPage';
 */
 const linkedFeed = (surveys) => (surveys.some((s) => s.report?.feed === 'rubble-transfer'
   || JSON.stringify(s.pages || []).includes('"rt_volume"'))
-  ? { name: 'مشروع ترحيل الأنقاض', href: '#/projects/rubble-transfer' } : null);
+  ? { name: 'إدارة الأنقاض — التنفيذ', href: '#/rubble' } : null);
 
 /* استبيان ميداني */
 const TABS = [
