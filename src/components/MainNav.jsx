@@ -133,12 +133,6 @@ export default function MainNav({ route, ops, projects, projectsStatus }) {
             إدارة الأنقاض
           </a>
 
-          <a href={href.atlas()}
-            className={`categories__item${route.page === 'atlas' ? ' is-active' : ''}`}
-            aria-current={route.page === 'atlas' ? 'page' : undefined}>
-            أنقاض سوريا
-          </a>
-
           <a href={href.monthly()}
             className={`categories__item${route.page === 'monthly' ? ' is-active' : ''}`}
             aria-current={route.page === 'monthly' ? 'page' : undefined}>

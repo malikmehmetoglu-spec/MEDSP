@@ -6,6 +6,7 @@ import DamagePanel from './DamagePanel';
 import DroneCalc from './DroneCalc';
 import RubbleOverview from './RubbleOverview';
 import RubbleGallery from './RubbleGallery';
+import RubbleAtlas from './RubbleAtlas';
 import { fromResponse } from './RubbleTransfer';
 import { Entities, Dumps, isEntityRegistry, entitiesFromProject } from './RubbleRegistry';
 import { listPublishedProjects, listEntities, rubbleTransferFeed } from './store';
@@ -128,8 +129,8 @@ function StageList({ stage, items }) {
   );
 }
 
-export default function RubbleHub({ basemap }) {
-  const [stage, setStage] = useState('overview');
+export default function RubbleHub({ basemap, initial }) {
+  const [stage, setStage] = useState(initial || 'overview');
   const [pipe, setPipe] = useState({ items: [] });
   const [exec, setExec] = useState(null);
   const [surveys, setSurveys] = useState([]);
@@ -213,6 +214,9 @@ export default function RubbleHub({ basemap }) {
         <button type="button" className={stage === 'overview' ? 'is-on' : ''} onClick={() => setStage('overview')}>
           لمحة عامة
         </button>
+        <button type="button" className={stage === 'atlas' ? 'is-on' : ''} onClick={() => setStage('atlas')}>
+          كميات الأنقاض في سوريا
+        </button>
         <button type="button" className={stage === 'gallery' ? 'is-on' : ''} onClick={() => setStage('gallery')}>
           الأرشيف المصور
         </button>
@@ -225,6 +229,7 @@ export default function RubbleHub({ basemap }) {
       </nav>
 
       {stage === 'overview' && <RubbleOverview plan={plan} planItems={planItems} surveys={named} pipe={pipe.items} registry={registry} go={setStage} />}
+      {stage === 'atlas' && <RubbleAtlas basemap={basemap} />}
       {stage === 'gallery' && <RubbleGallery surveys={named} pipe={pipe.items} />}
       {stage === 'entities' && <Entities surveys={surveys} registry={registry} />}
       {stage === 'dumps' && <Dumps surveys={surveys} registry={registry} basemap={basemap} />}
