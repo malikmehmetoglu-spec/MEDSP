@@ -621,6 +621,9 @@ function buildRubble() {
         vol: Math.round(num(r['كمية الأنقاض التي تم ترحيلها من موقع العمل بالمتر المكعب (M3)']) * 10) / 10,
         dump: str(r['الجهة التي تم ترحيل الأنقاض اليها']),
         dumpName: str(r['اسم المكب'] || r['اسم  الموقع']),
+        /* إحداثيات المكب: المعتمد في حقل، والمقترح من الجهة المحلية في حقل آخر */
+        dumpLat: Math.round(num(r['_موقع المكب على الخريطة_latitude'] || r['_تحديد الموقع على الخريطة (للموقع المقترح من قبل الجهة المحلية)_latitude']) * 1e5) / 1e5 || null,
+        dumpLon: Math.round(num(r['_موقع المكب على الخريطة_longitude'] || r['_تحديد الموقع على الخريطة (للموقع المقترح من قبل الجهة المحلية)_longitude']) * 1e5) / 1e5 || null,
         dist: str(r['ما هي المسافة المقطوعة إلى مكب الأنقاض؟']).replace(/\s+/g, ''),
         hours: hours || null, fam: fam || null,
         receipts: num(r['عدد الايصالات']) || null,
@@ -666,6 +669,37 @@ function buildPipeline() {
   console.log(`  ✓ rubble-pipeline.json (${items.length} مشروعاً)`);
 }
 
+/*
+  المكبات والجهات العاملة:
+  - المكبات تُستخرج تلقائياً من الاستمارات (تجميع بالإحداثيات ~1 كم) مع الكمية المستقبلة،
+    وتُكمَّل من data/rubble-registry/dumps.xlsx (المساحة، السعة، المشغّل، الحالة الرسمية).
+  - الجهات من data/rubble-registry/entities.xlsx (الأدوار المتعددة)، وتُضاف إليها
+    تلقائياً كل جهة منفذة وردت في الاستمارات.
+*/
+function readSheet(file) {
+  if (!fs.existsSync(file)) return [];
+  const wb = XLSX.readFile(file, { cellDates: true });
+  return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+}
+function buildRegistry() {
+  const dir = path.join(root, '..', 'data', 'rubble-registry');
+  const n = (v) => { const x = Number(String(v ?? '').replace(/[^\d.]/g, '')); return Number.isFinite(x) && String(v).trim() !== '' ? x : null; };
+  const list = (v) => clean(v).split(/[،,;]/).map((x) => x.trim()).filter(Boolean);
+  const dumps = readSheet(path.join(dir, 'dumps.xlsx')).map((r) => ({
+    name: clean(r['اسم المكب']), gov: clean(r['المحافظة']),
+    lat: n(r['خط العرض']), lon: n(r['خط الطول']),
+    status: clean(r['الحالة']), area: n(r['المساحة (م²)']), capacity: n(r['السعة التصميمية (م³)']),
+    operator: clean(r['الجهة المشغّلة']), notes: clean(r['ملاحظات']),
+  })).filter((d) => d.name);
+  const entities = readSheet(path.join(dir, 'entities.xlsx')).map((r) => ({
+    name: clean(r['اسم الجهة']), aliases: list(r['تسميات بديلة']), type: clean(r['نوع الجهة']),
+    roles: list(r['الأدوار']), govs: list(r['المحافظات']), contact: clean(r['التواصل']), notes: clean(r['ملاحظات']),
+  })).filter((e) => e.name);
+  fs.writeFileSync(path.join(outDir, 'rubble-registry.json'), JSON.stringify({ dumps, entities }));
+  console.log(`  ✓ rubble-registry.json (${dumps.length} مكباً، ${entities.length} جهة في السجل)`);
+}
+
 run();
 buildRubble();
 buildPipeline();
+buildRegistry();

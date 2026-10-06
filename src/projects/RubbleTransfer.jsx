@@ -30,10 +30,10 @@ const govName = (raw) => {
   return GOV_LABEL[govKey(g)] ?? govKey(g).replace(/ه$/, 'ة');
 };
 /* اسم الجهة المنفذة: يُدمج «شركة الفاتح» و«شركة الفاتح للانشاءات» وأخطاء الإملاء الشائعة */
-const coKey = (raw) => {
+export const coKey = (raw) => {
   const n = norm(raw);
   if (!n) return '';
-  if (n.includes('الطوارئ')) return 'وزاره الطوارئ';
+  if (n.includes('الطوار')) return 'وزاره الطوارئ';
   if (n.includes('الدفاع المدني')) return 'الدفاع المدني';
   /* تُحذف الكلمات العامة و«ال» التعريف، وتُرتّب الكلمات: «ركان فرج عقدي» = «شركة فرج ركان عقدي» */
   return n.replace(/عبد /g, 'عبد').split(' ')

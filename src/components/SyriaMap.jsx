@@ -310,6 +310,7 @@ export default function SyriaMap({
                   cx={x}
                   cy={y}
                   r={radius(loc.count)}
+                  style={loc.color ? { fill: loc.color } : undefined}
                   className={[
                     'map__dot',
                     hovered?.code === loc.code ? 'map__dot--on' : '',

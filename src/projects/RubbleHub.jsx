@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import RubbleTransfer from './RubbleTransfer';
+import { Entities, Dumps } from './RubbleRegistry';
 
 /*
   إدارة الأنقاض — دورة كاملة في تبويب واحد:
@@ -104,11 +105,14 @@ export default function RubbleHub({ basemap }) {
   const [stage, setStage] = useState('execution');
   const [pipe, setPipe] = useState({ items: [] });
   const [exec, setExec] = useState(null);
+  const [surveys, setSurveys] = useState([]);
+  const [registry, setRegistry] = useState({ dumps: [], entities: [] });
 
   useEffect(() => {
+    fetch('data/rubble-registry.json').then((r) => r.json()).then(setRegistry).catch(() => {});
     fetch('data/rubble-pipeline.json').then((r) => r.json()).then(setPipe).catch(() => setPipe({ items: [] }));
     fetch('data/rubble-transfer.json').then((r) => r.json())
-      .then((d) => setExec({ n: d.surveys.length, vol: d.surveys.reduce((a, s) => a + s.vol, 0) }))
+      .then((d) => { setSurveys(d.surveys); setExec({ n: d.surveys.length, vol: d.surveys.reduce((a, s) => a + s.vol, 0) }); })
       .catch(() => setExec(null));
   }, []);
 
@@ -137,7 +141,19 @@ export default function RubbleHub({ basemap }) {
         ))}
       </nav>
 
-      {current.id === 'execution'
+      {/* سجلّان يخدمان كل المراحل: من يعمل، وأين تذهب الأنقاض */}
+      <nav className="hub-side" aria-label="سجلات">
+        <button type="button" className={stage === 'entities' ? 'is-on' : ''} onClick={() => setStage('entities')}>
+          الجهات العاملة وأدوارها
+        </button>
+        <button type="button" className={stage === 'dumps' ? 'is-on' : ''} onClick={() => setStage('dumps')}>
+          المكبات المعتمدة والمقترحة
+        </button>
+      </nav>
+
+      {stage === 'entities' && <Entities surveys={surveys} registry={registry} />}
+      {stage === 'dumps' && <Dumps surveys={surveys} registry={registry} basemap={basemap} />}
+      {!current ? null : current.id === 'execution'
         ? <RubbleTransfer basemap={basemap} />
         : <StageList key={current.id} stage={current} items={byStage[current.id]} />}
     </div>
