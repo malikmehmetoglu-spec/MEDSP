@@ -2775,3 +2775,22 @@ button.rx-cell:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(
   background:linear-gradient(120deg,#b8452f,#e0735a 55%,#d4a443);box-shadow:0 4px 14px rgba(224,115,90,.35);position:relative}
 .hub-side button.hub-side__atlas:hover{filter:brightness(1.08)}
 .hub-side button.hub-side__atlas.is-on{outline:2px solid #fff;outline-offset:2px;box-shadow:0 6px 20px rgba(224,115,90,.55)}
+
+/* ===== مقروئية النصوص الصغيرة في بطاقات إدارة الأنقاض ===== */
+.hub .ov-kpis span,.hub .ov-kpis small,.hub .hub-kpis span,.hub .hub-kpis small{font-size:.92rem;line-height:1.6;color:var(--ink);opacity:.85}
+.hub .ov-kpis small,.hub .hub-kpis small{display:block;margin-top:4px;font-weight:600}
+.hub .atl-kpis .is-ready small{font-size:.9rem;color:#1f7a59;opacity:1}
+:root[data-theme="dark"] .hub .atl-kpis .is-ready small{color:#5fd0a3}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .hub .atl-kpis .is-ready small{color:#5fd0a3}}
+.hub .atl-rows small,.hub .atl-govs__n small,.hub .atl-cards__t small,.hub .ov-stage__t small,.hub .ov-recent small,
+.hub .gal-card__body small,.hub .hub-card__parts small,.hub .rx-regions__head,.hub .dmg__note,.hub .gal-note,
+.hub .atl-box h3 small,.hub .atl-site dt{font-size:.86rem;color:var(--ink);opacity:.8;line-height:1.6}
+.hub .atl-cards__tags em{font-size:.8rem;font-weight:600;padding:2px 8px}
+.hub .atl-rows button{font-size:.95rem}
+.hub .hub-step__t small,.hub .hub-card__where,.hub .hub-card dl dt,.hub .hub-card__notes{font-size:.86rem}
+.hub .dmg__table,.hub .atl-table .dmg__table{font-size:.92rem}
+.hub .rt-kicker{font-size:.8rem}
+@media (max-width:640px){
+  .hub .ov-kpis span,.hub .ov-kpis small{font-size:.88rem}
+  .hub .atl-kpis .is-ready small{font-size:.86rem}
+}
