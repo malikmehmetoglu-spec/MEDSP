@@ -2727,3 +2727,45 @@ button.rx-cell:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(
 .atl-site dt{font-size:.76rem;color:var(--ink-soft)}.atl-site dd{margin:0}
 .atl-site__links{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 @media (max-width:900px){.atl-main{grid-template-columns:1fr}.atl-site dl{grid-template-columns:1fr}}
+
+/* أنقاض سوريا — الهاتف */
+.hub{grid-template-columns:minmax(0,1fr)}
+.atl-cards{display:none;list-style:none;margin:0;padding:0}
+@media (max-width:640px){
+  .hub-side{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-16px;padding-inline:16px;-webkit-overflow-scrolling:touch}
+  .hub-side::-webkit-scrollbar{display:none}
+  .hub-side button{flex-shrink:0;white-space:nowrap}
+  .atl{gap:12px}
+  .atl-hero{padding:16px;gap:12px}
+  .atl-hero h2{font-size:1.25rem}
+  .atl-hero p{font-size:.86rem;line-height:1.7}
+  .atl-hero .ov-hero__big{width:100%;flex-direction:row;justify-content:center;gap:10px;align-items:baseline;flex-wrap:wrap;padding:10px}
+  .atl-hero .ov-hero__big b{font-size:2rem}
+  .atl-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .atl-kpis div{padding:10px}
+  .atl-kpis b{font-size:1.3rem}
+  .atl-kpis .is-ready small{font-size:.68rem}
+  .atl-site dl{grid-template-columns:1fr 1fr!important}
+  .atl-filters .filters__fields{grid-template-columns:1fr!important;display:grid}
+  .atl-box{padding:12px;border-radius:12px}
+  .atl-box h3{font-size:.95rem}
+  .atl-govs button{grid-template-columns:84px 1fr 46px;gap:8px;padding:8px 4px}
+  .atl-grid{grid-template-columns:minmax(0,1fr);gap:10px}
+  .atl-rows button{padding:8px 4px}
+  .atl-table{display:none}
+  .atl-cards{display:grid;gap:8px}
+  .atl-cards button{all:unset;box-sizing:border-box;width:100%;cursor:pointer;display:grid;grid-template-columns:26px 1fr auto;gap:10px;align-items:center;padding:10px;border-radius:10px;background:var(--edge)}
+  .atl-cards__n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:.75rem;font-weight:700;background:rgba(224,115,90,.2);color:#e0735a}
+  .atl-cards__t{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .atl-cards__t b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .atl-cards__t small{color:var(--ink-soft);font-size:.76rem}
+  .atl-cards__tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+  .atl-cards__tags em{font-style:normal;font-size:.68rem;padding:1px 7px;border-radius:8px}
+  .atl-cards__tags .ok{background:rgba(47,158,116,.18);color:#2f9e74}
+  .atl-cards__tags .no{background:rgba(224,115,90,.18);color:#e0735a}
+  .atl-cards__v{display:flex;flex-direction:column;align-items:flex-end}
+  .atl-cards__v b{font-size:1.05rem;color:#e0735a}.atl-cards__v small{font-size:.7rem;color:var(--ink-soft)}
+  .atl-site{padding:14px;max-height:92vh}
+  .gal-view{padding:8px;align-items:end}
+  .atl-site__links a{flex:1;justify-content:center}
+}

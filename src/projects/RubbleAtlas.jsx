@@ -163,7 +163,7 @@ export default function RubbleAtlas({ basemap }) {
       <div className="atl-main">
         <section className="atl-box atl-mapbox">
           <h3>خريطة المواقع <small><i className="atl-dot" style={{ background: '#2f9e74' }} /> جاهز للعمل <i className="atl-dot" style={{ background: '#e0a33a' }} /> يحتاج متطلبات</small></h3>
-          {basemap ? <SyriaMap basemap={basemap} locations={locations} noun="المواقع" govFill={govFill} height={460} className="rx-map"
+          {basemap ? <SyriaMap basemap={basemap} locations={locations} noun="المواقع" govFill={govFill} height={typeof window !== 'undefined' && window.innerWidth < 640 ? 340 : 460} className="rx-map"
             onPickGovernorate={(code) => { const g = basemap.governorates.find((x) => x.code === code)?.name; if (g && byGov.has(g)) toggle('gov', g); }} /> : null}
         </section>
         <section className="atl-box">
@@ -199,6 +199,24 @@ export default function RubbleAtlas({ basemap }) {
             ))}</tbody>
           </table>
         </div>
+        <ul className="atl-cards">
+          {top.slice(0, limit).map((s, i) => (
+            <li key={s.id}>
+              <button type="button" onClick={() => setOpen(s)}>
+                <span className="atl-cards__n">{i + 1}</span>
+                <span className="atl-cards__t"><b>{[s.village, s.hood].filter(Boolean).join(' — ') || s.town}</b>
+                  <small>{[s.gov, s.area].filter(Boolean).join(' · ')}</small>
+                  <span className="atl-cards__tags">
+                    <em className={s.access === 'سهل الوصول' ? 'ok' : 'no'}>{s.access}</em>
+                    <em className={s.approval === 'نعم' ? 'ok' : 'no'}>{s.approval === 'نعم' ? 'موافقة' : 'بلا موافقة'}</em>
+                    <em className={s.uxo === 'نعم' ? 'ok' : 'no'}>{s.uxo === 'نعم' ? 'ممسوح' : 'بلا مسح'}</em>
+                  </span>
+                </span>
+                <span className="atl-cards__v"><b>{short(s.vol)}</b><small>م³</small></span>
+              </button>
+            </li>
+          ))}
+        </ul>
         {top.length > limit && <button type="button" className="gal-more" onClick={() => setLimit((n) => n + 30)}>عرض المزيد ({fmt(top.length - limit)})</button>}
       </section>
 
