@@ -2421,3 +2421,11 @@ button.rx-cell:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(
 .rx-empty img { width: 90px; opacity: 0.55; }
 .rx-empty h2 { margin: 0; font-size: var(--h2); color: var(--ink); }
 .rx-empty p { margin: 0; max-width: 560px; line-height: 1.9; color: var(--ink-soft); }
+
+/* كثافة الحجم الموثّق (بلا خطة) */
+.v1, .rx-cell--v1 { background: #d7eee7; color: #135d52; }
+.v2, .rx-cell--v2 { background: #9fd6c9; color: #0f4f45; }
+.v3, .rx-cell--v3 { background: #4fae98; color: #fff; }
+.v4, .rx-cell--v4 { background: #1f7d68; color: #fff; }
+.rx-legend span.v1, .rx-legend span.v2, .rx-legend span.v3, .rx-legend span.v4 { width: 26px; padding: 3px 0; }
+.rx-regions__ph { font-weight: 400; font-size: 0.72rem; color: var(--ink-faint); }

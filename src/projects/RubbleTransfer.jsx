@@ -14,7 +14,7 @@ export const RUBBLE_PROJECT = {
   id: 'rubble-transfer',
   name: 'مشروع ترحيل الأنقاض',
   description: 'إدارة تقييم الأضرار والتعافي — متابعة خطة ترحيل الأنقاض عبر المحافظات، والاستبيانات الميدانية، وأداء الجهات المنفذة.',
-  surveysCount: 0,
+  surveysCount: 1983,
 };
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
@@ -36,7 +36,7 @@ const coKey = (raw) => {
   if (n.includes('الطوارئ')) return 'وزاره الطوارئ';
   if (n.includes('الدفاع المدني')) return 'الدفاع المدني';
   /* تُحذف الكلمات العامة و«ال» التعريف، وتُرتّب الكلمات: «ركان فرج عقدي» = «شركة فرج ركان عقدي» */
-  return n.split(' ')
+  return n.replace(/عبد /g, 'عبد').split(' ')
     .filter((w) => !/^(شركه|شركة|موسسه|مؤسسه|المقاول|للمقاولات|المقاولات|للانشاءات|الانشاءات|انشاءات|للاعمار|و)$/.test(w))
     .map((w) => w.replace(/^ال(?=..)/, '').replace(/^ل(?=ل)/, ''))
     .sort().join(' ');
@@ -189,6 +189,12 @@ function insights({ govs, surveys, t, contractors }) {
   const idle = active.filter((g) => g.executed === 0);
   if (idle.length) out.push({ tone: 3, icon: '◷', text: <>{idle.length === 1 ? 'محافظة واحدة' : `${idle.length} محافظات`} لم يبدأ فيها التنفيذ ({idle.map((g) => g.name).join('، ')}) بمخطط <b>{fmt(idle.reduce((a, g) => a + g.planned, 0))} م³</b>.</> });
   if (surveys.length) {
+    if (!active.length) {
+      const byGov = sumBy(surveys, (x) => govName(x.gov), (x) => x.vol);
+      if (byGov[0]) out.push({ tone: 0, icon: '▲', text: <>محافظة <b>{byGov[0].label}</b> الأعلى ترحيلاً بـ<b>{fmt(byGov[0].value)} م³</b>، أي <b>{pct(byGov[0].value, t.surveyVol)}%</b> من الإجمالي.</> });
+      const byPhase = sumBy(surveys, phaseOf, (x) => x.vol);
+      if (byPhase.length > 1) out.push({ tone: 3, icon: '◷', text: <><b>{byPhase[0].label}</b> تستأثر بـ<b>{pct(byPhase[0].value, t.surveyVol)}%</b> من الكميات الموثقة.</> });
+    }
     const roads = surveys.filter((s) => /طريق/.test(s.nature)).length;
     out.push({ tone: 5, icon: '⇢', text: <><b>{pct(roads, surveys.length)}%</b> من المواقع الموثقة طرق رئيسية وفرعية.</> });
     const localVol = surveys.filter((s) => s.dump && !/معتمد/.test(s.dump)).reduce((a, s) => a + s.vol, 0);
@@ -202,18 +208,51 @@ function insights({ govs, surveys, t, contractors }) {
   return out;
 }
 
+
+/* اختصار الأحجام الكبيرة: 1.2M / 845K */
+const short = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 2)}M` : n >= 1e4 ? `${Math.round(n / 1e3)}K` : fmt(n));
+/* درجة الكثافة للحجم الموثّق (حين لا توجد خطة): نسبة إلى أكبر خلية */
+const vheat = (v, max) => (!v ? 'none' : `v${Math.min(4, Math.max(1, Math.ceil((v / (max || 1)) * 4)))}`);
+
+/* حلقة توزيع الكميات على المراحل (بديل حلقة الإنجاز حين لا توجد خطة) */
+function PhaseDonut({ phases, total }) {
+  const r = 70; const c = 2 * Math.PI * r;
+  let off = 0;
+  return (
+    <svg className="rx-ring" viewBox="0 0 180 180" role="img" aria-label="توزيع الكميات على المراحل">
+      <circle cx="90" cy="90" r={r} className="rx-ring__track" />
+      {phases.map((p, i) => {
+        const len = total ? (p.executed / total) * c : 0;
+        const el = len > 0 ? <circle key={p.key} cx="90" cy="90" r={r} fill="none" stroke={PHASE_COLOR[i]} strokeWidth="16"
+          strokeDasharray={`${Math.max(0, len - 3)} ${c}`} strokeDashoffset={-off} transform="rotate(-90 90 90)" /> : null;
+        off += len;
+        return el;
+      })}
+      <text x="90" y="88" className="rx-ring__num" style={{ fontSize: 28 }}>{short(total)}</text>
+      <text x="90" y="112" className="rx-ring__cap">م³ مرحّلة</text>
+    </svg>
+  );
+}
+
 /* ---------------- الأقسام ---------------- */
 
-function Summary({ t, items, filtered }) {
+function Summary({ t, items, filtered, plan, phases, counts }) {
   return (
     <section className="rx-top">
-      <div className="rx-top__ring"><Ring value={pct(t.executed, t.planned)} /></div>
-      <div className="rx-top__nums">
+      <div className="rx-top__ring">{plan ? <Ring value={pct(t.executed, t.planned)} /> : <PhaseDonut phases={phases} total={t.surveyVol} />}</div>
+      {!plan ? (
+        <div className="rx-top__nums">
+          <div className="rx-num rx-num--b"><span>الأنقاض المرحّلة</span><Figure value={t.surveyVol} className="rx-num__v" /><em>م³ موثّقة ميدانياً</em></div>
+          <div className="rx-num rx-num--d"><span>مواقع العمل</span><Figure value={t.surveys} className="rx-num__v" /><em>استمارة ميدانية</em></div>
+          <div className="rx-num rx-num--a"><span>المحافظات</span><Figure value={counts.govs} className="rx-num__v" /><em>{fmt(counts.areas)} منطقة</em></div>
+          <div className="rx-num rx-num--c"><span>الجهات المنفذة</span><Figure value={counts.cos} className="rx-num__v" /><em>جهة</em></div>
+        </div>
+      ) : <div className="rx-top__nums">
         <div className="rx-num rx-num--a"><span>المخطط ترحيله</span><Figure value={t.planned} className="rx-num__v" /><em>م³</em></div>
         <div className="rx-num rx-num--b"><span>تم ترحيله</span><Figure value={t.executed} className="rx-num__v" /><em>م³</em></div>
         <div className="rx-num rx-num--c"><span>بانتظار الترحيل</span><Figure value={Math.max(0, t.planned - t.executed)} className="rx-num__v" /><em>م³</em></div>
         <div className="rx-num rx-num--d"><span>مواقع موثّقة ميدانياً</span><Figure value={t.surveys} className="rx-num__v" /><em>{fmt(t.surveyVol)} م³ موثّقة</em></div>
-      </div>
+      </div>}
       <div className="rx-insights">
         <h3>ماذا تقول الأرقام؟ {filtered && <small>(ضمن التصفية الحالية)</small>}</h3>
         <ul>
@@ -226,19 +265,20 @@ function Summary({ t, items, filtered }) {
   );
 }
 
-function PhaseRibbon({ phases, f, toggle }) {
-  const total = phases.reduce((a, p) => a + p.planned, 0) || 1;
+function PhaseRibbon({ phases, f, toggle, plan }) {
+  const size = (p) => (plan ? p.planned : p.executed);
+  const total = phases.reduce((a, p) => a + size(p), 0) || 1;
   const on = (k) => f.phase.includes(k);
   const dim = f.phase.length > 0;
   return (
     <section className="rx-block">
-      <header className="rx-head"><h2>مسار المراحل الثلاث</h2><p>عرض كل مرحلة بحجمها المخطط، والجزء الملوّن ما أُنجز منها. اضغط مرحلة لتصفية الصفحة عليها.</p></header>
+      <header className="rx-head"><h2>مسار المراحل الثلاث</h2><p>{plan ? 'عرض كل مرحلة بحجمها المخطط، والجزء الملوّن ما أُنجز منها.' : 'عرض كل مرحلة بحجم ما رُحّل فيها فعلاً.'} اضغط مرحلة لتصفية الصفحة عليها.</p></header>
       <div className="rx-ribbon">
-        {phases.filter((p) => p.planned > 0).map((p) => (
+        {phases.filter((p) => size(p) > 0).map((p) => (
           <button type="button" key={p.key} className={`rx-ribbon__seg${dim && !on(p.key) ? ' is-dim' : ''}${on(p.key) ? ' is-on' : ''}`}
-            style={{ flexGrow: p.planned / total, '--c': PHASE_COLOR[PHASE_KEYS.indexOf(p.key)] }} onClick={() => toggle('phase', p.key)}>
-            <span className="rx-ribbon__fill" style={{ width: `${Math.min(100, p.rate)}%` }} />
-            <span className={`rx-ribbon__pct${p.rate < 50 ? ' is-low' : ''}`}>{p.rate}%</span>
+            style={{ flexGrow: size(p) / total, '--c': PHASE_COLOR[PHASE_KEYS.indexOf(p.key)] }} onClick={() => toggle('phase', p.key)}>
+            <span className="rx-ribbon__fill" style={{ width: `${plan ? Math.min(100, p.rate) : 100}%` }} />
+            <span className={`rx-ribbon__pct${plan && p.rate < 50 ? ' is-low' : ''}`}>{plan ? `${p.rate}%` : `${pct(p.executed, total)}%`}</span>
           </button>
         ))}
       </div>
@@ -247,8 +287,8 @@ function PhaseRibbon({ phases, f, toggle }) {
           <button type="button" key={p.key} className={`rx-phase${dim && !on(p.key) ? ' is-dim' : ''}`} style={{ '--c': PHASE_COLOR[i] }} onClick={() => toggle('phase', p.key)}>
             <span className="rx-dot" />
             <span>
-              <b className="rx-phase__t">{p.title} <small>{!p.planned ? '—' : p.rate >= 100 ? 'منجزة' : p.executed > 0 ? 'قيد التنفيذ' : 'إعداد وتجهيز'}</small></b>
-              <span className="rx-phase__d"><b>{fmt(p.executed)}</b> من {fmt(p.planned)} م³{p.govs.length ? ` — ${p.govs.join('، ')}` : ''}</span>
+              <b className="rx-phase__t">{p.title} <small>{!plan ? `${fmt(p.sites)} موقعاً` : !p.planned ? '—' : p.rate >= 100 ? 'منجزة' : p.executed > 0 ? 'قيد التنفيذ' : 'إعداد وتجهيز'}</small></b>
+              <span className="rx-phase__d"><b>{fmt(p.executed)}</b>{plan ? ` من ${fmt(p.planned)}` : ''} م³{p.govs.length ? ` — ${p.govs.join('، ')}` : ''}</span>
             </span>
           </button>
         ))}
@@ -257,17 +297,27 @@ function PhaseRibbon({ phases, f, toggle }) {
   );
 }
 
-function Matrix({ govs, f, toggle, setF }) {
+function Matrix({ govs, f, toggle, setF, plan }) {
   const [open, setOpen] = useState(null);
+  const cellOf = (g, k) => {
+    const rs = g.regions.filter((r) => r.phase === k);
+    return { pl: rs.reduce((a, r) => a + r.planned, 0), ex: rs.reduce((a, r) => a + r.executed, 0) };
+  };
+  const maxCell = Math.max(1, ...govs.flatMap((g) => PHASE_KEYS.map((k) => cellOf(g, k).ex)));
+  const maxGov = Math.max(1, ...govs.map((g) => g.executed));
   return (
     <section className="rx-block">
       <header className="rx-head">
         <h2>المحافظات عبر المراحل</h2>
-        <p>اضغط اسم المحافظة أو أي خلية لتصفية الصفحة عليها، والسهم يعرض مناطقها.</p>
+        <p>{plan ? 'كل خلية نسبة الإنجاز في محافظة ضمن مرحلة.' : 'كل خلية حجم الأنقاض المرحّلة (م³) في محافظة ضمن مرحلة، وكلما اشتد اللون زاد الحجم.'} اضغط اسم المحافظة أو أي خلية لتصفية الصفحة عليها، والسهم يعرض مناطقها.</p>
       </header>
-      <div className="rx-legend">
-        <span className="h0">لم يبدأ</span><span className="h1">أقل من 20%</span><span className="h2">20–59%</span><span className="h3">60–99%</span><span className="h4">مكتمل</span>
-      </div>
+      {plan ? (
+        <div className="rx-legend">
+          <span className="h0">لم يبدأ</span><span className="h1">أقل من 20%</span><span className="h2">20–59%</span><span className="h3">60–99%</span><span className="h4">مكتمل</span>
+        </div>
+      ) : (
+        <div className="rx-legend"><span>أقل</span><span className="v1">&nbsp;</span><span className="v2">&nbsp;</span><span className="v3">&nbsp;</span><span className="v4">&nbsp;</span><span>أكثر</span></div>
+      )}
       <div className="rx-matrix" role="table">
         <div className="rx-matrix__row rx-matrix__row--head" role="row">
           <span role="columnheader">المحافظة</span>
@@ -279,16 +329,20 @@ function Matrix({ govs, f, toggle, setF }) {
             <div className={`rx-matrix__row${f.gov.includes(g.name) ? ' is-on' : ''}`} role="row">
               <span className="rx-matrix__govcell">
                 <button type="button" className="rx-matrix__gov" onClick={() => toggle('gov', g.name)}>
-                  {g.name}<small>{fmt(g.planned)} م³</small>
+                  {g.name}<small>{plan ? `${fmt(g.planned)} م³` : `${fmt(g.sites)} موقعاً`}</small>
                 </button>
                 <button type="button" className="rx-matrix__exp" aria-expanded={open === g.key} aria-label="عرض المناطق"
                   onClick={() => setOpen(open === g.key ? null : g.key)}>▾</button>
               </span>
               {PHASE_KEYS.map((k) => {
-                const rs = g.regions.filter((r) => r.phase === k);
-                const pl = rs.reduce((a, r) => a + r.planned, 0);
-                const ex = rs.reduce((a, r) => a + r.executed, 0);
+                const { pl, ex } = cellOf(g, k);
                 const r = pct(ex, pl);
+                if (!plan) {
+                  return ex ? (
+                    <button type="button" key={k} className={`rx-cell rx-cell--${vheat(ex, maxCell)}`} title={`${fmt(ex)} م³`}
+                      onClick={() => setF({ ...f, gov: [g.name], phase: [k] })}>{short(ex)}</button>
+                  ) : <span key={k} className="rx-cell rx-cell--none">—</span>;
+                }
                 return pl ? (
                   <button type="button" key={k} className={`rx-cell rx-cell--${heat(r, pl)}`} title={`${fmt(ex)} من ${fmt(pl)} م³`}
                     onClick={() => setF({ ...f, gov: [g.name], phase: [k] })}>
@@ -296,15 +350,17 @@ function Matrix({ govs, f, toggle, setF }) {
                   </button>
                 ) : <span key={k} className="rx-cell rx-cell--none">—</span>;
               })}
-              <span role="cell" className={`rx-cell rx-cell--total rx-cell--${heat(g.rate, g.planned)}`}>{g.rate}%</span>
+              {plan
+                ? <span role="cell" className={`rx-cell rx-cell--total rx-cell--${heat(g.rate, g.planned)}`}>{g.rate}%</span>
+                : <span role="cell" className={`rx-cell rx-cell--total rx-cell--${vheat(g.executed, maxGov)}`}>{short(g.executed)}</span>}
             </div>
             {open === g.key && (
               <ul className="rx-regions">
-                {g.regions.filter((r) => r.planned > 0).map((r, i) => (
+                {g.regions.filter((r) => (plan ? r.planned > 0 : r.executed > 0)).sort((a, b) => (plan ? 0 : b.executed - a.executed)).map((r, i) => (
                   <li key={i} style={{ '--c': PHASE_COLOR[PHASE_KEYS.indexOf(r.phase)] }}>
-                    <b>{r.region}</b>
-                    <span className="rx-mini"><span style={{ width: `${Math.min(100, pct(r.executed, r.planned))}%` }} /></span>
-                    <span className="rx-regions__n">{fmt(r.executed)} / {fmt(r.planned)}</span>
+                    <b>{r.region}{!plan && <small className="rx-regions__ph"> · {r.phase}</small>}</b>
+                    <span className="rx-mini"><span style={{ width: `${Math.min(100, plan ? pct(r.executed, r.planned) : (r.executed / g.executed) * 100)}%` }} /></span>
+                    <span className="rx-regions__n">{plan ? `${fmt(r.executed)} / ${fmt(r.planned)}` : `${fmt(r.executed)} م³`}</span>
                     {r.notes && <em>{r.notes}</em>}
                   </li>
                 ))}
@@ -555,6 +611,9 @@ function SurveyModal({ s, onClose }) {
           <F k="مدلي البيانات" v={s.by} />
           <F k="جهة الترحيل" v={s.dump.replace(/\s+/g, ' ')} />
           <F k="المسافة إلى المكب" v={s.dist} />
+          <F k="اسم المكب / الموقع" v={s.dumpName} />
+          <F k="عدد الإيصالات" v={s.receipts ? fmt(s.receipts) : null} />
+          <F k="عدد الآليات" v={s.machines ? fmt(s.machines) : null} />
           <F k="ساعات عمل الآليات" v={s.hours ? `${fmt(s.hours)} ساعة` : null} />
           <F k="الأسر المستفيدة" v={s.fam ? fmt(s.fam) : null} />
           <F k="تاريخ رفع البيانات" v={s.date} />
@@ -592,20 +651,32 @@ function fromResponse(r, i) {
 
 /* ---------------- الصفحة ---------------- */
 
-function build(phasesRows, surveys, live) {
+function build(planRows, surveys, live, plan) {
+  /* بلا خطة: تُبنى صفوف «منفَّذ» من الاستمارات (مرحلة × محافظة × منطقة) */
+  let phasesRows = planRows;
+  if (!plan) {
+    const m = new Map();
+    for (const s of surveys) {
+      const k = `${phaseOf(s)}|${govName(s.gov)}|${s.area}`;
+      const r = m.get(k) || { phase: phaseOf(s), gov: govName(s.gov), region: s.area || '—', planned: 0, executed: 0, notes: '', sites: 0 };
+      r.executed += s.vol; r.sites += 1;
+      m.set(k, r);
+    }
+    phasesRows = [...m.values()];
+  }
   const gm = new Map();
   for (const r of phasesRows) {
     const k = govKey(r.gov);
-    const g = gm.get(k) || { key: k, name: govName(r.gov), planned: 0, executed: 0, regions: [] };
-    g.planned += r.planned; g.executed += r.executed; g.regions.push(r);
+    const g = gm.get(k) || { key: k, name: govName(r.gov), planned: 0, executed: 0, sites: 0, regions: [] };
+    g.planned += r.planned; g.executed += r.executed; g.sites += r.sites || 0; g.regions.push(r);
     gm.set(k, g);
   }
-  const govs = [...gm.values()].map((g) => ({ ...g, rate: pct(g.executed, g.planned) })).sort((a, b) => b.planned - a.planned);
+  const govs = [...gm.values()].map((g) => ({ ...g, rate: pct(g.executed, g.planned) })).sort((a, b) => (plan ? b.planned - a.planned : b.executed - a.executed));
   const phases = PHASE_KEYS.map((key) => {
     const rs = phasesRows.filter((r) => r.phase === key);
     const planned = rs.reduce((a, r) => a + r.planned, 0);
     const executed = rs.reduce((a, r) => a + r.executed, 0);
-    return { key, title: key, planned, executed, rate: pct(executed, planned), govs: [...new Set(rs.map((r) => govName(r.gov)))] };
+    return { key, title: key, planned, executed, rate: pct(executed, planned), sites: rs.reduce((a, r) => a + (r.sites || 0), 0), govs: [...new Set(rs.map((r) => govName(r.gov)))] };
   });
   const cm = new Map();
   for (const s of surveys) {
@@ -623,7 +694,8 @@ function build(phasesRows, surveys, live) {
     surveys: surveys.length, live,
     surveyVol: surveys.reduce((a, s) => a + s.vol, 0),
   };
-  return { govs, phases, contractors, t, items: insights({ govs, surveys, t, contractors }) };
+  const counts = { govs: govs.length, areas: new Set(surveys.map((x) => x.area)).size, cos: contractors.length };
+  return { govs, phases, contractors, t, counts, items: insights({ govs, surveys, t, contractors }) };
 }
 
 export default function RubbleTransfer({ basemap }) {
@@ -649,8 +721,9 @@ export default function RubbleTransfer({ basemap }) {
   const view = useMemo(() => {
     if (!data) return null;
     const surveys = data.surveys.filter((s) => matchSurvey(s, f));
+    const plan = data.phases.length > 0;
     const rows = data.phases.filter((r) => matchPlan(r, f));
-    return { surveys, ...build(rows, surveys, data.live || 0) };
+    return { plan, surveys, ...build(rows, surveys, data.live || 0, plan) };
   }, [data, f]);
 
   if (error) return <div className="pending"><h3>تعذّر تحميل بيانات المشروع</h3><p>حدّث الصفحة وحاول مجدداً.</p></div>;
@@ -672,9 +745,9 @@ export default function RubbleTransfer({ basemap }) {
   return (
     <div className="rx">
       <FilterBar f={f} setF={setF} surveys={data.surveys} toggle={toggle} />
-      <Summary t={view.t} items={view.items} filtered={filtered} />
-      <PhaseRibbon phases={view.phases} f={f} toggle={toggle} />
-      <Matrix govs={view.govs} f={f} toggle={toggle} setF={setF} />
+      <Summary t={view.t} items={view.items} filtered={filtered} plan={view.plan} phases={view.phases} counts={view.counts} />
+      <PhaseRibbon phases={view.phases} f={f} toggle={toggle} plan={view.plan} />
+      <Matrix govs={view.govs} f={f} toggle={toggle} setF={setF} plan={view.plan} />
       <Field surveys={view.surveys} allSurveys={data.surveys} basemap={basemap} t={view.t} f={f} toggle={toggle} />
       <Contractors list={view.contractors} total={view.t.surveyVol} f={f} toggle={toggle} />
       <Registry surveys={view.surveys} allSurveys={data.surveys} f={f} toggle={toggle} />

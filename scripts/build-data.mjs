@@ -578,11 +578,59 @@ function write(name, payload) {
   console.log(`  ✓ ${name} (${kb} كيلوبايت)`);
 }
 
-/* مشروع ترحيل الأنقاض: بيانات جاهزة (مراحل + استبيانات KoBo) تُنسخ كما هي */
-function copyStatic() {
-  const src = path.join(root, '..', 'data', 'rubble-transfer.json');
-  if (fs.existsSync(src)) fs.copyFileSync(src, path.join(outDir, 'rubble-transfer.json'));
+/*
+  مشروع ترحيل الأنقاض: تصديرات KoBo الخام في data/rubble-transfer/
+    p1-*.xlsx  المشروع الأول (المنشآت)
+    p2-*.xlsx  المشروع الثاني (الطرق)
+    p3-*.xlsx  المشروع الثالث
+  رقم المشروع من بداية اسم الملف. والخطة (المخطط لكل منطقة) اختيارية في plan.json.
+  للتحديث: استبدل الملف بتصدير جديد من KoBo بنفس الاسم وأعد البناء.
+*/
+function buildRubble() {
+  const dir = path.join(root, '..', 'data', 'rubble-transfer');
+  if (!fs.existsSync(dir)) return;
+  const num = (v) => { const n = Number(String(v ?? '').replace(/[^\d.]/g, '')); return Number.isFinite(n) ? n : 0; };
+  const str = (v) => latinDigits(String(v ?? '').trim()).replace(/\s+/g, ' ');
+  const day = (v) => {
+    if (v instanceof Date) return new Date(v.getTime() + 12 * 3600e3).toISOString().slice(0, 10);
+    if (typeof v === 'number') return new Date(Date.UTC(1899, 11, 30) + v * 864e5).toISOString().slice(0, 10);
+    return str(v).slice(0, 10);
+  };
+  const HOURS = ['ما هو عدد ساعات العمل (1)', 'ما هو عدد ساعات العمل (2)', 'كم عدد ساعات عمل الآليات الهندسية للمقاول في تهذيب المكب؟', 'عدد ساعات العمل الفعلية'];
+  const surveys = [];
+  for (const file of fs.readdirSync(dir).filter((f) => /^p\d.*\.xlsx$/i.test(f)).sort()) {
+    const p = Number(file[1]);
+    const wb = XLSX.readFile(path.join(dir, file), { cellDates: true });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+    for (const r of rows) {
+      if (!r['المحافظة'] && !r['كمية الأنقاض التي تم ترحيلها من موقع العمل بالمتر المكعب (M3)']) continue;
+      const hours = HOURS.reduce((a, k) => a + num(r[k]), 0);
+      const fam = num(r.num_families || r['كم عدد العائلات المستفيدة؟']);
+      surveys.push({
+        id: r._id || r._index, p,
+        date: day(r['تاريخ تنفيذ عملية رفع البيانات'] || r._submission_time),
+        by: str(r['اسم مدلي البيانات']).replace(/^م\.? /, ''),
+        co: str(r['اسم الجهة المتعاقد معها لتنفيذ أعمال الترحيل']) || 'غير محدد',
+        nature: str(r['طبيعة الموقع']), addr: str(r['عنوان وتوصيف الموقع']),
+        gov: str(r['المحافظة']), area: str(r['المنطقة']), town: str(r['البلدة']), village: str(r['القرية']),
+        lat: Math.round(num(r['_تحديد موقع تنفيذ الأعمال_latitude']) * 1e5) / 1e5,
+        lon: Math.round(num(r['_تحديد موقع تنفيذ الأعمال_longitude']) * 1e5) / 1e5,
+        vol: Math.round(num(r['كمية الأنقاض التي تم ترحيلها من موقع العمل بالمتر المكعب (M3)']) * 10) / 10,
+        dump: str(r['الجهة التي تم ترحيل الأنقاض اليها']),
+        dumpName: str(r['اسم المكب'] || r['اسم  الموقع']),
+        dist: str(r['ما هي المسافة المقطوعة إلى مكب الأنقاض؟']).replace(/\s+/g, ''),
+        hours: hours || null, fam: fam || null,
+        receipts: num(r['عدد الايصالات']) || null,
+        machines: num(r['عدد الآليات المستخدمة في موقع العمل']) || null,
+        photos: ['صور لموقع العمل قبل البدء_URL', 'صور لموقع العمل أثناء التنفيذ_URL', 'صور لموقع العمل بعد الانتهاء من التنفيذ_URL'].map((k) => r[k] || ''),
+      });
+    }
+  }
+  const planFile = path.join(dir, 'plan.json');
+  const phases = fs.existsSync(planFile) ? JSON.parse(fs.readFileSync(planFile, 'utf8')) : [];
+  fs.writeFileSync(path.join(outDir, 'rubble-transfer.json'), JSON.stringify({ title: 'مشروع ترحيل الأنقاض', phases, surveys }));
+  console.log(`  ✓ rubble-transfer.json (${surveys.length} استمارة، ${phases.length} صف خطة)`);
 }
 
 run();
-copyStatic();
+buildRubble();
