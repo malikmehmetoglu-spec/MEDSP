@@ -97,13 +97,30 @@ function Ring({ value }) {
   والفلاتر متعددة الاختيار وتُطبَّق على الصفحة كلها.
 */
 const DIMS = [
+  /* التسلسل الإداري أولاً: المحافظة ← المنطقة ← الناحية، وكل مستوى يتقلص حسب ما فوقه */
   { key: 'gov', label: 'المحافظة', all: 'كل المحافظات' },
+  { key: 'area', label: 'المنطقة', all: 'كل المناطق' },
+  { key: 'town', label: 'الناحية', all: 'كل النواحي' },
   { key: 'phase', label: 'المرحلة', all: 'كل المراحل' },
   { key: 'nature', label: 'طبيعة الموقع', all: 'كل المواقع' },
   { key: 'co', label: 'الجهة المنفذة', all: 'كل الجهات' },
   { key: 'dump', label: 'وجهة الأنقاض', all: 'كل الوجهات' },
-  { key: 'area', label: 'المنطقة', all: 'كل المناطق' },
 ];
+const GEO = ['gov', 'area', 'town', 'village'];
+const GEO_LABEL = { gov: 'المحافظة', area: 'المنطقة', town: 'الناحية', village: 'القرية' };
+
+/* عند تغيير مستوى أعلى تُزال من المستويات الأدنى القيم التي لم تعد تتبعه */
+function prune(f, surveys) {
+  const out = { ...f };
+  for (const key of ['area', 'town']) {
+    if (!out[key].length) continue;
+    const parents = GEO.slice(0, GEO.indexOf(key));
+    const ok = new Set(surveys.filter((s) => parents.every((p) => !out[p]?.length || out[p].includes(valueOf[p](s))))
+      .map((s) => valueOf[key](s)));
+    out[key] = out[key].filter((v) => ok.has(v));
+  }
+  return out;
+}
 const EMPTY = Object.fromEntries(DIMS.map((d) => [d.key, []]));
 const phaseOf = (s) => PHASE_KEYS[(s.p || 1) - 1];
 const dumpOf = (s) => (s.dump || '').replace(/\s+/g, ' ');
@@ -115,6 +132,8 @@ const valueOf = {
   co: (s) => s.co,
   dump: dumpOf,
   area: (s) => s.area,
+  town: (s) => s.town,
+  village: (s) => s.village,
 };
 
 function matchSurvey(s, f, skip) {
@@ -423,6 +442,58 @@ function placed(basemap, s) {
   return null;
 }
 
+/*
+  من الوطني إلى المحلي: يعرض دائماً المستوى التالي لما هو مختار —
+  لا شيء ← المحافظات، محافظة ← مناطقها، منطقة ← نواحيها، ناحية ← قراها.
+  الضغط على أي صف ينزل مستوى، و«الشريط» أعلاه يعيد إلى أي مستوى سابق.
+*/
+function Levels({ surveys, f, setF }) {
+  const depth = GEO.findIndex((k) => k !== 'village' && f[k]?.length !== 1);
+  const level = GEO[depth === -1 ? 3 : depth];
+  const rows = sumBy(surveys, (s) => valueOf[level](s), (s) => s.vol);
+  const sites = new Map(sumBy(surveys, (s) => valueOf[level](s)).map((d) => [d.label, d.value]));
+  const total = rows.reduce((a, r) => a + r.value, 0) || 1;
+  const peak = rows[0]?.value || 1;
+  const crumbs = [{ label: 'سوريا', go: () => setF({ ...f, gov: [], area: [], town: [] }) }];
+  for (const k of ['gov', 'area', 'town']) {
+    if (f[k].length === 1) {
+      const i = GEO.indexOf(k);
+      crumbs.push({ label: f[k][0], go: () => setF({ ...f, ...Object.fromEntries(GEO.slice(i + 1, 3).map((x) => [x, []])) }) });
+    } else break;
+  }
+  const drill = (v) => { if (level !== 'village') setF({ ...f, [level]: [v] }); };
+  return (
+    <section className="rx-block">
+      <header className="rx-head">
+        <h2>من الوطني إلى المحلي</h2>
+        <p>الكميات المرحّلة على المستوى التالي للاختيار الحالي. اضغط أي صف للنزول مستوى.</p>
+      </header>
+      <nav className="rx-crumbs" aria-label="المستوى الجغرافي">
+        {crumbs.map((c, i) => (
+          <span key={c.label}>
+            {i > 0 && <i>‹</i>}
+            <button type="button" className={i === crumbs.length - 1 ? 'is-on' : ''} onClick={c.go}>{c.label}</button>
+          </span>
+        ))}
+        <small>{GEO_LABEL[level]} · {fmt(rows.length)}</small>
+      </nav>
+      <ol className="rx-levels">
+        {rows.slice(0, 15).map((r, i) => (
+          <li key={r.label}>
+            <button type="button" onClick={() => drill(r.label)} disabled={level === 'village'} style={{ '--c': PAL[i % PAL.length] }}>
+              <span className="rx-levels__n">{i + 1}</span>
+              <span className="rx-levels__name">{r.label}<small>{fmt(sites.get(r.label))} موقعاً</small></span>
+              <span className="rx-levels__bar"><span style={{ width: `${(r.value / peak) * 100}%` }} /></span>
+              <b>{fmt(r.value)}<small> م³ · {pct(r.value, total)}%</small></b>
+            </button>
+          </li>
+        ))}
+      </ol>
+      {rows.length > 15 && <p className="rx-foot">وأخرى ({fmt(rows.length - 15)}) بكميات أصغر — استخدم الفلاتر أو البحث في سجل المواقع.</p>}
+    </section>
+  );
+}
+
 /* تدرّج الكثافة للمحافظات: من فاتح إلى أخضر الهوية العميق */
 const SCALE = ['#e6f2ee', '#bfe1d6', '#8cc9b8', '#55a996', '#2f8a77', '#126b5b'];
 
@@ -716,7 +787,9 @@ export default function RubbleTransfer({ basemap }) {
       .catch(() => setError(true));
   }, []);
 
-  const toggle = (dim, v) => setF((cur) => ({ ...cur, [dim]: cur[dim].includes(v) ? cur[dim].filter((x) => x !== v) : [...cur[dim], v] }));
+  /* كل تغيير في الفلاتر يمرّ بـ prune حتى يبقى التسلسل الإداري متّسقاً */
+  const setFp = (next) => setF((cur) => prune(typeof next === 'function' ? next(cur) : next, data?.surveys || []));
+  const toggle = (dim, v) => setFp((cur) => ({ ...cur, [dim]: cur[dim].includes(v) ? cur[dim].filter((x) => x !== v) : [...cur[dim], v] }));
 
   const view = useMemo(() => {
     if (!data) return null;
@@ -744,10 +817,11 @@ export default function RubbleTransfer({ basemap }) {
 
   return (
     <div className="rx">
-      <FilterBar f={f} setF={setF} surveys={data.surveys} toggle={toggle} />
+      <FilterBar f={f} setF={setFp} surveys={data.surveys} toggle={toggle} />
       <Summary t={view.t} items={view.items} filtered={filtered} plan={view.plan} phases={view.phases} counts={view.counts} />
       <PhaseRibbon phases={view.phases} f={f} toggle={toggle} plan={view.plan} />
-      <Matrix govs={view.govs} f={f} toggle={toggle} setF={setF} plan={view.plan} />
+      <Levels surveys={view.surveys} f={f} setF={setFp} />
+      <Matrix govs={view.govs} f={f} toggle={toggle} setF={setFp} plan={view.plan} />
       <Field surveys={view.surveys} allSurveys={data.surveys} basemap={basemap} t={view.t} f={f} toggle={toggle} />
       <Contractors list={view.contractors} total={view.t.surveyVol} f={f} toggle={toggle} />
       <Registry surveys={view.surveys} allSurveys={data.surveys} f={f} toggle={toggle} />
