@@ -17,6 +17,7 @@ import AuthGate from './admin/AuthGate';
 import MapsPage from './components/MapsPage';
 import MonthlyReport from './components/MonthlyReport';
 import RubbleTransfer, { RUBBLE_PROJECT } from './projects/RubbleTransfer';
+import RubbleHub from './projects/RubbleHub';
 
 /* مشروع ثابت (بيانات جاهزة لا من قاعدة البيانات) يظهر أول قائمة المشاريع */
 const STATIC_PROJECTS = [{
@@ -114,6 +115,7 @@ export default function App() {
     else if (route.page === 'project' && currentProject) page = currentProject.name;
     else if (route.page === 'admin') page = 'مساحة العمل';
     else if (route.page === 'monthly') page = 'التقرير الشهري';
+    else if (route.page === 'rubble') page = 'إدارة الأنقاض';
     else if (route.page === 'maps') page = 'خريطة الأخطار المتعددة';
     document.title = page ? `${page} — ${site}` : `${site} — وزارة الطوارئ وإدارة الكوارث`;
   }, [route, active.name, currentProject, unknownOp]);
@@ -164,6 +166,14 @@ export default function App() {
       <MainNav route={route} ops={ops} projects={projects.list} projectsStatus={projects.status} />
 
       <main>
+        {route.page === 'rubble' && (
+          <section className="shell">
+            <div className="report__head"><h1>إدارة الأنقاض</h1></div>
+            <p className="report__summary">متابعة الأنقاض عبر مراحلها: من التقدير، إلى التخطيط والدراسة، فالتنفيذ والترحيل، ثم التدوير والاستثمار.</p>
+            <RubbleHub basemap={base.basemap} />
+          </section>
+        )}
+
         {route.page === 'monthly' && (
           <section className="shell">
             <div className="report__head"><h1>التقرير الشهري</h1></div>

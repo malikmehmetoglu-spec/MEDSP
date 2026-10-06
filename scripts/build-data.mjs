@@ -638,5 +638,34 @@ function buildRubble() {
   console.log(`  ✓ rubble-transfer.json (${surveys.length} استمارة، ${phases.length} صف خطة)`);
 }
 
+/*
+  دورة إدارة الأنقاض: data/rubble-pipeline/pipeline.xlsx (قالب بعمود «المرحلة»:
+  تقدير / مخطط / قيد الدراسة / تدوير / استثمار) ← public/data/rubble-pipeline.json
+*/
+function buildPipeline() {
+  const file = path.join(root, '..', 'data', 'rubble-pipeline', 'pipeline.xlsx');
+  const STAGE = { 'تقدير': 'assessment', 'مخطط': 'planned', 'قيد الدراسة': 'study', 'تدوير': 'recycling', 'استثمار': 'investment' };
+  let rows = [];
+  if (fs.existsSync(file)) {
+    const wb = XLSX.readFile(file, { cellDates: true });
+    rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+  }
+  const n = (v) => { const x = Number(String(v ?? '').replace(/[^\d.]/g, '')); return Number.isFinite(x) && String(v).trim() !== '' ? x : null; };
+  const d = (v) => (v instanceof Date ? new Date(v.getTime() + 12 * 3600e3).toISOString().slice(0, 10) : clean(v).slice(0, 10));
+  const items = rows.map((r, i) => ({
+    id: i + 1,
+    stage: STAGE[clean(r['المرحلة'])] || null,
+    name: clean(r['اسم المشروع']),
+    gov: clean(r['المحافظة']), area: clean(r['المنطقة']), town: clean(r['الناحية']),
+    volume: n(r['الكمية (م³)']), output: n(r['الناتج']), budget: n(r['الكلفة التقديرية ($)']),
+    progress: n(r['نسبة الإنجاز (%)']),
+    status: clean(r['الحالة']), partner: clean(r['الجهة المنفذة / الشريك']),
+    start: d(r['تاريخ البدء']), end: d(r['تاريخ الانتهاء']), notes: clean(r['ملاحظات']),
+  })).filter((x) => x.stage && x.name);
+  fs.writeFileSync(path.join(outDir, 'rubble-pipeline.json'), JSON.stringify({ items }));
+  console.log(`  ✓ rubble-pipeline.json (${items.length} مشروعاً)`);
+}
+
 run();
 buildRubble();
+buildPipeline();
