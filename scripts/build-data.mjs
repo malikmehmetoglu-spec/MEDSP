@@ -749,7 +749,47 @@ function buildAdminAreas() {
   console.log(`  ✓ admin-areas.json (${districts.length} منطقة، ${subs.length} ناحية، ${communities.length} قرية/بلدة)`);
 }
 
+/*
+  قسم مستقل: التقييم الميداني لكميات الأنقاض في عموم سوريا (للجهات الراغبة بالمشاركة).
+  data/rubble-assessment/*.xlsx (تصدير KoBo) ← public/data/rubble-assessment.json
+  لا يُربط بأي بيانات أخرى في المنصة، ولا تُنشر بيانات جامعي البيانات الشخصية.
+*/
+function buildAssessment() {
+  const dir = path.join(root, '..', 'data', 'rubble-assessment');
+  if (!fs.existsSync(dir)) return;
+  const num = (v) => { const x = Number(String(v ?? '').replace(/[^\d.]/g, '')); return Number.isFinite(x) ? x : 0; };
+  const day = (v) => (v instanceof Date ? new Date(v.getTime() + 12 * 3600e3).toISOString().slice(0, 10) : clean(v).slice(0, 10));
+  const GOV = { 'ادلب': 'إدلب', 'حماه': 'حماة', 'درعا ': 'درعا' };
+  const OWN = ['منشآت حكومية', 'منشآت تعليمية', 'نقاط طبية', 'مساجد/دور عبادة', 'منشآت خدمية/بنى تحتية', 'منشآت سكنية', 'مختلطة من كل ما تم ذكره', 'أخرى'];
+  const sites = [];
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.xlsx'))) {
+    for (const r of readSheet(path.join(dir, f))) {
+      const vol = num(r['ما هي كمية الانقاض مقدرة بالمتر المكعب ؟']);
+      const gov = clean(r['المحافظة']); if (!gov || !vol) continue;
+      sites.push({
+        id: clean(r._id), date: day(r['تاريخ جمع البيانات']),
+        gov: GOV[gov] || gov, area: clean(r['المنطقة']), town: clean(r['البلدة']), village: clean(r['القرية']),
+        hood: clean(r['الحي']), street: clean(r['الشارع']),
+        lat: num(r['_يرجى تحديد موقع الانقاض_latitude']) || null, lon: num(r['_يرجى تحديد موقع الانقاض_longitude']) || null,
+        vol, setting: clean(r['أين يقع تجمع الأنقاض بالنسبة لموقع المدينة؟']), inhabited: clean(r['هل الموقع مأهولاً بالسكان؟']),
+        access: clean(r['هل الوصول الى الموقع سهل؟']), roads: clean(r['حالة الطرق المؤدية الى الموقع']),
+        shelled: clean(r['هل تعرض الموقع للقصف؟']), uxo: clean(r['هل تم إجراء مسح للموقع للتأكد من خلوه من الذخائر غير المنفجرة؟']) || 'غير محدد',
+        owner: clean(r['حدد الجهة المالكة']), approval: clean(r['هل توجد موافقة على ترحيل الأنقاض؟']),
+        noApproval: clean(r['ما هو سبب عدم الموافقة ؟']),
+        use: OWN.filter((k) => num(r[`عائدية الأنقاض ؟/${k}`]) === 1),
+        spread: clean(r['كيفية وجود الأنقاض']), mix: clean(r['ما هي تركيبة الأنقاض ؟']),
+        dump: clean(r['ما هو اسم/موقع أقرب مكب؟']), dumpKm: num(r['كم يبعد المكب (كم)']) || null,
+        dumpOk: clean(r['هل المكب قادر على الاستيعاب؟']), partners: clean(r['هل توجد جهات محلية للتعاون او منظمات او جهات خاصة عاملة في الموقع لإزالة الأنقاض؟']),
+        partner: clean(r['ما اسم تلك الجهة؟']), photo: clean(r['يرجى ارفاق صور للموقع_URL']),
+      });
+    }
+  }
+  fs.writeFileSync(path.join(outDir, 'rubble-assessment.json'), JSON.stringify({ sites }));
+  console.log(`  ✓ rubble-assessment.json (${sites.length} موقع، ${Math.round(sites.reduce((a, s) => a + s.vol, 0)).toLocaleString('en-US')} م³)`);
+}
+
 run();
+buildAssessment();
 buildAdminAreas();
 buildRubble();
 buildPipeline();

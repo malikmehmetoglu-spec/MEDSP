@@ -18,6 +18,7 @@ import AuthGate from './admin/AuthGate';
 import MapsPage from './components/MapsPage';
 import MonthlyReport from './components/MonthlyReport';
 import RubbleHub from './projects/RubbleHub';
+import RubbleAtlas from './projects/RubbleAtlas';
 
 
 export default function App() {
@@ -112,6 +113,7 @@ export default function App() {
     else if (route.page === 'admin') page = 'مساحة العمل';
     else if (route.page === 'monthly') page = 'التقرير الشهري';
     else if (route.page === 'rubble') page = 'إدارة الأنقاض';
+    else if (route.page === 'atlas') page = 'أنقاض سوريا';
     else if (route.page === 'maps') page = 'خريطة الأخطار المتعددة';
     document.title = page ? `${page} — ${site}` : `${site} — وزارة الطوارئ وإدارة الكوارث`;
   }, [route, active.name, currentProject, unknownOp]);
@@ -167,6 +169,14 @@ export default function App() {
             <div className="report__head"><h1>إدارة الأنقاض</h1></div>
             <p className="report__summary">متابعة الأنقاض عبر مراحلها: من التقدير، إلى التخطيط والدراسة، فالتنفيذ والترحيل، ثم التدوير والاستثمار.</p>
             <RubbleHub basemap={base.basemap} />
+          </section>
+        )}
+
+        {route.page === 'atlas' && (
+          <section className="shell">
+            <div className="report__head"><h1>كميات الأنقاض في سوريا</h1></div>
+            <p className="report__summary">دليل مواقع الأنقاض المقيّمة ميدانياً في المحافظات السورية، للجهات الراغبة بالمشاركة في عمليات الإزالة.</p>
+            <RubbleAtlas basemap={base.basemap} />
           </section>
         )}
 

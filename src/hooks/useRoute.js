@@ -21,6 +21,7 @@ export function parseRoute(hash) {
   if (path.startsWith('/admin')) return { page: 'admin' };
   if (path.startsWith('/maps')) return { page: 'maps' };
   if (path.startsWith('/monthly')) return { page: 'monthly' };
+  if (path.startsWith('/rubble-map')) return { page: 'atlas' };
   /* الرابط القديم لمشروع ترحيل الأنقاض صار مرحلة «التنفيذ» في إدارة الأنقاض */
   if (path.startsWith('/rubble') || path.startsWith('/projects/rubble-transfer')) return { page: 'rubble' };
   if ((m = path.match(/^\/ops\/([\w-]+)/))) return { page: 'ops', id: m[1] };
@@ -36,6 +37,7 @@ export const href = {
   maps: () => '#/maps',
   monthly: () => '#/monthly',
   rubble: () => '#/rubble',
+  atlas: () => '#/rubble-map',
   project: (id) => `#/projects/${id}`,
 };
 
