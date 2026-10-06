@@ -107,7 +107,7 @@ function StageList({ stage, items }) {
             {x.parts && (
               <ul className="hub-card__parts">
                 {x.parts.filter((r) => gov === 'all' || r.gov === gov).map((r) => (
-                  <li key={r.gov}><b>{r.gov}</b> — {r.planned ? `${fmt(r.planned)} م³` : 'الكمية قيد التحديد'}{r.notes && <small>{r.notes}</small>}</li>
+                  <li key={r.gov}><b>{r.gov}</b> — {r.planned ? `${fmt(r.planned)} م³` : 'الكمية قيد التحديد'}{' · '}<em className={r.executed > 0 ? 'is-go' : 'is-wait'}>{r.executed > 0 ? `منفّذ ${fmt(r.executed)} م³` : 'لم يبدأ'}</em>{r.notes && <small>{r.notes}</small>}</li>
                 ))}
               </ul>
             )}
@@ -159,18 +159,21 @@ export default function RubbleHub({ basemap }) {
     });
   }, []);
 
-  /* المشاريع (المراحل) التي فيها محافظات لم يبدأ تنفيذها بعد ← «التخطيط والدراسة»: بطاقة لكل مشروع */
+  /* مشاريع خطة الترحيل الثلاثة ← «التخطيط والدراسة»: بطاقة لكل مشروع مع محافظاته وحالة كل منها */
   const planItems = useMemo(() => {
     const m = new Map();
-    for (const r of plan.rows.filter((x) => !(x.executed > 0))) {
+    for (const r of plan.rows) {
       const o = m.get(r.phase) || { id: `plan-${r.phase}`, stage: 'planned', name: `مشروع ترحيل الأنقاض — ${r.phase}`,
-        govs: [], volume: 0, parts: [], start: plan.asOf ? `تقرير ${plan.asOf}` : '', photos: [[], [], []] };
-      o.govs.push(r.gov); o.volume += r.planned || 0; o.parts.push(r);
+        govs: [], volume: 0, done: 0, parts: [], start: plan.asOf ? `تقرير ${plan.asOf}` : '', photos: [[], [], []] };
+      o.govs.push(r.gov); o.volume += r.planned || 0; o.done += r.executed || 0; o.parts.push(r);
       m.set(r.phase, o);
     }
     return [...m.values()].map((o) => {
-      const all = plan.rows.filter((x) => x.phase === o.id.slice(5));
-      return { ...o, gov: o.govs.join('، '), status: o.govs.length === all.length ? 'لم يبدأ التنفيذ' : `${o.govs.length} من ${all.length} محافظات لم يبدأ فيها التنفيذ` };
+      const waiting = o.parts.filter((r) => !(r.executed > 0)).length;
+      const progress = o.volume ? Math.round((o.done / o.volume) * 100) : 0;
+      const status = !waiting && progress >= 100 ? 'منجز' : waiting === o.parts.length ? 'لم يبدأ التنفيذ'
+        : waiting ? `قيد التنفيذ · ${waiting} من ${o.parts.length} محافظات لم يبدأ فيها` : 'قيد التنفيذ';
+      return { ...o, gov: o.govs.join('، '), progress, status };
     });
   }, [plan]);
 
