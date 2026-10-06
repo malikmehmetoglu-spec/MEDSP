@@ -716,11 +716,11 @@ function SurveyModal({ s, onClose }) {
 }
 
 /* إجابة من استبيان المنصة ← صف بنفس شكل بيانات KoBo */
-function fromResponse(r, i) {
+export function fromResponse(r, i) {
   const a = r.answers || {};
   const code = a.rt_gov?.governorate || '';
   return {
-    id: `م-${i + 1}`, p: Number(a.rt_phase) || 3, live: true,
+    id: `م-${i + 1}`, rid: r.id, p: Number(a.rt_phase) || 3, live: true,
     date: a.rt_date || String(r.submittedAt || '').slice(0, 10),
     by: a.rt_collector || '', co: a.rt_contractor || 'غير محدد', nature: a.rt_nature || '',
     addr: a.rt_address || '', gov: code, area: a.rt_area || '',

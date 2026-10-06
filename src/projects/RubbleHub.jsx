@@ -3,8 +3,12 @@ import RubbleTransfer from './RubbleTransfer';
 import EstimateCalc from './EstimateCalc';
 import TemplateDownload from '../components/TemplateDownload';
 import DamagePanel from './DamagePanel';
+import DroneCalc from './DroneCalc';
+import RubbleOverview from './RubbleOverview';
+import RubbleGallery from './RubbleGallery';
+import { fromResponse } from './RubbleTransfer';
 import { Entities, Dumps, isEntityRegistry, entitiesFromProject } from './RubbleRegistry';
-import { listPublishedProjects, listEntities } from './store';
+import { listPublishedProjects, listEntities, rubbleTransferFeed } from './store';
 
 /*
   إدارة الأنقاض — دورة كاملة في تبويب واحد:
@@ -100,6 +104,16 @@ function StageList({ stage, items }) {
               <div className="hub-card__prog"><span className="hub-card__track"><span style={{ width: `${Math.min(100, x.progress)}%` }} /></span><b>{x.progress}%</b></div>
             )}
             {x.notes && <p className="hub-card__notes">{x.notes}</p>}
+            {(x.photos || []).some((l) => l.length) && (
+              <div className="hub-card__photos">
+                {['قبل', 'أثناء', 'بعد'].map((l, i) => x.photos[i][0] && (
+                  <a key={l} href={x.photos[i][0]} target="_blank" rel="noreferrer">
+                    <img src={x.photos[i][0]} alt={l} loading="lazy" referrerPolicy="no-referrer" /><small>{l}</small>
+                  </a>
+                ))}
+              </div>
+            )}
+            {x.folder && <a className="hub-card__folder" href={x.folder} target="_blank" rel="noreferrer">مجلد الصور والوثائق ↗</a>}
           </article>
         ))}
       </div>
@@ -108,10 +122,11 @@ function StageList({ stage, items }) {
 }
 
 export default function RubbleHub({ basemap }) {
-  const [stage, setStage] = useState('execution');
+  const [stage, setStage] = useState('overview');
   const [pipe, setPipe] = useState({ items: [] });
   const [exec, setExec] = useState(null);
   const [surveys, setSurveys] = useState([]);
+  const [plan, setPlan] = useState({ planned: 0, executed: 0, asOf: null });
   const [registry, setRegistry] = useState({ dumps: [], entities: [] });
 
   useEffect(() => {
@@ -126,9 +141,15 @@ export default function RubbleHub({ basemap }) {
       setRegistry({ dumps: file.dumps || [], entities: [...(file.entities || []), ...live, ...table] });
     });
     fetch('data/rubble-pipeline.json').then((r) => r.json()).then(setPipe).catch(() => setPipe({ items: [] }));
-    fetch('data/rubble-transfer.json').then((r) => r.json())
-      .then((d) => { setSurveys(d.surveys); setExec({ n: d.surveys.length, vol: d.surveys.reduce((a, s) => a + s.vol, 0) }); })
-      .catch(() => setExec(null));
+    Promise.all([
+      fetch('data/rubble-transfer.json').then((r) => r.json()).catch(() => ({ surveys: [] })),
+      rubbleTransferFeed().catch(() => []),
+    ]).then(([d, live]) => {
+      const all = [...(d.surveys || []), ...live.map(fromResponse)];
+      const ph = d.phases || [];
+      setPlan({ planned: ph.reduce((a, r) => a + (r.planned || 0), 0), executed: ph.reduce((a, r) => a + (r.executed || 0), 0), asOf: d.planAsOf });
+      setSurveys(all); setExec({ n: all.length, vol: all.reduce((a, s) => a + (s.vol || 0), 0) });
+    });
   }, []);
 
   const byStage = useMemo(() => Object.fromEntries(STAGES.map((s) => [s.id,
@@ -140,6 +161,12 @@ export default function RubbleHub({ basemap }) {
     if (!it.length) return 'لا مشاريع بعد';
     return `${fmt(it.length)} مشروعاً · ${short(it.reduce((a, x) => a + (x.volume || 0), 0))} م³`;
   };
+
+  /* إجابات الاستمارة الرسمية تحمل رمز المحافظة (SY..) — نعرض الاسم */
+  const named = useMemo(() => {
+    const m = new Map((basemap?.governorates || []).map((g) => [g.code, g.name]));
+    return surveys.map((s) => (/^SY\d/.test(s.gov || '') && m.get(s.gov) ? { ...s, gov: m.get(s.gov) } : s));
+  }, [surveys, basemap]);
 
   const current = STAGES.find((s) => s.id === stage);
 
@@ -158,6 +185,12 @@ export default function RubbleHub({ basemap }) {
 
       {/* سجلّان يخدمان كل المراحل: من يعمل، وأين تذهب الأنقاض */}
       <nav className="hub-side" aria-label="سجلات">
+        <button type="button" className={stage === 'overview' ? 'is-on' : ''} onClick={() => setStage('overview')}>
+          لمحة عامة
+        </button>
+        <button type="button" className={stage === 'gallery' ? 'is-on' : ''} onClick={() => setStage('gallery')}>
+          الأرشيف المصور
+        </button>
         <button type="button" className={stage === 'entities' ? 'is-on' : ''} onClick={() => setStage('entities')}>
           الجهات العاملة وأدوارها
         </button>
@@ -166,13 +199,15 @@ export default function RubbleHub({ basemap }) {
         </button>
       </nav>
 
+      {stage === 'overview' && <RubbleOverview plan={plan} surveys={named} pipe={pipe.items} registry={registry} go={setStage} />}
+      {stage === 'gallery' && <RubbleGallery surveys={named} pipe={pipe.items} />}
       {stage === 'entities' && <Entities surveys={surveys} registry={registry} />}
       {stage === 'dumps' && <Dumps surveys={surveys} registry={registry} basemap={basemap} />}
       {!current ? null : current.id === 'execution'
         ? <RubbleTransfer basemap={basemap} />
         : (
           <>
-            {current.id === 'assessment' && <><DamagePanel surveys={surveys} /><EstimateCalc /><TemplateDownload id="method" /></>}
+            {current.id === 'assessment' && <><DamagePanel surveys={surveys} /><EstimateCalc /><TemplateDownload id="method" /><DroneCalc /></>}
             <StageList key={current.id} stage={current} items={byStage[current.id]} />
           </>
         )}

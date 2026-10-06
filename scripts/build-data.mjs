@@ -635,9 +635,30 @@ function buildRubble() {
       });
     }
   }
+  /* الخطة: plan.xlsx (تقرير مرحلي: المرحلة | المحافظة | المخطط | المنفذ | النسبة | ملاحظات) أو plan.json */
+  let phases = [];
+  const planX = path.join(dir, 'plan.xlsx');
   const planFile = path.join(dir, 'plan.json');
-  const phases = fs.existsSync(planFile) ? JSON.parse(fs.readFileSync(planFile, 'utf8')) : [];
-  fs.writeFileSync(path.join(outDir, 'rubble-transfer.json'), JSON.stringify({ title: 'مشروع ترحيل الأنقاض', phases, surveys }));
+  if (fs.existsSync(planX)) {
+    const wb = XLSX.readFile(planX, { cellDates: true });
+    const grid = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+    const h = grid.findIndex((r) => r.some((c) => str(c).startsWith('المحافظة')));
+    let phase = '';
+    for (const r of grid.slice(h + 1)) {
+      const c0 = str(r[0]);
+      if (c0.startsWith('اجمالي') || c0.startsWith('إجمالي')) continue;
+      if (c0) phase = /الأولى|الاولى/.test(c0) ? 'المرحلة الأولى' : /الثانية/.test(c0) ? 'المرحلة الثانية' : /الثالثة/.test(c0) ? 'المرحلة الثالثة' : c0;
+      const gov = str(r[1]);
+      if (!gov || !phase) continue;
+      phases.push({ phase, gov, region: '—', planned: num(r[2]), executed: num(r[3]), notes: str(r[5]), sites: 0 });
+    }
+    const asOf = grid.find((r) => str(r[0]).startsWith('تاريخ التقرير'));
+    if (asOf) phases.asOf = day(asOf[1]);
+    const norm = (g) => str(g).replace(/[إأآ]/g, 'ا').replace(/ة$/, 'ه');
+    const PN = ['', 'المرحلة الأولى', 'المرحلة الثانية', 'المرحلة الثالثة'];
+    for (const r of phases) r.sites = surveys.filter((x) => PN[x.p] === r.phase && norm(x.gov) === norm(r.gov)).length;
+  } else if (fs.existsSync(planFile)) phases = JSON.parse(fs.readFileSync(planFile, 'utf8'));
+  fs.writeFileSync(path.join(outDir, 'rubble-transfer.json'), JSON.stringify({ title: 'مشروع ترحيل الأنقاض', phases, planAsOf: phases.asOf || null, surveys }));
   console.log(`  ✓ rubble-transfer.json (${surveys.length} استمارة، ${phases.length} صف خطة)`);
 }
 
@@ -664,6 +685,9 @@ function buildPipeline() {
     progress: n(r['نسبة الإنجاز (%)']),
     status: clean(r['الحالة']), partner: clean(r['الجهة المنفذة / الشريك']),
     start: d(r['تاريخ البدء']), end: d(r['تاريخ الانتهاء']), notes: clean(r['ملاحظات']),
+    photos: ['صور قبل التنفيذ (روابط)', 'صور أثناء التنفيذ (روابط)', 'صور بعد الإنجاز (روابط)']
+      .map((k) => String(r[k] ?? '').split(/[\s,،]+/).map((u) => u.trim()).filter((u) => /^https?:\/\//.test(u))),
+    folder: /^https?:\/\//.test(String(r['رابط مجلد الصور والوثائق'] ?? '').trim()) ? String(r['رابط مجلد الصور والوثائق']).trim() : '',
   })).filter((x) => x.stage && x.name);
   fs.writeFileSync(path.join(outDir, 'rubble-pipeline.json'), JSON.stringify({ items }));
   console.log(`  ✓ rubble-pipeline.json (${items.length} مشروعاً)`);

@@ -441,6 +441,13 @@ export async function rubbleTransferFeed() {
   return data || [];
 }
 
+/* صور إجابة واحدة من الاستمارة الرسمية [قبل، أثناء، بعد] — تُجلب عند الطلب لأنها ثقيلة */
+export async function rubblePhotos(rid) {
+  const { data, error } = await supabase.rpc('rubble_photos', { rid });
+  fail(error);
+  return data || [];
+}
+
 /* ---------- سجل الجهات العاملة في قطاع الأنقاض (جدول rubble_entities) ---------- */
 
 const mapEntity = (r) => ({
