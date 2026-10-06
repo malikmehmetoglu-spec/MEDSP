@@ -2679,3 +2679,7 @@ button.rx-cell:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(
 .drone{margin-top:18px}
 @media (max-width:900px){.ov-kpis{grid-template-columns:repeat(3,1fr)}.ov-grid{grid-template-columns:1fr}.ov-recent{grid-template-columns:repeat(2,1fr)}.gal-view__cols{grid-template-columns:1fr}}
 @media (max-width:560px){.ov-kpis{grid-template-columns:repeat(2,1fr)}.ov-stage{grid-template-columns:110px 1fr 70px}}
+
+.hub-card__parts{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:8px}
+.hub-card__parts li{padding:8px 10px;border-radius:10px;background:var(--edge);font-size:.88rem}
+.hub-card__parts small{display:block;margin-top:3px;color:var(--ink-soft);line-height:1.6}

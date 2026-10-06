@@ -45,8 +45,8 @@ const KIND_LABEL = { assessment: 'تقدير', planned: 'مخطط', study: 'قي
 function StageList({ stage, items }) {
   const [kind, setKind] = useState('all');
   const [gov, setGov] = useState('all');
-  const list = items.filter((x) => (kind === 'all' || x.stage === kind) && (gov === 'all' || x.gov === gov));
-  const govs = [...new Set(items.map((x) => x.gov).filter(Boolean))];
+  const list = items.filter((x) => (kind === 'all' || x.stage === kind) && (gov === 'all' || (x.govs || [x.gov]).includes(gov)));
+  const govs = [...new Set(items.flatMap((x) => x.govs || [x.gov]).filter(Boolean))];
   const vol = list.reduce((a, x) => a + (x.volume || 0), 0);
   const out = list.reduce((a, x) => a + (x.output || 0), 0);
   const budget = list.reduce((a, x) => a + (x.budget || 0), 0);
@@ -104,6 +104,13 @@ function StageList({ stage, items }) {
               <div className="hub-card__prog"><span className="hub-card__track"><span style={{ width: `${Math.min(100, x.progress)}%` }} /></span><b>{x.progress}%</b></div>
             )}
             {x.notes && <p className="hub-card__notes">{x.notes}</p>}
+            {x.parts && (
+              <ul className="hub-card__parts">
+                {x.parts.filter((r) => gov === 'all' || r.gov === gov).map((r) => (
+                  <li key={r.gov}><b>{r.gov}</b> — {r.planned ? `${fmt(r.planned)} م³` : 'الكمية قيد التحديد'}{r.notes && <small>{r.notes}</small>}</li>
+                ))}
+              </ul>
+            )}
             {(x.photos || []).some((l) => l.length) && (
               <div className="hub-card__photos">
                 {['قبل', 'أثناء', 'بعد'].map((l, i) => x.photos[i][0] && (
@@ -152,12 +159,20 @@ export default function RubbleHub({ basemap }) {
     });
   }, []);
 
-  /* مشاريع خطة الترحيل التي لم يبدأ تنفيذها بعد ← مرحلة «التخطيط والدراسة» */
-  const planItems = useMemo(() => plan.rows.filter((r) => !(r.executed > 0)).map((r, i) => ({
-    id: `plan-${i}`, stage: 'planned', name: `ترحيل الأنقاض — ${r.phase} — ${r.gov}`, gov: r.gov,
-    volume: r.planned || null, status: r.planned ? 'لم يبدأ التنفيذ' : 'الكمية قيد التحديد', notes: r.notes,
-    start: plan.asOf ? `تقرير ${plan.asOf}` : '', photos: [[], [], []],
-  })), [plan]);
+  /* المشاريع (المراحل) التي فيها محافظات لم يبدأ تنفيذها بعد ← «التخطيط والدراسة»: بطاقة لكل مشروع */
+  const planItems = useMemo(() => {
+    const m = new Map();
+    for (const r of plan.rows.filter((x) => !(x.executed > 0))) {
+      const o = m.get(r.phase) || { id: `plan-${r.phase}`, stage: 'planned', name: `مشروع ترحيل الأنقاض — ${r.phase}`,
+        govs: [], volume: 0, parts: [], start: plan.asOf ? `تقرير ${plan.asOf}` : '', photos: [[], [], []] };
+      o.govs.push(r.gov); o.volume += r.planned || 0; o.parts.push(r);
+      m.set(r.phase, o);
+    }
+    return [...m.values()].map((o) => {
+      const all = plan.rows.filter((x) => x.phase === o.id.slice(5));
+      return { ...o, gov: o.govs.join('، '), status: o.govs.length === all.length ? 'لم يبدأ التنفيذ' : `${o.govs.length} من ${all.length} محافظات لم يبدأ فيها التنفيذ` };
+    });
+  }, [plan]);
 
   const byStage = useMemo(() => Object.fromEntries(STAGES.map((s) => [s.id,
     s.kinds ? [...(s.id === 'planning' ? planItems : []), ...pipe.items.filter((x) => s.kinds.includes(x.stage))] : []])), [pipe, planItems]);
