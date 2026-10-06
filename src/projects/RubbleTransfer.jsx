@@ -375,12 +375,15 @@ function Matrix({ govs, f, toggle, setF, plan }) {
             </div>
             {open === g.key && (
               <ul className="rx-regions">
+                <li className="rx-regions__head">{plan ? `تفاصيل ${g.name} حسب المرحلة: الشريط يمثل نسبة ما نُفّذ من الكمية المخطط لها، مع ملاحظات المتابعة من التقرير المرحلي` : `مناطق ${g.name}: الشريط يمثل حصة كل منطقة من كميات المحافظة المرحّلة`}</li>
                 {g.regions.filter((r) => (plan ? r.planned > 0 : r.executed > 0)).sort((a, b) => (plan ? 0 : b.executed - a.executed)).map((r, i) => (
                   <li key={i} style={{ '--c': PHASE_COLOR[PHASE_KEYS.indexOf(r.phase)] }}>
-                    <b>{r.region}{!plan && <small className="rx-regions__ph"> · {r.phase}</small>}</b>
-                    <span className="rx-mini"><span style={{ width: `${Math.min(100, plan ? pct(r.executed, r.planned) : (r.executed / g.executed) * 100)}%` }} /></span>
-                    <span className="rx-regions__n">{plan ? `${fmt(r.executed)} / ${fmt(r.planned)}` : `${fmt(r.executed)} م³`}</span>
-                    {r.notes && <em>{r.notes}</em>}
+                    <b>{plan ? r.phase : r.region}{!plan && <small className="rx-regions__ph"> · {r.phase}</small>}</b>
+                    <span className="rx-mini" title={plan ? 'نسبة المنفّذ من المخطط له' : 'الحصة من كميات المحافظة'}><span style={{ width: `${Math.min(100, plan ? pct(r.executed, r.planned) : (r.executed / g.executed) * 100)}%` }} /></span>
+                    <span className="rx-regions__n">{plan
+                      ? <>منفّذ <strong>{fmt(r.executed)}</strong> من <strong>{fmt(r.planned)}</strong> م³ مخطط له · <strong>{pct(r.executed, r.planned).toFixed(1)}%</strong></>
+                      : `${fmt(r.executed)} م³`}</span>
+                    {r.notes && <em><span className="rx-regions__lbl">ملاحظات المتابعة: </span>{r.notes}</em>}
                   </li>
                 ))}
               </ul>
