@@ -685,6 +685,17 @@ function SurveyModal({ s, onClose }) {
           <F k="اسم المكب / الموقع" v={s.dumpName} />
           <F k="عدد الإيصالات" v={s.receipts ? fmt(s.receipts) : null} />
           <F k="عدد الآليات" v={s.machines ? fmt(s.machines) : null} />
+          <F k="آليات التحميل" v={s.loaders ? fmt(s.loaders) : null} />
+          <F k="أكبر سعة للآليات" v={s.capacity ? `${fmt(s.capacity)} م³` : null} />
+          <F k="الرحلات إلى المكب" v={s.trips ? fmt(s.trips) : null} />
+          <F k="أيام العمل × الساعات اليومية" v={s.days ? `${fmt(s.days)} يوم × ${s.dailyHours ?? '—'} ساعة` : null} />
+          <F k="ساعات العمل اليومية" v={!s.days && s.dailyHours ? `${s.dailyHours} ساعة` : null} />
+          <F k="ساعات العمل الفعلية" v={s.workHours ? `${fmt(s.workHours)} ساعة` : null} />
+          <F k="الإنتاجية" v={s.workHours ? `${fmt(s.vol / s.workHours)} م³/ساعة` : null} strong />
+          <F k="آليات النقار" v={s.breakers ? fmt(s.breakers) : null} />
+          <F k="العمال" v={s.workers ? fmt(s.workers) : null} />
+          <F k="الوقود" v={s.fuel ? `${fmt(s.fuel)} لتر` : null} />
+          <F k="ملاحظات التنفيذ" v={s.notes} />
           <F k="ساعات عمل الآليات" v={s.hours ? `${fmt(s.hours)} ساعة` : null} />
           <F k="الأسر المستفيدة" v={s.fam ? fmt(s.fam) : null} />
           <F k="تاريخ رفع البيانات" v={s.date} />
@@ -717,7 +728,101 @@ function fromResponse(r, i) {
     vol: Number(a.rt_volume) || 0, dump: a.rt_dump || '', dist: a.rt_distance || '',
     hours: Number(a.rt_hours) || null, fam: Number(a.rt_families) || null, photos: [],
     hasPhotos: Boolean(r.photos),
+    /* بيانات التشغيل والإنتاجية (أُضيفت للاستمارة الرسمية) */
+    receipts: Number(a.rt_receipts) || null,
+    trips: Number(a.rt_trips) || null,
+    loaders: Number(a.rt_loaders) || null,
+    machines: Number(a.rt_machines_total) || null,
+    capacity: Number(a.rt_max_capacity) || null,
+    days: Number(a.rt_work_days) || null,
+    dailyHours: Number(a.rt_daily_hours) || null,
+    workHours: (Number(a.rt_work_days) || 0) * (Number(a.rt_daily_hours) || 0) || null,
+    breakers: Number(a.rt_breakers) || null,
+    workers: Number(a.rt_workers) || null,
+    fuel: Number(a.rt_fuel) || null,
+    notes: a.rt_ops_notes || '',
   };
+}
+
+/*
+  التشغيل والإنتاجية: تُحسب كل نسبة من المواقع التي سجّلت حقلَيها معاً فقط
+  (مثلاً م³/رحلة من المواقع التي فيها رحلات وكمية)، وإلا كانت النسبة مضلِّلة.
+*/
+function ratio(list, num, den) {
+  const ok = list.filter((s) => num(s) > 0 && den(s) > 0);
+  const a = ok.reduce((x, s) => x + num(s), 0);
+  const b = ok.reduce((x, s) => x + den(s), 0);
+  return { value: b ? a / b : 0, n: ok.length };
+}
+
+function Productivity({ surveys, f, toggle }) {
+  const sum = (k) => surveys.reduce((a, s) => a + (s[k] || 0), 0);
+  const covered = (k) => surveys.filter((s) => s[k]).length;
+  const perHour = ratio(surveys, (s) => s.vol, (s) => s.workHours);
+  const perTrip = ratio(surveys, (s) => s.vol, (s) => s.trips || s.receipts);
+  const perMachine = ratio(surveys, (s) => s.vol, (s) => s.machines);
+  const tiles = [
+    { label: 'الإيصالات', value: sum('receipts'), unit: 'إيصال', n: covered('receipts'), c: PAL[1] },
+    { label: 'الرحلات إلى المكبات', value: sum('trips'), unit: 'رحلة', n: covered('trips'), c: PAL[3] },
+    { label: 'ساعات العمل الفعلية', value: sum('workHours'), unit: 'ساعة', n: covered('workHours'), c: PAL[4] },
+    { label: 'الإنتاجية', value: perHour.value, unit: 'م³ / ساعة', n: perHour.n, c: PAL[0] },
+    { label: 'متوسط حمولة الرحلة', value: perTrip.value, unit: 'م³ / رحلة', n: perTrip.n, c: PAL[5] },
+    { label: 'إنتاج الآلية الواحدة', value: perMachine.value, unit: 'م³ / آلية', n: perMachine.n, c: PAL[2] },
+  ];
+  /* ترتيب الجهات بالإنتاجية (م³/ساعة) لمن سجّلت ساعات عمل */
+  const cm = new Map();
+  for (const s of surveys) {
+    if (!(s.workHours > 0 && s.vol > 0)) continue;
+    const k = coKey(s.co);
+    const c = cm.get(k) || { name: s.co, vol: 0, hours: 0, n: 0 };
+    c.vol += s.vol; c.hours += s.workHours; c.n += 1;
+    cm.set(k, c);
+  }
+  const ranks = [...cm.values()].filter((c) => c.n >= 2).map((c) => ({ ...c, rate: c.vol / c.hours })).sort((a, b) => b.rate - a.rate).slice(0, 8);
+  const top = ranks[0]?.rate || 1;
+  const any = tiles.some((t) => t.n);
+
+  return (
+    <section className="rx-block">
+      <header className="rx-head">
+        <h2>التشغيل والإنتاجية</h2>
+        <p>من الحقول التشغيلية في الاستمارة. كل رقم محسوب من المواقع التي سجّلته فقط، والعدد تحته يبيّن كم موقعاً سجّله.</p>
+      </header>
+      {!any ? (
+        <p className="rx-foot rx-pending">لم تُسجَّل بيانات تشغيلية بعد. ستظهر هنا فور وصول استمارات تحمل الحقول الجديدة (الإيصالات، الرحلات، الآليات، ساعات العمل).</p>
+      ) : (
+        <>
+          <div className="rx-prod">
+            {tiles.map((t) => (
+              <div key={t.label} className={`rx-prod__tile${t.n ? '' : ' is-empty'}`} style={{ '--c': t.c }}>
+                <span>{t.label}</span>
+                <b>{t.n ? (t.value >= 100 ? fmt(t.value) : (Math.round(t.value * 10) / 10).toLocaleString('en-US')) : '—'}</b>
+                <small>{t.unit} · {fmt(t.n)} موقعاً</small>
+              </div>
+            ))}
+          </div>
+          {ranks.length > 0 && (
+            <div className="rx-card">
+              <h3>الجهات الأعلى إنتاجية (م³ لكل ساعة عمل)</h3>
+              <ol className="rx-levels">
+                {ranks.map((c, i) => (
+                  <li key={c.name}>
+                    <button type="button" style={{ '--c': PAL[i % PAL.length] }} onClick={() => toggle('co', c.name)}
+                      className={f.co.some((x) => coKey(x) === coKey(c.name)) ? 'is-on' : ''}>
+                      <span className="rx-levels__n">{i + 1}</span>
+                      <span className="rx-levels__name">{c.name}<small>{fmt(c.n)} موقعاً · {fmt(c.hours)} ساعة</small></span>
+                      <span className="rx-levels__bar"><span style={{ width: `${(c.rate / top) * 100}%` }} /></span>
+                      <b>{(Math.round(c.rate * 10) / 10).toLocaleString('en-US')}<small> م³/ساعة</small></b>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
 }
 
 /* ---------------- الصفحة ---------------- */
@@ -823,6 +928,7 @@ export default function RubbleTransfer({ basemap }) {
       <Levels surveys={view.surveys} f={f} setF={setFp} />
       <Matrix govs={view.govs} f={f} toggle={toggle} setF={setFp} plan={view.plan} />
       <Field surveys={view.surveys} allSurveys={data.surveys} basemap={basemap} t={view.t} f={f} toggle={toggle} />
+      <Productivity surveys={view.surveys} f={f} toggle={toggle} />
       <Contractors list={view.contractors} total={view.t.surveyVol} f={f} toggle={toggle} />
       <Registry surveys={view.surveys} allSurveys={data.surveys} f={f} toggle={toggle} />
       <button type="button" className="rx-more rx-print" onClick={() => window.print()}>طباعة التقرير</button>
