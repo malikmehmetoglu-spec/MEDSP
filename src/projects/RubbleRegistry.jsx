@@ -1,3 +1,4 @@
+import TemplateDownload from '../components/TemplateDownload';
 import { useMemo, useState } from 'react';
 import SyriaMap from '../components/SyriaMap';
 import { coKey } from './RubbleTransfer';
@@ -91,6 +92,7 @@ export function Entities({ surveys, registry }) {
 
   return (
     <div className="reg">
+      <TemplateDownload id="entities" />
       <div className="hub-kpis" style={{ '--c': '#2f9e74' }}>
         <div><span>الجهات العاملة</span><b>{fmt(list.length)}</b></div>
         <div><span>أدوار مسجّلة</span><b>{fmt(allRoles.length)}</b></div>
@@ -197,6 +199,7 @@ export function Dumps({ surveys, registry, basemap }) {
 
   return (
     <div className="reg">
+      <TemplateDownload id="dumps" />
       <div className="hub-kpis" style={{ '--c': '#d4a443' }}>
         <div><span>المكبات</span><b>{fmt(dumps.length)}</b></div>
         <div><span>معتمدة</span><b>{fmt(approved.length)}</b></div>

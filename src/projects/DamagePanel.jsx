@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import TemplateDownload from '../components/TemplateDownload';
 import Dropdown from '../components/Dropdown';
 import { DAMAGE, damageRubble } from './rubbleMethod';
 
@@ -73,6 +74,7 @@ export default function DamagePanel({ surveys = [] }) {
         <p>بانتظار بيانات الضرر من وزارة الإدارة المحلية. تُضاف عبر القالب <b dir="ltr">data/rubble-damage/damage.xlsx</b>:
           سطر لكل منطقة/ناحية ونوع مبنى بأعداد (مدمر كلياً، جسيم، متوسط، طفيف). عندها تظهر أصناف الضرر ونسبه،
           والأنقاض الناتجة عن كل فئة بالمعادلة المعتمدة، وترتيب أولويات المناطق.</p>
+        <TemplateDownload id="damage" />
       </div>
     );
   }
@@ -88,6 +90,7 @@ export default function DamagePanel({ surveys = [] }) {
           <Dropdown multi label="نوع المبنى" placeholder="كل الأنواع" value={kinds} onChange={setKinds} options={opts('kind')} />
         </div>
       </header>
+      <TemplateDownload id="damage" />
 
       <div className="dmg__cats">
         {DAMAGE.map((d) => (

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import RubbleTransfer from './RubbleTransfer';
 import EstimateCalc from './EstimateCalc';
+import TemplateDownload from '../components/TemplateDownload';
 import DamagePanel from './DamagePanel';
 import { Entities, Dumps, isEntityRegistry, entitiesFromProject } from './RubbleRegistry';
 import { listPublishedProjects, listEntities } from './store';
@@ -51,12 +52,14 @@ function StageList({ stage, items }) {
       <div className="hub-empty" style={{ '--c': stage.color }}>
         <h3>{stage.title}</h3>
         <p>{stage.empty}</p>
+        <TemplateDownload id="pipeline" />
       </div>
     );
   }
 
   return (
     <div className="hub-stage">
+      <TemplateDownload id="pipeline" />
       <div className="hub-kpis" style={{ '--c': stage.color }}>
         <div><span>المشاريع</span><b>{fmt(list.length)}</b></div>
         <div><span>{stage.volLabel}</span><b>{short(vol)}</b><small>م³</small></div>
@@ -169,7 +172,7 @@ export default function RubbleHub({ basemap }) {
         ? <RubbleTransfer basemap={basemap} />
         : (
           <>
-            {current.id === 'assessment' && <><DamagePanel surveys={surveys} /><EstimateCalc /></>}
+            {current.id === 'assessment' && <><DamagePanel surveys={surveys} /><EstimateCalc /><TemplateDownload id="method" /></>}
             <StageList key={current.id} stage={current} items={byStage[current.id]} />
           </>
         )}

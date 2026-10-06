@@ -2604,3 +2604,10 @@ button.rx-cell:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(
 .dmg__lvl.is-عاجلة{background:#b3261e}.dmg__lvl.is-مرتفعة{background:#e0742b}.dmg__lvl.is-عادية{background:#7fae5a}
 .dmg-empty{margin-bottom:18px}
 @media (max-width:760px){.dmg__cats{grid-template-columns:repeat(2,1fr)}.dmg__grid{grid-template-columns:1fr}.dmg__box{overflow-x:auto}}
+
+/* ===== تحميل قوالب Excel ===== */
+.tpl{display:flex;align-items:center;gap:12px;padding:10px 12px;margin:10px 0;border:1px dashed rgba(47,158,116,.5);border-radius:12px;background:rgba(47,158,116,.06)}
+.tpl__btn{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;padding:8px 14px;border-radius:9px;background:#217346;color:#fff;font-weight:700;text-decoration:none;font-size:.9rem}
+.tpl__btn:hover{background:#185c37}
+.tpl__text{margin:0;font-size:.85rem;opacity:.8;line-height:1.6}
+@media (max-width:640px){.tpl{flex-direction:column;align-items:stretch}.tpl__btn{justify-content:center}}
