@@ -440,3 +440,34 @@ export async function rubbleTransferFeed() {
   fail(error);
   return data || [];
 }
+
+/* ---------- سجل الجهات العاملة في قطاع الأنقاض (جدول rubble_entities) ---------- */
+
+const mapEntity = (r) => ({
+  id: r.id, name: r.name, aliases: r.aliases || [], type: r.type || '', roles: r.roles || [],
+  govs: r.governorates || [], contact: r.contact || '', notes: r.notes || '', updatedAt: r.updated_at,
+});
+
+export async function listEntities() {
+  const { data, error } = await supabase.from('rubble_entities').select('*').order('name');
+  fail(error);
+  return (data || []).map(mapEntity);
+}
+
+export async function saveEntity(e) {
+  const row = {
+    name: e.name.trim(), aliases: e.aliases, type: e.type, roles: e.roles,
+    governorates: e.govs, contact: e.contact.trim(), notes: e.notes.trim(), updated_at: new Date().toISOString(),
+  };
+  const q = e.id
+    ? supabase.from('rubble_entities').update(row).eq('id', e.id)
+    : supabase.from('rubble_entities').insert(row);
+  const { data, error } = await q.select().single();
+  fail(error);
+  return mapEntity(data);
+}
+
+export async function deleteEntity(id) {
+  const { error } = await supabase.from('rubble_entities').delete().eq('id', id);
+  fail(error);
+}

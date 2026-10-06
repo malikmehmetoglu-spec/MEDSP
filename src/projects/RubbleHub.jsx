@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import RubbleTransfer from './RubbleTransfer';
 import { Entities, Dumps, isEntityRegistry, entitiesFromProject } from './RubbleRegistry';
-import { listPublishedProjects } from './store';
+import { listPublishedProjects, listEntities } from './store';
 
 /*
   إدارة الأنقاض — دورة كاملة في تبويب واحد:
@@ -114,9 +114,11 @@ export default function RubbleHub({ basemap }) {
     Promise.all([
       fetch('data/rubble-registry.json').then((r) => r.json()).catch(() => ({ dumps: [], entities: [] })),
       listPublishedProjects().catch(() => []),
-    ]).then(([file, projects]) => {
+      listEntities().catch(() => []),
+    ]).then(([file, projects, table]) => {
       const live = projects.filter(isEntityRegistry).flatMap(entitiesFromProject);
-      setRegistry({ dumps: file.dumps || [], entities: [...(file.entities || []), ...live] });
+      /* السجل الرسمي (جدول مساحة العمل) أخيراً حتى يغلب اسمه وتصنيفه */
+      setRegistry({ dumps: file.dumps || [], entities: [...(file.entities || []), ...live, ...table] });
     });
     fetch('data/rubble-pipeline.json').then((r) => r.json()).then(setPipe).catch(() => setPipe({ items: [] }));
     fetch('data/rubble-transfer.json').then((r) => r.json())

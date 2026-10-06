@@ -1,3 +1,4 @@
+import EntitiesPanel from './EntitiesPanel';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as store from '../projects/store';
 import SurveyBuilder from './SurveyBuilder';
@@ -517,6 +518,7 @@ export default function AdminApp({ basemap, me }) {
 
   const sections = [
     { id: 'projects', label: 'المشاريع' },
+    { id: 'entities', label: 'الجهات العاملة' },
     ...(me.role === 'super_admin' ? [{ id: 'accounts', label: 'الحسابات' }] : []),
     { id: 'me', label: 'حسابي' },
   ];
@@ -535,6 +537,7 @@ export default function AdminApp({ basemap, me }) {
 
       {section === 'accounts' && me.role === 'super_admin' && <AccountsPanel me={me} />}
       {section === 'me' && <MyAccount me={me} />}
+      {section === 'entities' && <EntitiesPanel />}
       {section === 'projects' && (open ? (
         <ProjectEditor
           projectId={open}

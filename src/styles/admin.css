@@ -1837,3 +1837,29 @@ button.cmp__row { width: 100%; font: inherit; color: inherit; background: none; 
 .cmp__row.is-on .cmp__label { font-weight: 700; color: var(--ink); }
 .dtable tbody tr.is-dim { opacity: 0.35; }
 a.pedit__publish { display: inline-flex; align-items: center; text-decoration: none; }
+
+/* ===== سجل الجهات العاملة ===== */
+.ent { display: grid; gap: 16px; }
+.ent-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.ent-head h2 { margin: 0 0 4px; font-size: var(--h2); color: var(--ink); }
+.ent-head p { margin: 0; max-width: 680px; color: var(--ink-soft); font-size: 0.88rem; line-height: 1.8; }
+.ent-editor { display: grid; gap: 12px; padding: 18px; border-radius: var(--radius); border: 1px solid var(--edge-strong); background: var(--glass-strong); }
+.ent-editor label { display: grid; gap: 5px; }
+.ent-editor label > span, .ent-label { display: block; margin-bottom: 5px; font-size: 0.8rem; font-weight: 600; color: var(--ink-soft); }
+.ent-editor small { font-weight: 400; color: var(--ink-faint); }
+.ent-editor__actions { display: flex; gap: 8px; }
+.ent-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ent-chips button { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--edge); background: var(--glass); font: inherit; font-size: 0.82rem; color: var(--ink-soft); cursor: pointer; }
+.ent-chips button.is-on { background: var(--forest); border-color: var(--forest); color: var(--ivory-mist); font-weight: 700; }
+.ent-chips small { opacity: 0.7; }
+.ent-bar { display: grid; gap: 10px; }
+.ent-bar .q-input { max-width: 340px; margin: 0; }
+.ent-list { display: grid; gap: 8px; }
+.ent-row { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.5fr) auto; gap: 14px; align-items: center; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--edge); background: var(--glass); }
+.ent-row__main { display: grid; gap: 2px; }
+.ent-row__main b { color: var(--ink); }
+.ent-row__main span, .ent-row__main small { font-size: 0.78rem; color: var(--ink-faint); }
+.ent-row__roles { display: flex; flex-wrap: wrap; gap: 4px; }
+.ent-row__roles span { font-size: 0.74rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--forest); color: var(--ivory-mist); }
+.ent-row__act { display: flex; gap: 6px; }
+@media (max-width: 760px) { .ent-row { grid-template-columns: minmax(0, 1fr); } }
