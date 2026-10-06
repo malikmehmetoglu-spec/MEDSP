@@ -224,7 +224,7 @@ export default function RubbleHub({ basemap }) {
         </button>
       </nav>
 
-      {stage === 'overview' && <RubbleOverview plan={plan} surveys={named} pipe={pipe.items} registry={registry} go={setStage} />}
+      {stage === 'overview' && <RubbleOverview plan={plan} planItems={planItems} surveys={named} pipe={pipe.items} registry={registry} go={setStage} />}
       {stage === 'gallery' && <RubbleGallery surveys={named} pipe={pipe.items} />}
       {stage === 'entities' && <Entities surveys={surveys} registry={registry} />}
       {stage === 'dumps' && <Dumps surveys={surveys} registry={registry} basemap={basemap} />}

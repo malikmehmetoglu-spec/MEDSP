@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { damageRubble } from './rubbleMethod';
 import { archiveItems } from './RubbleGallery';
+import { buildDumps } from './RubbleRegistry';
 
 /* لمحة عامة (Overview) عن مشروع إدارة الأنقاض: كل المراحل في شاشة واحدة */
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
 const short = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1e4 ? `${Math.round(n / 1e3)}K` : fmt(n));
 
-export default function RubbleOverview({ plan = {}, surveys, pipe, registry, go }) {
+export default function RubbleOverview({ plan = {}, planItems = [], surveys, pipe, registry, go }) {
   const [damage, setDamage] = useState([]);
   useEffect(() => { fetch('data/rubble-damage.json').then((r) => r.json()).then((d) => setDamage(d.rows || [])).catch(() => {}); }, []);
 
@@ -15,7 +16,7 @@ export default function RubbleOverview({ plan = {}, surveys, pipe, registry, go 
     const of = (...k) => pipe.filter((x) => k.includes(x.stage));
     const estDamage = damage.reduce((a, r) => a + damageRubble(r).volume, 0);
     const est = estDamage + sum(of('assessment'), 'volume');
-    const planned = sum(of('planned', 'study'), 'volume');
+    const planned = sum(of('planned', 'study'), 'volume') + (plan.planned || 0);
     const done = sum(surveys, 'vol');
     const recycled = sum(of('recycling'), 'volume');
     const govs = new Map();
@@ -29,14 +30,13 @@ export default function RubbleOverview({ plan = {}, surveys, pipe, registry, go 
       est, planned, done, recycled, sites: surveys.length,
       cos: new Set(surveys.map((s) => s.co).filter(Boolean)).size,
       govs: [...govs.values()].filter((x) => x.gov).sort((a, b) => b.done + b.est - a.done - a.est),
-      archive: archive.length, recent,
+      archive: archive.length, recent, dumps: buildDumps(surveys, registry),
     };
-  }, [surveys, pipe, damage]);
+  }, [surveys, pipe, damage, registry, plan]);
 
   const stages = [
     { id: 'assessment', t: 'التقدير', v: o.est, c: '#4f8fdc', note: o.est ? 'من بيانات الضرر والمناطق المقدّرة' : 'بانتظار بيانات الضرر' },
-    { id: 'planning', t: 'التخطيط والدراسة', v: o.planned, c: '#8d6bc9', note: `${fmt(pipe.filter((x) => ['planned', 'study'].includes(x.stage)).length)} مشروعاً` },
-    { id: 'execution', t: 'المخطط للترحيل', v: plan.planned || 0, c: '#35b3ad', note: 'الخطة المعتمدة للمراحل الثلاث' },
+    { id: 'planning', t: 'التخطيط والدراسة', v: o.planned, c: '#8d6bc9', note: `${fmt(planItems.length + pipe.filter((x) => ['planned', 'study'].includes(x.stage)).length)} مشاريع` },
     { id: 'execution', t: 'التنفيذ (مُرحّل)', v: plan.executed || o.done, c: '#2f9e74', note: `${fmt(o.sites)} موقع عمل` },
     { id: 'recycling', t: 'التدوير والاستثمار', v: o.recycled, c: '#d4a443', note: `${fmt(pipe.filter((x) => ['recycling', 'investment'].includes(x.stage)).length)} مشروعاً` },
   ];
@@ -62,7 +62,7 @@ export default function RubbleOverview({ plan = {}, surveys, pipe, registry, go 
         <div><span>الجهات المنفذة</span><b>{fmt(o.cos)}</b></div>
         <div><span>المحافظات</span><b>{fmt(o.govs.filter((x) => x.done).length)}</b></div>
         <div><span>الجهات في السجل</span><b>{fmt(registry.entities.length)}</b></div>
-        <div><span>المكبات المسجّلة</span><b>{fmt(registry.dumps.length)}</b></div>
+        <div><span>المكبات</span><b>{fmt(o.dumps.length)}</b><small>{fmt(o.dumps.filter((d) => d.status === 'معتمد').length)} معتمد · {fmt(o.dumps.filter((d) => d.status !== 'معتمد').length)} مقترح</small></div>
         <div><span>مواقع موثّقة بالصور</span><b>{fmt(o.archive)}</b></div>
       </div>
 

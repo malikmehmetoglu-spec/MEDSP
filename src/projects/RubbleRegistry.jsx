@@ -147,12 +147,8 @@ const km = (a, b) => {
   return Math.hypot(dLat, dLon);
 };
 
-export function Dumps({ surveys, registry, basemap }) {
-  const [status, setStatus] = useState('all');
-  const [gov, setGov] = useState('all');
-  const [open, setOpen] = useState(null);
-
-  const dumps = useMemo(() => {
+/* المكبات: مستخرجة من إحداثيات المكب في الاستمارات، ومكمّلة من سجل المكبات */
+export function buildDumps(surveys, registry) {
     /* تجميع الاستمارات حسب إحداثيات المكب (خلية ~1 كم) */
     const m = new Map();
     for (const s of surveys) {
@@ -187,7 +183,14 @@ export function Dumps({ surveys, registry, basemap }) {
       }
     }
     return out.sort((a, b) => b.received - a.received);
-  }, [surveys, registry]);
+}
+
+export function Dumps({ surveys, registry, basemap }) {
+  const [status, setStatus] = useState('all');
+  const [gov, setGov] = useState('all');
+  const [open, setOpen] = useState(null);
+
+  const dumps = useMemo(() => buildDumps(surveys, registry), [surveys, registry]);
 
   const govs = [...new Set(dumps.map((d) => d.gov).filter(Boolean))];
   const shown = dumps.filter((d) => (status === 'all' || d.status === status) && (gov === 'all' || d.gov === gov));

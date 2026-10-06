@@ -2688,3 +2688,4 @@ button.rx-cell:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(
 .rx-regions__head{display:block!important;font-size:.85rem;color:var(--ink-soft);padding-bottom:6px;border-bottom:1px solid var(--edge)}
 .rx-regions__lbl{font-weight:700;font-style:normal;color:var(--ink)}
 .rx-regions__n strong{color:var(--ink)}
+.ov-kpis small{font-size:.75rem;color:var(--ink-soft)}
