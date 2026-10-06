@@ -2794,3 +2794,9 @@ button.rx-cell:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(
   .hub .ov-kpis span,.hub .ov-kpis small{font-size:.88rem}
   .hub .atl-kpis .is-ready small{font-size:.86rem}
 }
+/* بطاقات المراحل الأربع */
+.hub .hub-step__t{font-size:1.15rem}
+.hub .hub-step__t small{font-size:.9rem;color:var(--ink);opacity:.8;line-height:1.6}
+.hub .hub-step__s{font-size:.95rem;filter:brightness(1.2)}
+.report__summary{font-size:1rem;color:var(--ink);opacity:.85}
+@media (max-width:640px){.hub .hub-step__t small{font-size:.84rem}.hub .hub-step__s{font-size:.88rem}}
