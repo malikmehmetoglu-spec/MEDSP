@@ -14,7 +14,7 @@ export const RUBBLE_PROJECT = {
   id: 'rubble-transfer',
   name: 'مشروع ترحيل الأنقاض',
   description: 'إدارة تقييم الأضرار والتعافي — متابعة خطة ترحيل الأنقاض عبر المحافظات، والاستبيانات الميدانية، وأداء الجهات المنفذة.',
-  surveysCount: 1289,
+  surveysCount: 0,
 };
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
@@ -391,8 +391,13 @@ function Field({ surveys, allSurveys, basemap, t, f, toggle }) {
     const ll = allSurveys.map((s) => placed(basemap, s)).filter(Boolean);
     if (!ll.length) return null;
     const lats = ll.map((x) => x[0]); const lons = ll.map((x) => x[1]);
+    /* هامش، وحدّ أدنى للإطار حتى لا تُكبَّر الخريطة على نقطة واحدة */
     const pad = 0.35;
-    return { minLat: Math.min(...lats) - pad, maxLat: Math.max(...lats) + pad, minLon: Math.min(...lons) - pad, maxLon: Math.max(...lons) + pad };
+    const cLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+    const cLon = (Math.min(...lons) + Math.max(...lons)) / 2;
+    const hLat = Math.max(1.2, (Math.max(...lats) - Math.min(...lats)) / 2 + pad);
+    const hLon = Math.max(1.5, (Math.max(...lons) - Math.min(...lons)) / 2 + pad);
+    return { minLat: cLat - hLat, maxLat: cLat + hLat, minLon: cLon - hLon, maxLon: cLon + hLon };
   }, [allSurveys, basemap]);
 
   const gov = sumBy(surveys, (s) => govName(s.gov), (s) => s.vol);
@@ -651,6 +656,18 @@ export default function RubbleTransfer({ basemap }) {
   if (error) return <div className="pending"><h3>تعذّر تحميل بيانات المشروع</h3><p>حدّث الصفحة وحاول مجدداً.</p></div>;
   if (!view) return <p className="results__empty">جارٍ التحميل…</p>;
   const filtered = DIMS.some((d) => f[d.key].length);
+
+  /* لا خطة ولا استمارات بعد: صفحة انتظار بدل لوحات فارغة */
+  if (!data.phases.length && !data.surveys.length) {
+    return (
+      <div className="rx-empty">
+        <img src="brand/emblem.svg" alt="" aria-hidden="true" />
+        <h2>بانتظار البيانات</h2>
+        <p>أُفرغت بيانات المشروع تمهيداً لرفع النسخة المحدّثة. ستظهر هنا خطة المراحل والمحافظات ومواقع العمل فور رفعها،
+          وكذلك كل استمارة معتمدة من «استبيان ترحيل الأنقاض الميداني».</p>
+      </div>
+    );
+  }
 
   return (
     <div className="rx">
