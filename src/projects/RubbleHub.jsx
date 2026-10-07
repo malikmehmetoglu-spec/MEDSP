@@ -244,7 +244,7 @@ export default function RubbleHub({ basemap, initial }) {
         ? <RubbleTransfer basemap={basemap} />
         : (
           <>
-            {current.id === 'assessment' && <><DamagePanel surveys={surveys} /><EstimateCalc /><TemplateDownload id="method" /><DroneCalc /></>}
+            {current.id === 'assessment' && <><DamagePanel surveys={surveys} /><EstimateCalc /><DroneCalc /></>}
             <StageList key={current.id} stage={current} items={byStage[current.id]} />
           </>
         )}

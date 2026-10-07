@@ -117,7 +117,7 @@ export default function DamagePanel({ surveys = [] }) {
         ))}
       </div>
       <p className="dmg__note">إجمالي الأنقاض المقدّرة من الضرر: <b>{fmt(tot.v)} م³</b> (≈ {fmt(tot.v * 1.35)} طن).
-        المنهجية الأولى في الدليل المعتمد: الحجم الإنشائي (المساحة × الطوابق × 3 م) × معامل التحويل: {DAMAGE.map((d) => `${d.label} ${d.share}`).join(' · ')}.
+        المنهجية المعتمدة: الحجم الإنشائي (المساحة × الطوابق × 3 م) × معامل التحويل: {DAMAGE.map((d) => `${d.label} ${d.share}`).join(' · ')}.
         {tot.assumed && ' بعض الأسطر بلا مساحة/طوابق فاعتُمد 120 م² و3 طوابق.'}</p>
 
       <div className="dmg__box">

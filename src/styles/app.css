@@ -2900,3 +2900,4 @@ button.rx-cell:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(
 .rmap-items__chk{width:18px;height:18px;border-radius:5px;border:1.6px solid var(--edge-strong);flex-shrink:0;display:grid;place-items:center}
 .rmap-items button.is-on .rmap-items__chk{background:var(--mountain-teal);border-color:var(--mountain-teal)}
 .rmap-items button.is-on .rmap-items__chk::after{content:"";width:9px;height:5px;border:2px solid #fff;border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.calc__formula,.calc__sub{font-family:inherit!important}
