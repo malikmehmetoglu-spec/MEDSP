@@ -7,6 +7,7 @@ import DroneCalc from './DroneCalc';
 import RubbleOverview from './RubbleOverview';
 import RubbleGallery from './RubbleGallery';
 import RubbleAtlas from './RubbleAtlas';
+import RubbleMapView from './RubbleMapView';
 import { fromResponse } from './RubbleTransfer';
 import { Entities, Dumps, isEntityRegistry, entitiesFromProject } from './RubbleRegistry';
 import { listPublishedProjects, listEntities, rubbleTransferFeed } from './store';
@@ -218,6 +219,10 @@ export default function RubbleHub({ basemap, initial }) {
           <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5c-2.6 0-4.5 2-4.5 4.4C3.5 9.3 8 14.5 8 14.5s4.5-5.2 4.5-8.6C12.5 3.5 10.6 1.5 8 1.5Z" fill="none" stroke="currentColor" strokeWidth="1.6" /><circle cx="8" cy="6" r="1.7" fill="currentColor" /></svg>
           كميات الأنقاض في سوريا
         </button>
+        <button type="button" className={`hub-side__map${stage === 'map' ? ' is-on' : ''}`} onClick={() => setStage('map')}>
+          <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 3.5 5.5 2l5 1.5 4-1.5v10.5l-4 1.5-5-1.5-4 1.5Z M5.5 2v10.5 M10.5 3.5V14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" /></svg>
+          الخريطة
+        </button>
         <button type="button" className={stage === 'gallery' ? 'is-on' : ''} onClick={() => setStage('gallery')}>
           الأرشيف المصور
         </button>
@@ -231,6 +236,7 @@ export default function RubbleHub({ basemap, initial }) {
 
       {stage === 'overview' && <RubbleOverview plan={plan} planItems={planItems} surveys={named} pipe={pipe.items} registry={registry} go={setStage} />}
       {stage === 'atlas' && <RubbleAtlas basemap={basemap} />}
+      {stage === 'map' && <RubbleMapView />}
       {stage === 'gallery' && <RubbleGallery surveys={named} pipe={pipe.items} />}
       {stage === 'entities' && <Entities surveys={surveys} registry={registry} />}
       {stage === 'dumps' && <Dumps surveys={surveys} registry={registry} basemap={basemap} />}
