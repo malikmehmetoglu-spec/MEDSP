@@ -2919,3 +2919,11 @@ button.rx-cell:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(
 .pc-bar b{color:#fff;font-size:.85rem;text-shadow:0 1px 2px rgba(0,0,0,.35)}
 .pc-row--total{padding-top:12px;border-top:1px solid var(--edge)}
 @media (max-width:640px){.pc{padding:14px}.pc-row{grid-template-columns:1fr auto;gap:6px 10px}.pc-row .pc-bar{grid-column:1/-1;grid-row:2}.pc-row__t{text-align:left}}
+
+.pc-wrap{display:flex;flex-direction:column;gap:6px;min-width:0}
+.pc-vals{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.88rem}
+.pc-vals span{display:inline-flex;align-items:center;gap:5px}
+.pc-vals i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.pc-vals em{font-style:normal;font-weight:700;opacity:.85}
+.pc-row{align-items:start}
+@media (max-width:640px){.pc-row .pc-wrap{grid-column:1/-1;grid-row:2}}

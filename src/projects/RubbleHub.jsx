@@ -56,14 +56,23 @@ function PlanChart({ items }) {
   });
   if (!rows.length) return null;
   const tot = rows.reduce((a, r) => ({ planned: a.planned + r.planned, done: a.done + r.done, left: a.left + r.left, wait: a.wait + r.wait }), { planned: 0, done: 0, left: 0, wait: 0 });
-  const max = Math.max(...rows.map((r) => r.done + r.left + r.wait), 1);
+  const max = Math.max(...rows.map((r) => Math.max(r.planned, r.done + r.left + r.wait)), 1);
+  const KINDS = [['done', 'منفّذ'], ['left', 'متبقٍّ'], ['wait', 'لم يبدأ']];
+  const pct = (v, r) => `${Math.round((v / (r.planned || 1)) * 100)}%`;
   const Bar = ({ r, scale }) => (
-    <span className="pc-bar">
-      {[['done', 'منفّذ'], ['left', 'متبقٍّ في محافظات بدأ فيها التنفيذ'], ['wait', 'مخطط لم يبدأ تنفيذه']].map(([k, l]) => r[k] > 0 && (
-        <i key={k} style={{ width: `${(r[k] / scale) * 100}%`, background: PC[k] }} title={`${l}: ${fmt(r[k])} م³`}>
-          {r[k] / scale > 0.09 && <b>{short(r[k])}</b>}
-        </i>
-      ))}
+    <span className="pc-wrap">
+      <span className="pc-bar">
+        {KINDS.map(([k, l]) => r[k] > 0 && (
+          <i key={k} style={{ width: `${(r[k] / scale) * 100}%`, background: PC[k] }} title={`${l}: ${fmt(r[k])} م³ (${pct(r[k], r)})`}>
+            {r[k] / scale > 0.1 && <b>{short(r[k])} · {pct(r[k], r)}</b>}
+          </i>
+        ))}
+      </span>
+      <span className="pc-vals">
+        {KINDS.map(([k, l]) => r[k] > 0 && (
+          <span key={k}><i style={{ background: PC[k] }} />{l} <b>{fmt(r[k])} م³</b> <em>({pct(r[k], r)})</em></span>
+        ))}
+      </span>
     </span>
   );
   return (
@@ -84,7 +93,7 @@ function PlanChart({ items }) {
         ))}
         <div className="pc-row pc-row--total">
           <span className="pc-row__n">الإجمالي<small>{tot.planned ? `${((tot.done / tot.planned) * 100).toFixed(1)}% منفّذ من المخطط له` : ''}</small></span>
-          <Bar r={tot} scale={tot.done + tot.left + tot.wait} />
+          <Bar r={tot} scale={Math.max(tot.planned, tot.done + tot.left + tot.wait)} />
           <span className="pc-row__t">{short(tot.planned)}<small>م³ مخطط له</small></span>
         </div>
       </div>
