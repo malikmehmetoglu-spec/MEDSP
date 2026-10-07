@@ -2901,3 +2901,21 @@ button.rx-cell:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(
 .rmap-items button.is-on .rmap-items__chk{background:var(--mountain-teal);border-color:var(--mountain-teal)}
 .rmap-items button.is-on .rmap-items__chk::after{content:"";width:9px;height:5px;border:2px solid #fff;border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
 .calc__formula,.calc__sub{font-family:inherit!important}
+
+/* شكل المخطط والمنفّذ في التخطيط والدراسة */
+.pc{background:var(--glass);border:1px solid var(--edge);border-radius:14px;padding:18px;color:var(--ink)}
+.pc h3{margin:0 0 10px;font-size:1.1rem}
+.pc-legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:14px;font-size:.92rem}
+.pc-legend span{display:inline-flex;align-items:center;gap:6px}
+.pc-legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.pc-rows{display:grid;gap:12px}
+.pc-row{display:grid;grid-template-columns:200px 1fr 90px;gap:12px;align-items:center}
+.pc-row__n{display:flex;flex-direction:column;font-weight:700}
+.pc-row__n small{font-weight:400;font-size:.84rem;opacity:.8;line-height:1.5}
+.pc-row__t{display:flex;flex-direction:column;font-weight:800;font-size:1.05rem;text-align:left}
+.pc-row__t small{font-weight:400;font-size:.8rem;opacity:.8}
+.pc-bar{display:flex;height:30px;border-radius:8px;overflow:hidden;background:var(--edge)}
+.pc-bar i{display:flex;align-items:center;justify-content:center;height:100%}
+.pc-bar b{color:#fff;font-size:.85rem;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+.pc-row--total{padding-top:12px;border-top:1px solid var(--edge)}
+@media (max-width:640px){.pc{padding:14px}.pc-row{grid-template-columns:1fr auto;gap:6px 10px}.pc-row .pc-bar{grid-column:1/-1;grid-row:2}.pc-row__t{text-align:left}}

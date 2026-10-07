@@ -44,6 +44,54 @@ const STAGES = [
 
 const KIND_LABEL = { assessment: 'تقدير', planned: 'مخطط', study: 'قيد الدراسة', recycling: 'تدوير', investment: 'استثمار' };
 
+/* المخطط والمنفّذ لكل مشروع: منفّذ · متبقٍ في المحافظات التي بدأت · لم يبدأ تنفيذه */
+const PC = { done: '#2f9e74', left: '#d4a443', wait: '#e0735a' };
+function PlanChart({ items }) {
+  const rows = items.filter((x) => x.parts).map((x) => {
+    const done = x.parts.reduce((a, r) => a + (r.executed || 0), 0);
+    const started = x.parts.filter((r) => r.executed > 0);
+    const left = started.reduce((a, r) => a + Math.max(0, (r.planned || 0) - (r.executed || 0)), 0);
+    const wait = x.parts.filter((r) => !(r.executed > 0)).reduce((a, r) => a + (r.planned || 0), 0);
+    return { name: x.name.replace('مشروع ترحيل الأنقاض — ', ''), planned: x.volume || 0, done, left, wait, waitGovs: x.parts.filter((r) => !(r.executed > 0)).map((r) => r.gov) };
+  });
+  if (!rows.length) return null;
+  const tot = rows.reduce((a, r) => ({ planned: a.planned + r.planned, done: a.done + r.done, left: a.left + r.left, wait: a.wait + r.wait }), { planned: 0, done: 0, left: 0, wait: 0 });
+  const max = Math.max(...rows.map((r) => r.done + r.left + r.wait), 1);
+  const Bar = ({ r, scale }) => (
+    <span className="pc-bar">
+      {[['done', 'منفّذ'], ['left', 'متبقٍّ في محافظات بدأ فيها التنفيذ'], ['wait', 'مخطط لم يبدأ تنفيذه']].map(([k, l]) => r[k] > 0 && (
+        <i key={k} style={{ width: `${(r[k] / scale) * 100}%`, background: PC[k] }} title={`${l}: ${fmt(r[k])} م³`}>
+          {r[k] / scale > 0.09 && <b>{short(r[k])}</b>}
+        </i>
+      ))}
+    </span>
+  );
+  return (
+    <section className="pc">
+      <h3>الكميات المنفّذة والمخطط لها التي لم يبدأ تنفيذها</h3>
+      <div className="pc-legend">
+        <span><i style={{ background: PC.done }} /> منفّذ <b>{fmt(tot.done)} م³</b></span>
+        <span><i style={{ background: PC.left }} /> متبقٍّ في محافظات بدأ فيها التنفيذ <b>{fmt(tot.left)} م³</b></span>
+        <span><i style={{ background: PC.wait }} /> مخطط لم يبدأ تنفيذه <b>{fmt(tot.wait)} م³</b></span>
+      </div>
+      <div className="pc-rows">
+        {rows.map((r) => (
+          <div key={r.name} className="pc-row">
+            <span className="pc-row__n">{r.name}<small>{r.waitGovs.length ? `لم يبدأ: ${r.waitGovs.join('، ')}` : (r.done >= r.planned ? `منجز · ${((r.done / (r.planned || 1)) * 100).toFixed(0)}% من المخطط له` : 'بدأ التنفيذ في كل المحافظات')}</small></span>
+            <Bar r={r} scale={max} />
+            <span className="pc-row__t">{short(r.planned)}<small>م³ مخطط له</small></span>
+          </div>
+        ))}
+        <div className="pc-row pc-row--total">
+          <span className="pc-row__n">الإجمالي<small>{tot.planned ? `${((tot.done / tot.planned) * 100).toFixed(1)}% منفّذ من المخطط له` : ''}</small></span>
+          <Bar r={tot} scale={tot.done + tot.left + tot.wait} />
+          <span className="pc-row__t">{short(tot.planned)}<small>م³ مخطط له</small></span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function StageList({ stage, items }) {
   const [kind, setKind] = useState('all');
   const [gov, setGov] = useState('all');
@@ -245,6 +293,7 @@ export default function RubbleHub({ basemap, initial }) {
         : (
           <>
             {current.id === 'assessment' && <><DamagePanel surveys={surveys} /><EstimateCalc /><DroneCalc /></>}
+            {current.id === 'planning' && <PlanChart items={byStage.planning} />}
             <StageList key={current.id} stage={current} items={byStage[current.id]} />
           </>
         )}
