@@ -2879,3 +2879,24 @@ button.rx-cell:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(
   .rmap-toggles{font-size:.72rem;padding:5px 7px;gap:2px}
   .rmap-hint{white-space:normal;text-align:center;width:86%;font-size:.74rem}
 }
+
+/* أيقونات الخريطة ومفتاحها التفاعلي */
+.rmap-ico{background:none;border:0;position:relative}
+.rmap-ico svg{display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35));position:relative}
+.rmap-pulse{position:absolute;inset:-5px;border-radius:50%;border:2px solid #6d222d;opacity:.6;animation:rmap-pulse 2s ease-out infinite}
+@keyframes rmap-pulse{0%{transform:scale(.7);opacity:.7}100%{transform:scale(1.5);opacity:0}}
+@media (prefers-reduced-motion:reduce){.rmap-pulse{animation:none;opacity:.35}}
+.rmap-legend p em{font-style:normal;font-weight:400;color:var(--ink-faint);font-size:.74rem}
+.rmap-items{gap:4px !important}
+.rmap-items button{width:100%;display:flex;align-items:center;gap:10px;background:transparent;border:1px solid transparent;border-radius:var(--radius-sm);
+  padding:6px 8px;font:inherit;color:var(--ink);cursor:pointer;text-align:right;transition:background .15s,opacity .15s}
+.rmap-items button:hover{background:var(--glass-strong)}
+.rmap-items button:not(.is-on){opacity:.45}
+.rmap-items button:not(.is-on) .rmap-items__ico{filter:grayscale(1)}
+.rmap-items__ico{width:30px;display:grid;place-items:center;flex-shrink:0}
+.rmap-items__ico svg{display:block;max-height:26px;width:auto}
+.rmap-items__t{flex:1;display:flex;flex-direction:column;font-size:.84rem;line-height:1.35}
+.rmap-items__t small{font-size:.72rem;color:var(--ink-faint)}
+.rmap-items__chk{width:18px;height:18px;border-radius:5px;border:1.6px solid var(--edge-strong);flex-shrink:0;display:grid;place-items:center}
+.rmap-items button.is-on .rmap-items__chk{background:var(--mountain-teal);border-color:var(--mountain-teal)}
+.rmap-items button.is-on .rmap-items__chk::after{content:"";width:9px;height:5px;border:2px solid #fff;border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}

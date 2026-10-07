@@ -40,6 +40,33 @@ function arc(a, b) {
   return pts;
 }
 
+/* أيقونات العناصر — نفس الرسم على الخريطة وفي المفتاح */
+const GLYPH = {
+  check: '<path d="M7.5 12.4l3 3 6-6.4" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
+  rubble: '<path d="M5.5 16.5l2.6-4.2 2.4 2.2 2.2-4.6 2.6 3.4 1.5-1.6 2.7 4.8z" fill="#fff"/><rect x="8.6" y="6.8" width="3" height="2.4" rx=".4" fill="#fff" transform="rotate(-18 10 8)"/>',
+  dump: '<path d="M4.5 16.5h15l-3.2-5.6-2.6 2.4-2.4-4.3-2.6 4.1-1.4-1.4z" fill="currentColor"/><path d="M4 18.4h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+  excavator: '<rect x="3.5" y="15.6" width="10" height="3.2" rx="1.6" fill="none" stroke="#ebe8d7" stroke-width="1.3"/><path d="M5 15.6v-3.4h3.6l1.4 3.4z" fill="#ebe8d7"/><path d="M9.6 12.6l4.2-5.2 3.6 3" fill="none" stroke="#b9a779" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.2 9.6l3.6 1.2-.6 3.4-3.4-.9z" fill="#b9a779"/>',
+};
+const ICON = {
+  done: (s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.5" fill="#428177" stroke="#fff" stroke-width="1.6"/>${GLYPH.check}</svg>`,
+  active: (s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.5" fill="#6d222d" stroke="#fff" stroke-width="1.6"/>${GLYPH.rubble}</svg>`,
+  dump: (s = 26) => `<svg width="${s}" height="${Math.round(s * 1.25)}" viewBox="0 0 24 30" style="color:#02443a"><path d="M12 29s-9.5-9.2-9.5-16.2a9.5 9.5 0 0119 0C21.5 19.8 12 29 12 29z" fill="#b9a779" stroke="#02443a" stroke-width="1.5"/><g transform="translate(2.4 1.6) scale(.8)">${GLYPH.dump}</g></svg>`,
+  proposed: (s = 22) => `<svg width="${s}" height="${Math.round(s * 1.25)}" viewBox="0 0 24 30" style="color:#958563"><path d="M12 29s-9.5-9.2-9.5-16.2a9.5 9.5 0 0119 0C21.5 19.8 12 29 12 29z" fill="#fbfaf4" stroke="#958563" stroke-width="1.5" stroke-dasharray="2.6 1.8"/><g transform="translate(2.4 1.6) scale(.8)">${GLYPH.dump}</g></svg>`,
+  machinery: (s = 24) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="5" fill="#161616" stroke="#b9a779" stroke-width="1.4"/>${GLYPH.excavator}</svg>`,
+  bubble: (s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#428177" fill-opacity=".68" stroke="#fbfaf4" stroke-width="1.5"/></svg>`,
+  flow: (s = 26) => `<svg width="${s}" height="14" viewBox="0 0 26 14"><path d="M2 12C8 1 18 1 24 12" fill="none" stroke="#958563" stroke-width="2.2" stroke-linecap="round" opacity=".8"/><circle cx="24" cy="12" r="1.8" fill="#958563"/></svg>`,
+};
+const ITEMS = [
+  ['bubbles', 'bubble', 'الكمية المنفّذة حسب الناحية', 'المشهد الوطني'],
+  ['active', 'active', 'موقع عمل نشط', 'ترحيل خلال آخر 30 يوماً'],
+  ['done', 'done', 'موقع عمل منجز', ''],
+  ['dump', 'dump', 'مكب معتمد', ''],
+  ['proposed', 'proposed', 'مكب مقترح من الجهة المحلية', ''],
+  ['flows', 'flow', 'خط ترحيل إلى المكب', ''],
+  ['machinery', 'machinery', 'الآليات والجهات المشغّلة', ''],
+];
+const pinIcon = (html, w, h, anchorY) => L.divIcon({ className: 'rmap-ico', html, iconSize: [w, h], iconAnchor: [w / 2, anchorY ?? h / 2], popupAnchor: [0, -(anchorY ?? h / 2) + 2] });
+
 const row = (k, v) => (v === null || v === undefined || v === '' ? '' : `<tr><th>${k}</th><td>${v}</td></tr>`);
 const card = (title, sub, rows) => `<div class="rmap-pop"><header><b>${title || ''}</b><small>${sub || ''}</small></header><table>${rows}</table></div>`;
 
@@ -51,7 +78,7 @@ export default function RubbleMapView() {
   const [data, setData] = useState(null);
   const [sel, setSel] = useState({ gov: '', dis: '', sub: '' });
   const [zoom, setZoom] = useState(7);
-  const [show, setShow] = useState({ sites: true, dumps: true, flows: true, machinery: true });
+  const [show, setShow] = useState({ bubbles: true, active: true, done: true, dump: true, proposed: true, flows: true, machinery: true });
 
   useEffect(() => {
     fetch('maps/rubble/rubble-map.json').then((r) => r.json()).then(setData).catch(() => setData(false));
@@ -118,7 +145,7 @@ export default function RubbleMapView() {
     Object.values(groups.current).forEach((g) => g.remove());
     const G = {};
     const z = zoom;
-    const scaleS = (v) => Math.min(2.5 + Math.sqrt(v || 0) / 6, 13);
+    const siteSize = (v) => Math.round(Math.min(13 + Math.sqrt(v || 0) / 9, 26));
 
     /* المحافظات: نسبة الإنجاز، وتخفت عند التكبير */
     G.gov = L.geoJSON(data.governorates, {
@@ -166,7 +193,7 @@ export default function RubbleMapView() {
     }
 
     /* المشهد الوطني: دوائر المنفّذ لكل ناحية */
-    if (z < 9) {
+    if (z < 9 && show.bubbles) {
       G.bub = L.layerGroup(data.subdistricts.features.filter((f) => f.properties.executed_sites_m3 > 0 && pick(f.properties)).map((f) => {
         const p = f.properties;
         return L.circleMarker(p.c, { pane: 'bubbles', radius: 3 + Math.sqrt(p.executed_sites_m3) / 26, color: '#fbfaf4', weight: 1, fillColor: '#428177', fillOpacity: 0.68 })
@@ -182,26 +209,28 @@ export default function RubbleMapView() {
           pane: 'flows', color: '#958563', opacity: 0.5, weight: Math.min(0.6 + Math.sqrt(r[4] || 0) / 30, 3.5), interactive: false,
         })));
       }
-      if (show.sites) {
-        G.sites = L.layerGroup(data.sites.features.filter((f) => pick(f.properties)).sort((a, b) => a.properties.active - b.properties.active).map((f) => {
+      if (show.active || show.done) {
+        G.sites = L.layerGroup(data.sites.features.filter((f) => pick(f.properties) && (f.properties.active === 1 ? show.active : show.done)).sort((a, b) => a.properties.active - b.properties.active).map((f) => {
           const p = f.properties; const [lon, lat] = f.geometry.coordinates;
           const act = p.active === 1;
-          return L.circleMarker([lat, lon], {
-            pane: 'points', radius: scaleS(p.volume_m3), color: act ? '#6d222d' : '#ffffff', weight: act ? 2 : 0.8,
-            fillColor: act ? '#6d222d' : '#428177', fillOpacity: act ? 0.85 : 0.72,
+          const sz = siteSize(p.volume_m3);
+          return L.marker([lat, lon], {
+            pane: 'points', icon: pinIcon(`${act ? '<span class="rmap-pulse"></span>' : ''}${act ? ICON.active(sz) : ICON.done(sz)}`, sz, sz),
+            zIndexOffset: act ? 500 : 0,
           }).bindPopup(card(p.address || 'موقع عمل', [p.village, p.adm3_name1, p.adm1_name1].filter(Boolean).join(' · '),
             row('الحالة', act ? '<em class="is-act">نشط</em>' : 'منجز') + row('الكمية', `${fmt(p.volume_m3)} م³`) + row('الجهة المنفذة', p.contractor)
             + row('طبيعة الموقع', p.nature) + row('المكب', [p.dump_name, p.distance].filter(Boolean).join(' · ')) + row('التاريخ', p.date) + row('المرحلة', p.phase)));
         }));
       }
     }
-    if (show.dumps && (z >= 8 || sel.gov)) {
-      G.dumps = L.layerGroup(data.dumps.features.filter((f) => pick(f.properties)).map((f) => {
+    if ((show.dump || show.proposed) && (z >= 8 || sel.gov)) {
+      G.dumps = L.layerGroup(data.dumps.features.filter((f) => pick(f.properties) && (f.properties.status === 'معتمد' ? show.dump : show.proposed)).map((f) => {
         const p = f.properties; const [lon, lat] = f.geometry.coordinates;
         const ok = p.status === 'معتمد';
-        const s = Math.round(Math.min((ok ? 9 : 7) + Math.sqrt(p.received_m3 || 0) / (ok ? 9 : 14), ok ? 26 : 16));
+        const w = Math.round(Math.min((ok ? 22 : 18) + Math.sqrt(p.received_m3 || 0) / 25, ok ? 36 : 26));
+        const h = Math.round(w * 1.25);
         return L.marker([lat, lon], {
-          pane: 'points', icon: L.divIcon({ className: `rmap-dump${ok ? '' : ' is-prop'}`, html: '<i></i>', iconSize: [s, s] }),
+          pane: 'points', icon: pinIcon(ok ? ICON.dump(w) : ICON.proposed(w), w, h, h), zIndexOffset: ok ? 800 : 300,
         }).bindPopup(card(p.dump_name, `${p.status} · ${[p.adm3_name1, p.adm1_name1].filter(Boolean).join(' · ')}`,
           row('الكمية المستقبلة', `${fmt(p.received_m3)} م³`) + row('المواقع المرحّل منها', fmt(p.sites)) + row('المناطق المخدومة', p.areas)
           + row('الجهات', p.contractors) + row('آخر ترحيل', p.last_date)));
@@ -210,7 +239,7 @@ export default function RubbleMapView() {
     if (show.machinery && z >= 10) {
       G.mach = L.layerGroup(data.machinery.features.filter((f) => pick(f.properties)).map((f) => {
         const p = f.properties; const [lon, lat] = f.geometry.coordinates;
-        return L.marker([lat, lon], { pane: 'points', icon: L.divIcon({ className: 'rmap-mach', html: '⚙', iconSize: [18, 18] }) })
+        return L.marker([lat, lon], { pane: 'points', icon: pinIcon(ICON.machinery(24), 24, 24), zIndexOffset: 1000 })
           .bindPopup(card(p.contractor, [p.adm3_name1, p.adm1_name1].filter(Boolean).join(' · '),
             row('مواقع العمل', fmt(p.sites)) + row('أكبر عدد آليات', p.max_machines || '—') + row('أكبر سعة', p.max_capacity || '—')
             + row('ساعات العمل', p.total_hours ? fmt(p.total_hours) : '—') + row('الكمية', `${fmt(p.volume_m3)} م³`)));
@@ -279,11 +308,6 @@ export default function RubbleMapView() {
         <div className="rmap-canvas">
           <div ref={box} className="rmap-map" />
           {!data && <div className="rmap-loading">جارٍ تحميل الخريطة…</div>}
-          <div className="rmap-toggles">
-            {[['sites', 'مواقع العمل'], ['dumps', 'المكبات'], ['flows', 'خطوط الترحيل'], ['machinery', 'الآليات']].map(([k, l]) => (
-              <label key={k}><input type="checkbox" checked={show[k]} onChange={() => setShow((s) => ({ ...s, [k]: !s[k] }))} />{l}</label>
-            ))}
-          </div>
           {zoom < 9 && <div className="rmap-hint">كبّر الخريطة أو اختر محافظة لعرض مواقع العمل والمكبات</div>}
         </div>
 
@@ -317,15 +341,17 @@ export default function RubbleMapView() {
                 <li key={b.k}><i className={`sw${b.hatch ? ' sw--hatch' : ''}`} style={{ background: b.hatch ? undefined : b.fill }} />{b.label}</li>
               ))}
             </ul>
-            <p>العناصر</p>
-            <ul>
-              <li><i className="dot" />الكمية المنفّذة حسب الناحية</li>
-              <li><i className="dot dot--done" />موقع منجز</li>
-              <li><i className="dot dot--act" />موقع عمل نشط (آخر 30 يوماً)</li>
-              <li><i className="dia" />مكب معتمد</li>
-              <li><i className="dia dia--prop" />مكب مقترح من الجهة المحلية</li>
-              <li><i className="flow" />خط ترحيل إلى المكب</li>
-              <li><i className="mach">⚙</i>الآليات والجهات المشغّلة</li>
+            <p>العناصر <em>— اضغط لإظهار أو إخفاء</em></p>
+            <ul className="rmap-items">
+              {ITEMS.map(([k, icon, label, hint]) => (
+                <li key={k}>
+                  <button type="button" className={show[k] ? 'is-on' : ''} aria-pressed={show[k]} onClick={() => setShow((v) => ({ ...v, [k]: !v[k] }))}>
+                    <span className="rmap-items__ico" dangerouslySetInnerHTML={{ __html: ICON[icon]() }} />
+                    <span className="rmap-items__t">{label}{hint && <small>{hint}</small>}</span>
+                    <span className="rmap-items__chk" aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
             </ul>
             <small>حجم الرمز يتناسب مع الكمية. المصادر: استمارات الترحيل الميدانية، التقرير المرحلي <span dir="ltr">{data?.meta.planAsOf}</span>.</small>
           </div>
