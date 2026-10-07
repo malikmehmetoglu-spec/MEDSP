@@ -312,27 +312,6 @@ export default function RubbleMapView() {
         </div>
 
         <aside className="rmap-side">
-          {kpi && (
-            <div className="rmap-kpi">
-              <h4>{sel.sub ? 'الناحية المختارة' : sel.dis ? 'المنطقة المختارة' : sel.gov ? 'المحافظة المختارة' : 'مؤشرات التنفيذ — خطة 2026'}</h4>
-              <dl>
-                <div><dt>الكمية المخطط لها</dt><dd>{kpi.planned ? <>{fmt(kpi.planned)} <small>م³</small></> : '—'}</dd></div>
-                <div className="is-exe"><dt>الكمية المنفّذة</dt><dd>{fmt(kpi.executed)} <small>م³</small></dd></div>
-                <div className="is-rem"><dt>الكمية المتبقية</dt><dd>{kpi.remaining != null ? <>{fmt(kpi.remaining)} <small>م³</small></> : '—'}</dd></div>
-              </dl>
-              {kpi.pct != null && (
-                <div className="rmap-prog"><span><i style={{ width: `${Math.min(100, kpi.pct)}%` }} /></span><b dir="ltr">{kpi.pct.toFixed(1)}%</b></div>
-              )}
-              <ul className="rmap-counts">
-                <li><b>{fmt(kpi.sites)}</b>موقع عمل</li>
-                <li><b>{fmt(kpi.active)}</b>نشط</li>
-                <li><b>{fmt(kpi.dumps)}</b>مكب</li>
-                <li><b>{fmt(kpi.cos)}</b>جهة منفذة</li>
-              </ul>
-              {kpi.note && <p className="rmap-note">{kpi.note}</p>}
-            </div>
-          )}
-
           <div className="rmap-legend">
             <h4>مفتاح الخريطة</h4>
             <p>نسبة الإنجاز حسب المحافظة</p>
@@ -355,6 +334,27 @@ export default function RubbleMapView() {
             </ul>
             <small>حجم الرمز يتناسب مع الكمية. المصادر: استمارات الترحيل الميدانية، التقرير المرحلي <span dir="ltr">{data?.meta.planAsOf}</span>.</small>
           </div>
+
+          {kpi && (
+            <div className="rmap-kpi">
+              <h4>{sel.sub ? 'الناحية المختارة' : sel.dis ? 'المنطقة المختارة' : sel.gov ? 'المحافظة المختارة' : 'مؤشرات التنفيذ — خطة 2026'}</h4>
+              <dl>
+                <div><dt>الكمية المخطط لها</dt><dd>{kpi.planned ? <>{fmt(kpi.planned)} <small>م³</small></> : '—'}</dd></div>
+                <div className="is-exe"><dt>الكمية المنفّذة</dt><dd>{fmt(kpi.executed)} <small>م³</small></dd></div>
+                <div className="is-rem"><dt>الكمية المتبقية</dt><dd>{kpi.remaining != null ? <>{fmt(kpi.remaining)} <small>م³</small></> : '—'}</dd></div>
+              </dl>
+              {kpi.pct != null && (
+                <div className="rmap-prog"><span><i style={{ width: `${Math.min(100, kpi.pct)}%` }} /></span><b dir="ltr">{kpi.pct.toFixed(1)}%</b></div>
+              )}
+              <ul className="rmap-counts">
+                <li><b>{fmt(kpi.sites)}</b>موقع عمل</li>
+                <li><b>{fmt(kpi.active)}</b>نشط</li>
+                <li><b>{fmt(kpi.dumps)}</b>مكب</li>
+                <li><b>{fmt(kpi.cos)}</b>جهة منفذة</li>
+              </ul>
+              {kpi.note && <p className="rmap-note">{kpi.note}</p>}
+            </div>
+          )}
         </aside>
       </div>
     </section>
